@@ -137,12 +137,12 @@ export default function GioiThieu() {
         </div>
       </section>
 
-      {/* Ban lãnh đạo */}
+      {/* Lãnh đạo khoa */}
       <section id="lanh-dao" className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-8 md:px-16">
           <div className="text-center mb-14">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-50 border border-purple-200 mb-6">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-purple-700 font-bold">Ban lãnh đạo</p>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-purple-700 font-bold">Lãnh đạo khoa</p>
             </div>
             <h2 className="font-serif text-gray-900 text-3xl md:text-5xl mb-4">Những người <em className="text-blue-700">dẫn dắt</em></h2>
             <p className="text-gray-600 text-base max-w-xl mx-auto font-medium">Đội ngũ lãnh đạo giàu kinh nghiệm, tâm huyết với ngành Dược</p>
