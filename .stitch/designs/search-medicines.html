@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tra cứu danh mục thuốc - Hospital Pharmacy</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-container": "#0e7490",
+                        "secondary-container": "#d0e1fb",
+                        "on-primary-fixed-variant": "#004d62",
+                        "error": "#ba1a1a",
+                        "on-surface-variant": "#3f484c",
+                        "outline-variant": "#bec8cd",
+                        "secondary": "#505f76",
+                        "on-tertiary-container": "#e7ebff",
+                        "surface": "#f7f9fb",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "tertiary-fixed": "#dae2fd",
+                        "on-background": "#191c1e",
+                        "surface-bright": "#f7f9fb",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "on-secondary-container": "#54647a",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "surface-container-low": "#f2f4f6",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed": "#131b2e",
+                        "primary-fixed-dim": "#81d1f0",
+                        "tertiary": "#4a5268",
+                        "inverse-primary": "#81d1f0",
+                        "on-surface": "#191c1e",
+                        "on-tertiary": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "surface-container-high": "#e6e8ea",
+                        "on-secondary": "#ffffff",
+                        "surface-variant": "#e0e3e5",
+                        "surface-container": "#eceef0",
+                        "on-primary-container": "#d3f1ff",
+                        "outline": "#6f787d",
+                        "surface-tint": "#006781",
+                        "on-error": "#ffffff",
+                        "primary": "#005a71",
+                        "tertiary-container": "#626a81",
+                        "on-secondary-fixed": "#0b1c30",
+                        "secondary-fixed": "#d3e4fe",
+                        "primary-fixed": "#b9eaff",
+                        "on-primary-fixed": "#001f29",
+                        "surface-dim": "#d8dadc",
+                        "surface-container-highest": "#e0e3e5",
+                        "inverse-surface": "#2d3133",
+                        "background": "#f7f9fb",
+                        "on-error-container": "#93000a",
+                        "error-container": "#ffdad6",
+                        "on-secondary-fixed-variant": "#38485d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1.25rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Plus Jakarta Sans"],
+                        "label": ["Plus Jakarta Sans"],
+                        "mono": ["JetBrains Mono"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+        }
+        .data-mono { font-family: 'JetBrains Mono', monospace; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface flex min-h-screen">
+<!-- SideNavBar Anchor -->
+<aside class="hidden md:flex flex-col h-screen w-64 fixed left-0 top-0 bg-slate-50 dark:bg-slate-950 py-8 px-4 z-50">
+<div class="mb-10 px-4">
+<h2 class="text-primary-container font-bold text-lg leading-tight">Pharmacy Dept.</h2>
+<p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Central Hospital</p>
+</div>
+<nav class="flex-1 space-y-2">
+<!-- Active state: Danh mục -->
+<a class="flex items-center gap-3 px-4 py-3 text-cyan-700 dark:text-cyan-400 font-bold border-r-4 border-cyan-700 dark:border-cyan-500 translate-x-1 transition-transform bg-slate-100 dark:bg-slate-900 rounded-l-lg" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="text-sm font-semibold font-plus-jakarta">Danh mục</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="input">input</span>
+<span class="text-sm font-semibold font-plus-jakarta">Nhập kho</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="event_note">event_note</span>
+<span class="text-sm font-semibold font-plus-jakarta">Kế hoạch</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="text-sm font-semibold font-plus-jakarta">Báo cáo</span>
+</a>
+</nav>
+<div class="mt-auto space-y-2 pt-6 border-t border-slate-200 dark:border-slate-800">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-cyan-600 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-sm font-semibold font-plus-jakarta">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-cyan-600 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+<span class="text-sm font-semibold font-plus-jakarta">Support</span>
+</a>
+<div class="flex items-center gap-3 px-4 mt-6">
+<div class="w-10 h-10 rounded-full bg-slate-200 overflow-hidden">
+<img alt="Pharmacist Profile Image" class="w-full h-full object-cover" data-alt="professional portrait of a female pharmacist in a clinical white coat standing in a modern medical setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMkztMN00YukUb5Y6MqqYO191wM_nLOZWEdWrSYdx9qKUy1EwNWhRC7ELSfziQMB8M1lSjsLSu6_UFmM-MA1jhIndOSIveRGYA6j2ucHQEpLoYkgeUj0xeyloJETSd66lYLdbPVpOZj8S_o5hvRMCLnQQKlO8REfU0IfEEMsLwhtxfjK7_2_H2i5uQs59qoeyTm8iDho-of7SYHuSEWUCTtj_hYinT6k_8Fr4VeVnyf99uHMJw_pU7CDDIR9AFS2xJJ2-k0TYujVU"/>
+</div>
+<div class="flex flex-col">
+<span class="text-xs font-bold text-slate-900">Dr. Nguyen</span>
+<span class="text-[10px] text-slate-500">Chief Pharmacist</span>
+</div>
+</div>
+</div>
+</aside>
+<div class="flex-1 md:ml-64 flex flex-col min-h-screen">
+<!-- TopAppBar Anchor -->
+<header class="sticky top-0 z-40 bg-white dark:bg-slate-900 flex justify-between items-center w-full px-8 py-4 max-w-full">
+<div class="flex items-center gap-8">
+<h1 class="text-2xl font-bold font-plus-jakarta text-cyan-700 dark:text-cyan-500">Tra cứu danh mục thuốc</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<main class="flex-1 p-8">
+<!-- Search & Filter Section -->
+<section class="max-w-6xl mx-auto mb-12">
+<div class="relative mb-8">
+<div class="absolute inset-y-0 left-6 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-slate-400" data-icon="search">search</span>
+</div>
+<input class="w-full pl-14 pr-8 py-6 bg-surface-container-highest border-none focus:ring-2 focus:ring-primary/30 rounded-DEFAULT text-lg font-medium placeholder:text-slate-400 transition-all shadow-sm" placeholder="Nhập tên thuốc hoặc mã định danh..." type="text"/>
+</div>
+<div class="flex flex-wrap gap-3">
+<button class="px-6 py-2.5 bg-primary text-white font-semibold rounded-full shadow-md hover:translate-y-[-2px] transition-all">Tất cả</button>
+<button class="px-6 py-2.5 bg-surface-container-high text-on-surface-variant font-semibold rounded-full hover:bg-surface-container-highest transition-colors">Thuốc kháng sinh</button>
+<button class="px-6 py-2.5 bg-surface-container-high text-on-surface-variant font-semibold rounded-full hover:bg-surface-container-highest transition-colors">Thuốc tim mạch</button>
+<button class="px-6 py-2.5 bg-surface-container-high text-on-surface-variant font-semibold rounded-full hover:bg-surface-container-highest transition-colors">Thuốc giảm đau</button>
+<button class="px-6 py-2.5 bg-surface-container-high text-on-surface-variant font-semibold rounded-full hover:bg-surface-container-highest transition-colors">Hỗ trợ hô hấp</button>
+<button class="ml-auto flex items-center gap-2 px-6 py-2.5 text-primary font-bold hover:bg-primary/10 rounded-full transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="filter_list">filter_list</span>
+                        Lọc nâng cao
+                    </button>
+</div>
+</section>
+<!-- Results Grid -->
+<section class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+<!-- Medicine Card 1 -->
+<div class="bg-surface-container-lowest p-8 rounded-DEFAULT flex flex-col justify-between hover:shadow-lg transition-shadow duration-300 relative overflow-hidden group">
+<div class="flex justify-between items-start mb-6">
+<div>
+<span class="text-[10px] font-bold text-primary uppercase tracking-widest block mb-1">ID: MED-7729</span>
+<h3 class="text-xl font-bold text-on-surface">Paracetamol 500mg</h3>
+</div>
+<span class="px-3 py-1 bg-green-100 text-green-700 text-[10px] font-extrabold uppercase rounded-full">Còn hàng</span>
+</div>
+<div class="space-y-4 mb-8">
+<div class="flex flex-col">
+<span class="text-xs text-slate-400 font-medium">Hoạt chất</span>
+<span class="text-sm font-semibold text-slate-700">Paracetamol</span>
+</div>
+<div class="flex flex-col">
+<span class="text-xs text-slate-400 font-medium">Quy cách</span>
+<span class="text-sm font-semibold text-slate-700">Hộp 10 vỉ x 10 viên</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-slate-50">
+<div class="data-mono text-sm text-slate-400">NDC: 0501-1234-01</div>
+<button class="p-2 bg-slate-100 text-slate-600 rounded-full hover:bg-primary hover:text-white transition-all">
+<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Medicine Card 2 -->
+<div class="bg-surface-container-lowest p-8 rounded-DEFAULT flex flex-col justify-between hover:shadow-lg transition-shadow duration-300 relative overflow-hidden">
+<div class="flex justify-between items-start mb-6">
+<div>
+<span class="text-[10px] font-bold text-primary uppercase tracking-widest block mb-1">ID: MED-4410</span>
+<h3 class="text-xl font-bold text-on-surface">Amoxicillin 250mg</h3>
+</div>
+<span class="px-3 py-1 bg-amber-100 text-amber-700 text-[10px] font-extrabold uppercase rounded-full">Sắp hết</span>
+</div>
+<div class="space-y-4 mb-8">
+<div class="flex flex-col">
+<span class="text-xs text-slate-400 font-medium">Hoạt chất</span>
+<span class="text-sm font-semibold text-slate-700">Amoxicillin</span>
+</div>
+<div class="flex flex-col">
+<span class="text-xs text-slate-400 font-medium">Quy cách</span>
+<span class="text-sm font-semibold text-slate-700">Chai 60ml hỗn dịch</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-slate-50">
+<div class="data-mono text-sm text-slate-400">NDC: 0781-5045-01</div>
+<button class="p-2 bg-slate-100 text-slate-600 rounded-full hover:bg-primary hover:text-white transition-all">
+<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Medicine Card 3 -->
+<div class="bg-surface-container-lowest p-8 rounded-DEFAULT flex flex-col justify-between hover:shadow-lg transition-shadow duration-300 relative overflow-hidden">
+<div class="flex justify-between items-start mb-6">
+<div>
+<span class="text-[10px] font-bold text-primary uppercase tracking-widest block mb-1">ID: MED-9012</span>
+<h3 class="text-xl font-bold text-on-surface">Metoprolol 50mg</h3>
+</div>
+<span class="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-extrabold uppercase rounded-full">Liên hệ kho</span>
+</div>
+<div class="space-y-4 mb-8">
+<div class="flex flex-col">
+<span class="text-xs text-slate-400 font-medium">Hoạt chất</span>
+<span class="text-sm font-semibold text-slate-700">Metoprolol Tartrate</span>
+</div>
+<div class="flex flex-col">
+<span class="text-xs text-slate-400 font-medium">Quy cách</span>
+<span class="text-sm font-semibold text-slate-700">Vỉ 10 viên nén</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-slate-50">
+<div class="data-mono text-sm text-slate-400">NDC: 0172-4112-60</div>
+<button class="p-2 bg-slate-100 text-slate-600 rounded-full hover:bg-primary hover:text-white transition-all">
+<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Medicine Card 4 -->
+<div class="bg-surface-container-lowest p-8 rounded-DEFAULT flex flex-col justify-between hover:shadow-lg transition-shadow duration-300 relative overflow-hidden">
+<div class="flex justify-between items-start mb-6">
+<div>
+<span class="text-[10px] font-bold text-primary uppercase tracking-widest block mb-1">ID: MED-1108</span>
+<h3 class="text-xl font-bold text-on-surface">Salbutamol 100mcg</h3>
+</div>
+<span class="px-3 py-1 bg-green-100 text-green-700 text-[10px] font-extrabold uppercase rounded-full">Còn hàng</span>
+</div>
+<div class="space-y-4 mb-8">
+<div class="flex flex-col">
+<span class="text-xs text-slate-400 font-medium">Hoạt chất</span>
+<span class="text-sm font-semibold text-slate-700">Salbutamol</span>
+</div>
+<div class="flex flex-col">
+<span class="text-xs text-slate-400 font-medium">Quy cách</span>
+<span class="text-sm font-semibold text-slate-700">Bình xịt định liều</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-slate-50">
+<div class="data-mono text-sm text-slate-400">NDC: 0173-0321-88</div>
+<button class="p-2 bg-slate-100 text-slate-600 rounded-full hover:bg-primary hover:text-white transition-all">
+<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Medicine Card 5 -->
+<div class="bg-surface-container-lowest p-8 rounded-DEFAULT flex flex-col justify-between hover:shadow-lg transition-shadow duration-300 relative overflow-hidden">
+<div class="flex justify-between items-start mb-6">
+<div>
+<span class="text-[10px] font-bold text-primary uppercase tracking-widest block mb-1">ID: MED-5561</span>
+<h3 class="text-xl font-bold text-on-surface">Lisinopril 10mg</h3>
+</div>
+<span class="px-3 py-1 bg-green-100 text-green-700 text-[10px] font-extrabold uppercase rounded-full">Còn hàng</span>
+</div>
+<div class="space-y-4 mb-8">
+<div class="flex flex-col">
+<span class="text-xs text-slate-400 font-medium">Hoạt chất</span>
+<span class="text-sm font-semibold text-slate-700">Lisinopril USP</span>
+</div>
+<div class="flex flex-col">
+<span class="text-xs text-slate-400 font-medium">Quy cách</span>
+<span class="text-sm font-semibold text-slate-700">Lọ 30 viên</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-slate-50">
+<div class="data-mono text-sm text-slate-400">NDC: 1671-4043-01</div>
+<button class="p-2 bg-slate-100 text-slate-600 rounded-full hover:bg-primary hover:text-white transition-all">
+<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Medicine Card 6 -->
+<div class="bg-surface-container-lowest p-8 rounded-DEFAULT flex flex-col justify-between hover:shadow-lg transition-shadow duration-300 relative overflow-hidden">
+<div class="flex justify-between items-start mb-6">
+<div>
+<span class="text-[10px] font-bold text-primary uppercase tracking-widest block mb-1">ID: MED-2234</span>
+<h3 class="text-xl font-bold text-on-surface">Ciprofloxacin 500mg</h3>
+</div>
+<span class="px-3 py-1 bg-amber-100 text-amber-700 text-[10px] font-extrabold uppercase rounded-full">Sắp hết</span>
+</div>
+<div class="space-y-4 mb-8">
+<div class="flex flex-col">
+<span class="text-xs text-slate-400 font-medium">Hoạt chất</span>
+<span class="text-sm font-semibold text-slate-700">Ciprofloxacin HCL</span>
+</div>
+<div class="flex flex-col">
+<span class="text-xs text-slate-400 font-medium">Quy cách</span>
+<span class="text-sm font-semibold text-slate-700">Hộp 2 vỉ x 10 viên</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-slate-50">
+<div class="data-mono text-sm text-slate-400">NDC: 5011-3415-10</div>
+<button class="p-2 bg-slate-100 text-slate-600 rounded-full hover:bg-primary hover:text-white transition-all">
+<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Pagination Control -->
+<div class="mt-16 flex justify-center items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-500 transition-colors">
+<span class="material-symbols-outlined" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-primary text-white font-bold shadow-md">1</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-700 font-medium transition-colors">2</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-700 font-medium transition-colors">3</button>
+<span class="px-2 text-slate-400">...</span>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-700 font-medium transition-colors">12</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-500 transition-colors">
+<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</main>
+<!-- Footer Anchor -->
+<footer class="w-full border-t border-slate-100 dark:border-slate-800 flex flex-row justify-between items-center px-8 py-6 mt-auto bg-white dark:bg-slate-900">
+<div class="flex items-center gap-6">
+<span class="text-xs font-normal font-plus-jakarta text-slate-400 dark:text-slate-500">© 2024 Clinical Precision Systems</span>
+</div>
+<div class="flex items-center gap-6">
+<a class="text-xs font-normal font-plus-jakarta text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors" href="#">Privacy Policy</a>
+<a class="text-xs font-normal font-plus-jakarta text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors" href="#">Terms of Service</a>
+<a class="text-xs font-normal font-plus-jakarta text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors" href="#">Hospital Guidelines</a>
+</div>
+</footer>
+</div>
+</body></html>
