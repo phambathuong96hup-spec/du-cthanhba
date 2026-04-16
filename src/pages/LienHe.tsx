@@ -32,9 +32,9 @@ export default function LienHe() {
         <div className="max-w-7xl mx-auto px-8 md:px-16">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { Icon: Phone, title: 'Đường dây nóng', val: '(+84) 210 3XXX 888', sub: 'Thứ 2–6, 7:00–17:00', color: 'bg-blue-600', bg: 'bg-blue-50 border-blue-100', text: 'text-blue-700' },
+              { Icon: Phone, title: 'Đường dây nóng', val: '0210 656 8197', sub: 'Thứ 2–6, 7:00–17:00', color: 'bg-blue-600', bg: 'bg-blue-50 border-blue-100', text: 'text-blue-700' },
               { Icon: Mail, title: 'Email liên hệ', val: 'khoaduoc.ttytthanhba@gmail.com', sub: 'Phản hồi trong 24 giờ', color: 'bg-green-600', bg: 'bg-green-50 border-green-100', text: 'text-green-700' },
-              { Icon: Phone, title: 'Cấp cứu thuốc', val: '1900 XXX XXX', sub: 'Hỗ trợ 24/7', color: 'bg-red-500', bg: 'bg-red-50 border-red-100', text: 'text-red-700' },
+              { Icon: Phone, title: 'Cấp cứu thuốc', val: '0210 656 8197', sub: 'Hỗ trợ 24/7', color: 'bg-red-500', bg: 'bg-red-50 border-red-100', text: 'text-red-700' },
             ].map((c, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
                 className={`flex items-center gap-5 p-6 rounded-2xl border ${c.bg} hover:shadow-lg transition-shadow`}>
@@ -69,7 +69,7 @@ export default function LienHe() {
               <div className="space-y-8 mb-12">
                 {[
                   { Icon: MapPin, label: 'Địa chỉ', val: 'Thị trấn Thanh Ba, Huyện Thanh Ba, Tỉnh Phú Thọ' },
-                  { Icon: Phone, label: 'Điện thoại', val: '(+84) 210 3XXX 888' },
+                  { Icon: Phone, label: 'Điện thoại', val: '0210 656 8197' },
                   { Icon: Mail, label: 'Email', val: 'khoaduoc.ttytthanhba@gmail.com' },
                   { Icon: Clock, label: 'Giờ làm việc', val: 'Thứ 2 – Thứ 6: 07:00 – 17:00 | Cấp cứu: 24/7' },
                 ].map((c, i) => (

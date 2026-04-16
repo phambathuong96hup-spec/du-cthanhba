@@ -341,7 +341,7 @@ const GspBanner = () => (
           <motion.div initial={{ opacity: 0, x: -40 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 mb-6">
               <Award className="w-4 h-4 text-emerald-400" />
-              <span className="text-emerald-300 text-xs font-bold uppercase tracking-widest">Tiêu chuẩn GSP • ISO 9001</span>
+              <span className="text-emerald-300 text-xs font-bold uppercase tracking-widest">Tiêu chuẩn GSP</span>
             </div>
             <blockquote className="font-serif text-white leading-tight mb-8" style={{ fontSize: 'clamp(1.9rem,3.5vw,3rem)' }}>
               "Một liều thuốc đúng —<br />
@@ -398,7 +398,7 @@ const Contact = () => (
 
           <div className="space-y-6">
             {[
-              { icon: <Phone className="w-5 h-5" />, label: 'Điện thoại', val: '(+84) 210 3XXX 888', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+              { icon: <Phone className="w-5 h-5" />, label: 'Điện thoại', val: '0210 656 8197', color: 'text-emerald-600', bg: 'bg-emerald-50' },
               { icon: <Mail className="w-5 h-5" />, label: 'Email', val: 'khoaduoc.ttytthanhba@gmail.com', color: 'text-blue-600', bg: 'bg-blue-50' },
               { icon: <MapPin className="w-5 h-5" />, label: 'Địa chỉ', val: 'Thị trấn Thanh Ba, Huyện Thanh Ba, Phú Thọ', color: 'text-violet-600', bg: 'bg-violet-50' },
             ].map((c, i) => (

@@ -15,7 +15,7 @@ const features = [
 
 const leaders = [
   { name: 'DSCK1. Nguyễn Văn A', role: 'Trưởng Khoa Dược', exp: '20 năm kinh nghiệm', desc: 'Phụ trách chỉ đạo chuyên môn toàn khoa, triển khai quy trình GSP và đào tạo nhân lực.', img: `${import.meta.env.BASE_URL}images/leadership_doctor.png` },
-  { name: 'ThS.DS. Trần Thị B', role: 'Phó Trưởng Khoa', exp: '15 năm kinh nghiệm', desc: 'Chuyên sâu Dược Lâm Sàng, cá thể hóa phác đồ điều trị và tư vấn tương tác thuốc.', img: `${import.meta.env.BASE_URL}images/leadership_doctor.png` },
+  { name: 'ThS.DS. Trần Thị B', role: 'Phó Trưởng Khoa', exp: '15 năm kinh nghiệm', desc: 'Chuyên sâu Dược Lâm Sàng, cá thể hóa phác đồ điều trị và tư vấn tương tác thuốc.', img: `${import.meta.env.BASE_URL}images/phokhoa.png` },
   { name: 'DS. Lê Văn C', role: 'Trưởng nhóm Kho dược', exp: '12 năm kinh nghiệm', desc: 'Quản lý kho thuốc chuẩn GSP, điều phối cấp phát thuốc nội và ngoại trú.', img: `${import.meta.env.BASE_URL}images/leadership_doctor.png` },
 ];
 

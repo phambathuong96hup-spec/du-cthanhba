@@ -156,7 +156,7 @@ export const Header = () => {
           {/* Info cards */}
           <div className="hidden lg:flex items-center gap-3 flex-1 justify-center">
             {[
-              { bg: 'bg-blue-600', light: 'bg-blue-50 border-blue-100 hover:bg-blue-100', Icon: Phone, label: 'ĐƯỜNG DÂY NÓNG', val: '1900 XXX XXX', textColor: 'text-blue-700', labelColor: 'text-blue-400' },
+              { bg: 'bg-blue-600', light: 'bg-blue-50 border-blue-100 hover:bg-blue-100', Icon: Phone, label: 'ĐƯỜNG DÂY NÓNG', val: '0210 656 8197', textColor: 'text-blue-700', labelColor: 'text-blue-400' },
               { bg: 'bg-green-600', light: 'bg-green-50 border-green-100 hover:bg-green-100', Icon: ClipboardList, label: 'GIỜ LÀM VIỆC', val: '7:00 – 17:00 T2–T6', textColor: 'text-green-700', labelColor: 'text-green-500' },
               { bg: 'bg-red-500', light: 'bg-red-50 border-red-100 hover:bg-red-100', Icon: ShieldCheck, label: 'CẤP CỨU THUỐC', val: '24/7 · Luôn sẵn sàng', textColor: 'text-red-600', labelColor: 'text-red-400' },
             ].map((c, i) => (
@@ -287,7 +287,7 @@ export const Footer = () => (
             { label: 'Khiếu nại, góp ý', href: '/lien-he' },
           ]},
           { title: 'Liên hệ', links: [
-            { label: '(+84) 210 3XXX 888', href: 'tel:+842103888' },
+            { label: '0210 656 8197', href: 'tel:+842106568197' },
             { label: 'khoaduoc.ttytthanhba@gmail.com', href: 'mailto:khoaduoc.ttytthanhba@gmail.com' },
             { label: 'Thứ 2–6: 07:00–17:00', href: '/lien-he' },
             { label: 'Cấp cứu: 24/7', href: '/lien-he' },
