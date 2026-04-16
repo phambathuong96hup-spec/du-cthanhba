@@ -147,7 +147,7 @@ export default function GioiThieu() {
             <h2 className="font-serif text-gray-900 text-3xl md:text-5xl mb-4">Những người <em className="text-blue-700">dẫn dắt</em></h2>
             <p className="text-gray-600 text-base max-w-xl mx-auto font-medium">Đội ngũ lãnh đạo giàu kinh nghiệm, tâm huyết với ngành Dược</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             {leaders.map((l, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15 }}
                 className="rounded-2xl overflow-hidden bg-gray-50 border border-gray-100 hover:shadow-xl transition-all group">
