@@ -399,7 +399,7 @@ const Contact = () => (
           <div className="space-y-6">
             {[
               { icon: <Phone className="w-5 h-5" />, label: 'Điện thoại', val: '0210 656 8197', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-              { icon: <Mail className="w-5 h-5" />, label: 'Email', val: 'khoaduoc.ttytthanhba@gmail.com', color: 'text-blue-600', bg: 'bg-blue-50' },
+              { icon: <Mail className="w-5 h-5" />, label: 'Email', val: 'thuocvabietduoc.bvthanhba@gmail.com', color: 'text-blue-600', bg: 'bg-blue-50' },
               { icon: <MapPin className="w-5 h-5" />, label: 'Địa chỉ', val: 'Thị trấn Thanh Ba, Huyện Thanh Ba, Phú Thọ', color: 'text-violet-600', bg: 'bg-violet-50' },
             ].map((c, i) => (
               <motion.div key={i} initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}

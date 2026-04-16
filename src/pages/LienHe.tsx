@@ -32,8 +32,7 @@ export default function LienHe() {
         <div className="max-w-7xl mx-auto px-8 md:px-16">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { Icon: Phone, title: 'Đường dây nóng', val: '0210 656 8197', sub: 'Thứ 2–6, 7:00–17:00', color: 'bg-blue-600', bg: 'bg-blue-50 border-blue-100', text: 'text-blue-700' },
-              { Icon: Mail, title: 'Email liên hệ', val: 'khoaduoc.ttytthanhba@gmail.com', sub: 'Phản hồi trong 24 giờ', color: 'bg-green-600', bg: 'bg-green-50 border-green-100', text: 'text-green-700' },
+              { Icon: Mail, title: 'Email liên hệ', val: 'thuocvabietduoc.bvthanhba@gmail.com', sub: 'Phản hồi trong 24 giờ', color: 'bg-green-600', bg: 'bg-green-50 border-green-100', text: 'text-green-700' },
               { Icon: Phone, title: 'Cấp cứu thuốc', val: '0210 656 8197', sub: 'Hỗ trợ 24/7', color: 'bg-red-500', bg: 'bg-red-50 border-red-100', text: 'text-red-700' },
             ].map((c, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
@@ -70,7 +69,7 @@ export default function LienHe() {
                 {[
                   { Icon: MapPin, label: 'Địa chỉ', val: 'Thị trấn Thanh Ba, Huyện Thanh Ba, Tỉnh Phú Thọ' },
                   { Icon: Phone, label: 'Điện thoại', val: '0210 656 8197' },
-                  { Icon: Mail, label: 'Email', val: 'khoaduoc.ttytthanhba@gmail.com' },
+                  { Icon: Mail, label: 'Email', val: 'thuocvabietduoc.bvthanhba@gmail.com' },
                   { Icon: Clock, label: 'Giờ làm việc', val: 'Thứ 2 – Thứ 6: 07:00 – 17:00 | Cấp cứu: 24/7' },
                 ].map((c, i) => (
                   <div key={i} className="flex gap-5 items-start pb-8 border-b border-gray-200 last:border-0">

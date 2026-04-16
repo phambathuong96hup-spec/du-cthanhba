@@ -287,8 +287,8 @@ export const Footer = () => (
             { label: 'Khiếu nại, góp ý', href: '/lien-he' },
           ]},
           { title: 'Liên hệ', links: [
-            { label: '0210 656 8197', href: 'tel:+842106568197' },
-            { label: 'khoaduoc.ttytthanhba@gmail.com', href: 'mailto:khoaduoc.ttytthanhba@gmail.com' },
+            { label: '0210 656 8197', href: 'tel:02106568197' },
+            { label: 'thuocvabietduoc.bvthanhba@gmail.com', href: 'mailto:thuocvabietduoc.bvthanhba@gmail.com' },
             { label: 'Thứ 2–6: 07:00–17:00', href: '/lien-he' },
             { label: 'Cấp cứu: 24/7', href: '/lien-he' },
           ]},
