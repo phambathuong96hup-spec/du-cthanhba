@@ -5,18 +5,17 @@ import { Header, Footer, Breadcrumb } from '../components/SharedLayout';
 import { ArrowRight, Truck, Stethoscope, ShieldCheck, FlaskConical, Microscope, BookOpen, Users, Award, Clock } from 'lucide-react';
 
 const features = [
-  { title: 'Quản lý & Cung ứng', description: 'Đảm bảo cung ứng thuốc, hóa chất, vật tư y tế tiêu hao đầy đủ, kịp thời cho công tác khám chữa bệnh.', icon: <Truck className="w-6 h-6" /> },
-  { title: 'Dược lâm sàng', description: 'Tư vấn sử dụng thuốc an toàn, hợp lý và hiệu quả cho bác sĩ và người bệnh tại TTYT.', icon: <Stethoscope className="w-6 h-6" /> },
-  { title: 'Kiểm soát chất lượng', description: 'Kiểm tra, giám sát chất lượng thuốc nhập vào và bảo quản tại kho theo tiêu chuẩn GSP.', icon: <ShieldCheck className="w-6 h-6" /> },
-  { title: 'Pha chế thuốc', description: 'Pha chế một số loại thuốc dùng trong bệnh viện theo quy định của Bộ Y tế.', icon: <FlaskConical className="w-6 h-6" /> },
-  { title: 'Nghiên cứu khoa học', description: 'Thực hiện các đề tài nghiên cứu về sử dụng thuốc và cải tiến quy trình nghiệp vụ dược.', icon: <Microscope className="w-6 h-6" /> },
-  { title: 'Đào tạo & Chỉ đạo tuyến', description: 'Đào tạo liên tục cho cán bộ dược và hỗ trợ chuyên môn cho các trạm y tế xã.', icon: <BookOpen className="w-6 h-6" /> },
+  { title: 'Tư vấn trong quá trình xây dựng danh mục thuốc', description: 'Thiết lập các tiêu chí lựa chọn thuốc, Tiếp nhận và xử lý các thông tin liên quan đến thuốc và phân tích kinh tế dược.', icon: <Truck className="w-6 h-6" /> },
+  { title: 'Tư vấn, giám sát việc kê đơn và sử dụng thuốc', description: 'Theo dõi việc kê đơn và sử dụng thuốc, phát hiện sai sót, hội chẩn lâm sàng.', icon: <Stethoscope className="w-6 h-6" /> },
+  { title: 'Thông tin và hướng dẫn sử dụng thuốc', description: 'Cung cấp, cập nhật thông tin về thuốc cho cán bộ y tế và hướng dẫn cho người bệnh về cách sử dụng thuốc.', icon: <ShieldCheck className="w-6 h-6" /> },
+  { title: 'Xây dựng các quy trình và hướng dẫn chuyên môn', description: 'Chủ trì hoặc phối hợp với các khoa lâm sàng để soạn thảo các tài liệu, quy trình chuẩn.', icon: <FlaskConical className="w-6 h-6" /> },
+  { title: 'Thực hiện công tác cảnh giác dược (Nhiệm vụ 5 & 6)', description: 'Trực tiếp theo dõi, giám sát, thu thập và báo cáo các phản ứng có hại của thuốc (ADR) xảy ra tại cơ sở. Phân tích và đề xuất giải pháp.', icon: <Microscope className="w-6 h-6" /> },
+  { title: 'Nghiên cứu khoa học và đào tạo', description: 'Tham gia nghiên cứu thử nghiệm lâm sàng, thử nghiệm tương đương sinh học của thuốc tại cơ sở khám bệnh, chữa bệnh và các nghiên cứu khoa học khác về sử dụng thuốc hợp lý, an toàn và hiệu quả.', icon: <BookOpen className="w-6 h-6" /> },
 ];
 
 const leaders = [
-  { name: 'DSCK1. Nguyễn Văn A', role: 'Trưởng Khoa Dược', exp: '20 năm kinh nghiệm', desc: 'Phụ trách chỉ đạo chuyên môn toàn khoa, triển khai quy trình GSP và đào tạo nhân lực.', img: `${import.meta.env.BASE_URL}images/leadership_doctor.png` },
-  { name: 'ThS.DS. Trần Thị B', role: 'Phó Trưởng Khoa', exp: '15 năm kinh nghiệm', desc: 'Chuyên sâu Dược Lâm Sàng, cá thể hóa phác đồ điều trị và tư vấn tương tác thuốc.', img: `${import.meta.env.BASE_URL}images/phokhoa.png` },
-  { name: 'DS. Lê Văn C', role: 'Trưởng nhóm Kho dược', exp: '12 năm kinh nghiệm', desc: 'Quản lý kho thuốc chuẩn GSP, điều phối cấp phát thuốc nội và ngoại trú.', img: `${import.meta.env.BASE_URL}images/leadership_doctor.png` },
+  { name: 'DSCKI. Nguyễn Thị Hương Giang', role: 'Trưởng Khoa Dược', exp: '20 năm kinh nghiệm', desc: 'Phụ trách chỉ đạo chuyên môn toàn khoa, triển khai quy trình GSP và đào tạo nhân lực.', img: `${import.meta.env.BASE_URL}images/leadership_doctor.png` },
+  { name: 'DSDH. Trần Thị Huyền Trang', role: 'Phó Trưởng Khoa', exp: '15 năm kinh nghiệm', desc: 'Chuyên sâu Thống kê & nghiệp vụ dược.', img: `${import.meta.env.BASE_URL}images/phokhoa.png` },
 ];
 
 export default function GioiThieu() {

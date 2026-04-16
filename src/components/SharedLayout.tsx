@@ -283,7 +283,6 @@ export const Footer = () => (
           ]},
           { title: 'Hỗ trợ', links: [
             { label: 'Liên hệ', href: '/lien-he' },
-            { label: 'Hướng dẫn GSP', href: '/gioi-thieu#chuc-nang' },
             { label: 'Khiếu nại, góp ý', href: '/lien-he' },
           ]},
           { title: 'Liên hệ', links: [
