@@ -13,6 +13,7 @@ import TraCuuNhanh from './pages/TraCuuNhanh';
 import { CapNhatChuyenMon } from './pages/CapNhatChuyenMon';
 import { CapNhatChuyenMonDetail } from './pages/CapNhatChuyenMonDetail';
 import DeepMedAI from './pages/DeepMedAI';
+import WebAppDuocKhoa from './pages/WebAppDuocKhoa';
 import { Header, Footer } from './components/SharedLayout';
 import {
   Stethoscope, Pill, ClipboardList, Phone, Mail, MapPin, ChevronRight,
@@ -152,7 +153,7 @@ const QuickLinks = () => (
           { title: 'Tra cứu nhanh',      desc: 'Thông tin thuốc tóm tắt & tức thời',    tag: 'Miễn phí',       icon: <Zap className="w-6 h-6" />,           link: '/tra-cuu-nhanh',       grad: 'linear-gradient(135deg,#d97706 0%,#ea580c 100%)', shadow: '0 20px 48px -10px rgba(217,119,6,0.55)' },
           { title: 'DeepMed-AI',         desc: 'AI hỗ trợ ra quyết định lâm sàng',      tag: 'Hot',            icon: <Brain className="w-6 h-6" />,         link: '/deepmed-ai',          grad: 'linear-gradient(135deg,#7c3aed 0%,#6366f1 100%)', shadow: '0 20px 48px -10px rgba(124,58,237,0.55)' },
           { title: 'Cập nhật chuyên môn', desc: 'Phác đồ, báo cáo, tin nội bộ',         tag: 'Tin mới',        icon: <BookOpen className="w-6 h-6" />,      link: '/cap-nhat-chuyen-mon', grad: 'linear-gradient(135deg,#1d4ed8 0%,#0284c7 100%)', shadow: '0 20px 48px -10px rgba(29,78,216,0.55)' },
-          { title: 'WebApp Dược khoa',   desc: 'Quản trị hoạt động nội bộ khoa',        tag: 'Sắp ra mắt',    icon: <LayoutDashboard className="w-6 h-6" />, link: '#',                   grad: 'linear-gradient(135deg,#be123c 0%,#9f1239 100%)', shadow: '0 20px 48px -10px rgba(190,18,60,0.55)' },
+          { title: 'WebApp Dược khoa',   desc: 'Quản trị hoạt động nội bộ khoa',        tag: 'Hot',            icon: <LayoutDashboard className="w-6 h-6" />, link: '/webapp-duoc-khoa',   grad: 'linear-gradient(135deg,#be123c 0%,#9f1239 100%)', shadow: '0 20px 48px -10px rgba(190,18,60,0.55)' },
         ].map((item, i) => (
           <motion.div key={i}
             initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * i, duration: 0.5 }}
@@ -511,6 +512,7 @@ export default function App() {
         <Route path="/tuong-tac-thuoc" element={<TuongTacThuoc />} />
         <Route path="/cap-nhat-chuyen-mon" element={<CapNhatChuyenMon />} />
         <Route path="/cap-nhat-chuyen-mon/:id" element={<CapNhatChuyenMonDetail />} />
+        <Route path="/webapp-duoc-khoa" element={<WebAppDuocKhoa />} />
         <Route path="/deepmed-ai" element={<DeepMedAI />} />
         <Route path="/lien-he" element={<LienHe />} />
       </Routes>

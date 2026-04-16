@@ -50,6 +50,7 @@ export const NAV_MENU: NavMenuItem[] = [
       { label: 'Tập huấn kỹ năng', href: '/cap-nhat-chuyen-mon#tap-huan' },
     ]
   },
+  { label: 'WEBAPP DƯỢC KHOA', href: '/webapp-duoc-khoa', id: 'webapp' },
   { label: 'LIÊN HỆ', href: '/lien-he', id: 'contact' },
 ];
 
