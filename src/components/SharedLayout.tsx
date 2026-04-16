@@ -40,6 +40,7 @@ export const NAV_MENU: NavMenuItem[] = [
       { label: 'Tra cứu tương hợp (Y-site)', href: '/tra-cuu-tuong-hop' },
     ]
   },
+  { label: 'DEEPMED-AI', href: '/deepmed-ai', id: 'deepmed' },
   {
     label: 'CẬP NHẬT CHUYÊN MÔN', href: '/cap-nhat-chuyen-mon', id: 'news',
     children: [

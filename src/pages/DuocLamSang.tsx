@@ -47,12 +47,7 @@ const services = [
   },
 ];
 
-const clinicalStats = [
-  { n: '1,200+', l: 'Đơn thuốc duyệt/tháng', c: 'text-blue-700' },
-  { n: '98%', l: 'Tỷ lệ kê đơn hợp lý', c: 'text-green-700' },
-  { n: '24/7', l: 'Hỗ trợ cấp cứu', c: 'text-red-600' },
-  { n: '100%', l: 'Báo cáo ADR đúng hạn', c: 'text-purple-700' },
-];
+
 
 export default function DuocLamSang() {
   return (
@@ -74,21 +69,6 @@ export default function DuocLamSang() {
           <p className="text-white/85 text-base md:text-lg mt-3 max-w-xl font-sans font-semibold">
             Tư vấn sử dụng thuốc an toàn, hợp lý — đồng hành cùng bác sĩ và người bệnh
           </p>
-        </div>
-      </section>
-
-      {/* Stats */}
-      <section className="bg-white border-b border-gray-100 py-10">
-        <div className="max-w-7xl mx-auto px-8 md:px-16">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {clinicalStats.map((s, i) => (
-              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
-                className="text-center p-6 rounded-2xl bg-gray-50 border border-gray-100">
-                <p className={`font-black text-3xl md:text-4xl ${s.c}`}>{s.n}</p>
-                <p className="text-gray-600 text-xs uppercase tracking-wide mt-2 font-semibold">{s.l}</p>
-              </motion.div>
-            ))}
-          </div>
         </div>
       </section>
 
