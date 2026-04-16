@@ -51,7 +51,13 @@ export const NAV_MENU: NavMenuItem[] = [
       { label: 'Tập huấn kỹ năng', href: '/cap-nhat-chuyen-mon#tap-huan' },
     ]
   },
-  { label: 'WEBAPP DƯỢC KHOA', href: '/webapp-duoc-khoa', id: 'webapp' },
+  {
+    label: 'WEBAPP DƯỢC KHOA', href: '/webapp-duoc-khoa', id: 'webapp',
+    children: [
+      { label: 'Quản lý công việc', href: '/webapp-duoc-khoa#cong-viec' },
+      { label: 'Quản lý trang thiết bị', href: '/webapp-duoc-khoa#thiet-bi' },
+    ]
+  },
   { label: 'LIÊN HỆ', href: '/lien-he', id: 'contact' },
 ];
 
