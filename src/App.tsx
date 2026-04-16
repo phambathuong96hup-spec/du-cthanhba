@@ -12,6 +12,7 @@ import TuongTacThuoc from './pages/TuongTacThuoc';
 import TraCuuNhanh from './pages/TraCuuNhanh';
 import { CapNhatChuyenMon } from './pages/CapNhatChuyenMon';
 import { CapNhatChuyenMonDetail } from './pages/CapNhatChuyenMonDetail';
+import DeepMedAI from './pages/DeepMedAI';
 import { Header, Footer } from './components/SharedLayout';
 import {
   Stethoscope, Pill, ClipboardList, Phone, Mail, MapPin, ChevronRight,
@@ -149,7 +150,7 @@ const QuickLinks = () => (
         {[
           { title: 'Dược lâm sàng',      desc: 'Tư vấn phác đồ, tương tác thuốc',       tag: 'Hoạt động 24/7', icon: <Stethoscope className="w-6 h-6" />, link: '/duoc-lam-sang',        grad: 'linear-gradient(135deg,#059669 0%,#0d9488 100%)', shadow: '0 20px 48px -10px rgba(5,150,105,0.55)' },
           { title: 'Tra cứu nhanh',      desc: 'Thông tin thuốc tóm tắt & tức thời',    tag: 'Miễn phí',       icon: <Zap className="w-6 h-6" />,           link: '/tra-cuu-nhanh',       grad: 'linear-gradient(135deg,#d97706 0%,#ea580c 100%)', shadow: '0 20px 48px -10px rgba(217,119,6,0.55)' },
-          { title: 'DeepMed-AI',         desc: 'AI hỗ trợ ra quyết định lâm sàng',      tag: 'Sắp ra mắt',    icon: <Brain className="w-6 h-6" />,         link: '#',                    grad: 'linear-gradient(135deg,#7c3aed 0%,#6366f1 100%)', shadow: '0 20px 48px -10px rgba(124,58,237,0.55)' },
+          { title: 'DeepMed-AI',         desc: 'AI hỗ trợ ra quyết định lâm sàng',      tag: 'Hot',            icon: <Brain className="w-6 h-6" />,         link: '/deepmed-ai',          grad: 'linear-gradient(135deg,#7c3aed 0%,#6366f1 100%)', shadow: '0 20px 48px -10px rgba(124,58,237,0.55)' },
           { title: 'Cập nhật chuyên môn', desc: 'Phác đồ, báo cáo, tin nội bộ',         tag: 'Tin mới',        icon: <BookOpen className="w-6 h-6" />,      link: '/cap-nhat-chuyen-mon', grad: 'linear-gradient(135deg,#1d4ed8 0%,#0284c7 100%)', shadow: '0 20px 48px -10px rgba(29,78,216,0.55)' },
           { title: 'WebApp Dược khoa',   desc: 'Quản trị hoạt động nội bộ khoa',        tag: 'Sắp ra mắt',    icon: <LayoutDashboard className="w-6 h-6" />, link: '#',                   grad: 'linear-gradient(135deg,#be123c 0%,#9f1239 100%)', shadow: '0 20px 48px -10px rgba(190,18,60,0.55)' },
         ].map((item, i) => (
@@ -360,7 +361,6 @@ const GspBanner = () => (
             {[
               { icon: <ShieldCheck className="w-6 h-6" />, label: 'Kiểm soát nhiệt độ', val: '2°C – 8°C / 15°C – 25°C' },
               { icon: <CheckCircle className="w-6 h-6" />, label: 'Kiểm định định kỳ', val: 'Hàng tháng' },
-              { icon: <Star className="w-6 h-6" />, label: 'Đánh giá Sở Y tế', val: 'Xuất sắc 2024' },
               { icon: <Award className="w-6 h-6" />, label: 'Chuẩn bảo quản', val: 'GSP Quốc gia' },
             ].map((s, i) => (
               <div key={i} className="rounded-2xl p-5 border border-white/10 bg-white/5 backdrop-blur-sm">
@@ -511,6 +511,7 @@ export default function App() {
         <Route path="/tuong-tac-thuoc" element={<TuongTacThuoc />} />
         <Route path="/cap-nhat-chuyen-mon" element={<CapNhatChuyenMon />} />
         <Route path="/cap-nhat-chuyen-mon/:id" element={<CapNhatChuyenMonDetail />} />
+        <Route path="/deepmed-ai" element={<DeepMedAI />} />
         <Route path="/lien-he" element={<LienHe />} />
       </Routes>
     </Router>
