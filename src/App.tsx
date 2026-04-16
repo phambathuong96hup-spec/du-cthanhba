@@ -23,12 +23,12 @@ import {
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 const features = [
-  { title: 'Quản lý & Cung ứng', description: 'Đảm bảo cung ứng thuốc, hóa chất, vật tư y tế tiêu hao đầy đủ, kịp thời.', icon: <Truck className="w-5 h-5" />, link: '/gioi-thieu#chuc-nang', color: 'from-blue-500 to-blue-600' },
-  { title: 'Dược lâm sàng', description: 'Tư vấn sử dụng thuốc an toàn, hợp lý và hiệu quả cho bác sĩ và người bệnh.', icon: <Stethoscope className="w-5 h-5" />, link: '/duoc-lam-sang', color: 'from-emerald-500 to-emerald-600' },
-  { title: 'Kiểm soát chất lượng', description: 'Kiểm tra, giám sát chất lượng thuốc nhập vào và bảo quản tại kho theo GSP.', icon: <ShieldCheck className="w-5 h-5" />, link: '/gioi-thieu#chuc-nang', color: 'from-violet-500 to-violet-600' },
-  { title: 'Pha chế thuốc', description: 'Pha chế một số loại thuốc dùng trong bệnh viện theo quy định của Bộ Y tế.', icon: <FlaskConical className="w-5 h-5" />, link: '/gioi-thieu#chuc-nang', color: 'from-amber-500 to-amber-600' },
-  { title: 'Nghiên cứu khoa học', description: 'Thực hiện các đề tài nghiên cứu về sử dụng thuốc và cải tiến quy trình.', icon: <Microscope className="w-5 h-5" />, link: '/gioi-thieu#chuc-nang', color: 'from-rose-500 to-rose-600' },
-  { title: 'Đào tạo & Chỉ đạo', description: 'Đào tạo liên tục và hỗ trợ chuyên môn cho các trạm y tế xã.', icon: <BookOpen className="w-5 h-5" />, link: '/cap-nhat-chuyen-mon', color: 'from-teal-500 to-teal-600' },
+  { title: 'Tư vấn xây dựng danh mục thuốc', description: 'Thiết lập tiêu chí lựa chọn thuốc, xử lý thông tin và phân tích kinh tế dược.', icon: <Truck className="w-5 h-5" />, link: '/gioi-thieu#chuc-nang', color: 'from-blue-500 to-blue-600' },
+  { title: 'Giám sát kê đơn & sử dụng thuốc', description: 'Theo dõi việc kê đơn và sử dụng thuốc, phát hiện sai sót, hội chẩn lâm sàng.', icon: <Stethoscope className="w-5 h-5" />, link: '/duoc-lam-sang', color: 'from-emerald-500 to-emerald-600' },
+  { title: 'Hướng dẫn sử dụng thuốc', description: 'Cung cấp, cập nhật thông tin thuốc cho cán bộ y tế và hướng dẫn người bệnh.', icon: <ShieldCheck className="w-5 h-5" />, link: '/gioi-thieu#chuc-nang', color: 'from-violet-500 to-violet-600' },
+  { title: 'Quy trình & hướng dẫn chuyên môn', description: 'Phối hợp với các khoa lâm sàng soạn thảo tài liệu, quy trình chuẩn.', icon: <FlaskConical className="w-5 h-5" />, link: '/gioi-thieu#chuc-nang', color: 'from-amber-500 to-amber-600' },
+  { title: 'Cảnh giác dược', description: 'Theo dõi, thu thập và báo cáo phản ứng có hại của thuốc (ADR) tại cơ sở.', icon: <Microscope className="w-5 h-5" />, link: '/gioi-thieu#chuc-nang', color: 'from-rose-500 to-rose-600' },
+  { title: 'Nghiên cứu KH & đào tạo', description: 'Nghiên cứu lâm sàng, tương đương sinh học và đào tạo sử dụng thuốc hợp lý.', icon: <BookOpen className="w-5 h-5" />, link: '/cap-nhat-chuyen-mon', color: 'from-teal-500 to-teal-600' },
 ];
 
 
