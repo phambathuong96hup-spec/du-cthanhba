@@ -206,13 +206,6 @@ export const Header = () => {
               onActivate={() => {}}
             />
           ))}
-          <div className="ml-auto flex items-center gap-2 text-white/70 text-[10px] font-medium pr-1">
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-200 animate-pulse"></span>
-              Hệ thống đang hoạt động
-            </span>
-            <span className="pl-2 border-l border-white/20">GSP ✓</span>
-          </div>
         </div>
       </div>
 
