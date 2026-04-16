@@ -4,9 +4,7 @@ import { HashRouter as Router, Routes, Route, Link } from 'react-router-dom';
 
 import GioiThieu from './pages/GioiThieu';
 import DuocLamSang from './pages/DuocLamSang';
-import TinTucDetail from './pages/TinTucDetail';
 import LienHe from './pages/LienHe';
-import TinTuc from './pages/TinTuc';
 import TraCuuTiemTruyen from './pages/TraCuuTiemTruyen';
 import TraCuuTuongHop from './pages/TraCuuTuongHop';
 import TraCuuThuoc from './pages/TraCuuThuoc';
@@ -31,11 +29,7 @@ const features = [
   { title: 'Đào tạo & Chỉ đạo', description: 'Đào tạo liên tục và hỗ trợ chuyên môn cho các trạm y tế xã.', icon: <BookOpen className="w-5 h-5" />, link: '/cap-nhat-chuyen-mon', color: 'from-teal-500 to-teal-600' },
 ];
 
-const newsItems = [
-  { id: 1, title: 'Hội nghị tập huấn sử dụng thuốc an toàn, hợp lý năm 2024', date: '15 tháng 3, 2024', category: 'Tập huấn', summary: 'Khoa Dược tổ chức buổi tập huấn cho đội ngũ y bác sĩ về các quy định mới trong kê đơn và sử dụng thuốc an toàn.', image: `${import.meta.env.BASE_URL}images/news_training.png` },
-  { id: 2, title: 'Triển khai quy trình cấp phát thuốc nội trú mới theo chuẩn số hóa', date: '10 tháng 3, 2024', category: 'Quy trình', summary: 'Nhằm nâng cao hiệu quả và giảm thời gian chờ đợi, Khoa Dược áp dụng quy trình số hóa trong cấp phát thuốc.', image: `${import.meta.env.BASE_URL}images/news_dispensing.png` },
-  { id: 3, title: 'Đoàn kiểm tra Sở Y tế đánh giá cao công tác bảo quản thuốc', date: '5 tháng 3, 2024', category: 'Kiểm định', summary: 'Hệ thống kho thuốc đạt chuẩn GSP của TTYT Thanh Ba được đánh giá là một trong những đơn vị dẫn đầu khu vực.', image: `${import.meta.env.BASE_URL}images/news_inspection.png` },
-];
+
 
 // ─── COUNTER ANIMATION HOOK ────────────────────────────────────────────────────
 function useCountUp(end: number, duration = 2000) {
@@ -382,54 +376,6 @@ const GspBanner = () => (
   </section>
 );
 
-// ─── NEWS SECTION ─────────────────────────────────────────────────────────────
-const News = () => (
-  <section className="bg-slate-50 py-28 md:py-36">
-    <div className="max-w-7xl mx-auto px-6 lg:px-12">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-6">
-        <div>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-200 mb-6">
-            <span className="text-[11px] uppercase tracking-widest text-blue-700 font-black">Hoạt động & Sự kiện</span>
-          </div>
-          <h2 className="font-serif text-slate-900 leading-tight" style={{ fontSize: 'clamp(2rem, 3.5vw, 3rem)' }}>
-            Tin tức{' '}
-            <span style={{ background: 'linear-gradient(90deg,#059669,#1d4ed8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              <em>mới nhất</em>
-            </span>
-          </h2>
-        </div>
-        <Link to="/tin-tuc" className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 hover:text-emerald-600 transition-colors">
-          Xem tất cả <ArrowRight className="w-4 h-4" />
-        </Link>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {newsItems.map((n, idx) => (
-          <motion.article key={n.id}
-            initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: idx * 0.15 }}
-            className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-slate-200/80 transition-all duration-500 border border-slate-100">
-            <Link to={`/tin-tuc/${n.id}`}>
-              <div className="relative overflow-hidden h-52">
-                <img src={n.image} alt={n.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                <span className="absolute top-4 left-4 text-[10px] font-black uppercase tracking-widest bg-emerald-500 text-white px-3 py-1 rounded-full">{n.category}</span>
-              </div>
-              <div className="p-7">
-                <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mb-3">{n.date}</p>
-                <h3 className="font-serif text-slate-900 text-lg font-bold leading-snug mb-3 group-hover:text-emerald-700 transition-colors line-clamp-2">{n.title}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed mb-5 line-clamp-2">{n.summary}</p>
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-emerald-600 group-hover:gap-3 transition-all">
-                  Đọc tiếp <ArrowRight className="w-3 h-3" />
-                </span>
-              </div>
-            </Link>
-          </motion.article>
-        ))}
-      </div>
-    </div>
-  </section>
-);
-
 // ─── CONTACT SECTION ──────────────────────────────────────────────────────────
 const Contact = () => (
   <section className="bg-white py-28 md:py-36 overflow-hidden">
@@ -541,7 +487,6 @@ const Home = () => (
       <About />
       <Functions />
       <GspBanner />
-      <News />
       <Contact />
     </main>
     <Footer />
@@ -558,8 +503,7 @@ export default function App() {
 
         <Route path="/gioi-thieu" element={<GioiThieu />} />
         <Route path="/duoc-lam-sang" element={<DuocLamSang />} />
-        <Route path="/tin-tuc" element={<TinTuc />} />
-        <Route path="/tin-tuc/:id" element={<TinTucDetail />} />
+
         <Route path="/tra-cuu-nhanh" element={<TraCuuNhanh />} />
         <Route path="/tra-cuu-tiem-truyen" element={<TraCuuTiemTruyen />} />
         <Route path="/tra-cuu-tuong-hop" element={<TraCuuTuongHop />} />

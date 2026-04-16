@@ -123,7 +123,6 @@ export const Header = () => {
     if (path.startsWith('/gioi-thieu')) return 'about';
     if (path.startsWith('/duoc-lam-sang') || path.startsWith('/tra-cuu-tuong-hop')) return 'clinical';
     if (path.startsWith('/tra-cuu-tiem-truyen')) return 'search';
-    if (path.startsWith('/tin-tuc')) return 'news';
     if (path.startsWith('/lien-he')) return 'contact';
     return '';
   };
@@ -280,7 +279,7 @@ export const Footer = () => (
             { label: 'Trang chủ', href: '/' },
             { label: 'Giới thiệu', href: '/gioi-thieu' },
             { label: 'Dược lâm sàng', href: '/duoc-lam-sang' },
-            { label: 'Tin tức', href: '/tin-tuc' },
+            { label: 'Cập nhật chuyên môn', href: '/cap-nhat-chuyen-mon' },
           ]},
           { title: 'Hỗ trợ', links: [
             { label: 'Liên hệ', href: '/lien-he' },
