@@ -358,18 +358,28 @@ const GspBanner = () => (
             </Link>
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 40 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }}
-            className="hidden lg:grid grid-cols-2 gap-4">
-            {[
-              { icon: <ShieldCheck className="w-6 h-6" />, label: 'Kiểm soát nhiệt độ', val: '2°C – 8°C / 15°C – 25°C' },
-              { icon: <CheckCircle className="w-6 h-6" />, label: 'Kiểm định định kỳ', val: 'Hàng tháng' },
-              { icon: <Award className="w-6 h-6" />, label: 'Chuẩn bảo quản', val: 'GSP Quốc gia' },
-            ].map((s, i) => (
-              <div key={i} className="rounded-2xl p-5 border border-white/10 bg-white/5 backdrop-blur-sm">
-                <div className="text-emerald-400 mb-2">{s.icon}</div>
-                <p className="text-white/50 text-[10px] uppercase tracking-widest font-bold">{s.label}</p>
-                <p className="text-white font-bold text-sm mt-1">{s.val}</p>
+            className="hidden lg:flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { icon: <ShieldCheck className="w-6 h-6" />, label: 'Kiểm soát nhiệt độ', val: '2°C – 8°C / 15°C – 25°C' },
+                { icon: <CheckCircle className="w-6 h-6" />, label: 'Kiểm định định kỳ', val: 'Hàng tháng' },
+              ].map((s, i) => (
+                <div key={i} className="rounded-2xl p-5 border border-white/10 bg-white/5 backdrop-blur-sm">
+                  <div className="text-emerald-400 mb-2">{s.icon}</div>
+                  <p className="text-white/50 text-[10px] uppercase tracking-widest font-bold">{s.label}</p>
+                  <p className="text-white font-bold text-sm mt-1">{s.val}</p>
+                </div>
+              ))}
+            </div>
+            <div className="rounded-2xl p-5 border border-white/10 bg-white/5 backdrop-blur-sm">
+              <div className="flex items-center gap-4">
+                <div className="text-emerald-400"><Award className="w-6 h-6" /></div>
+                <div>
+                  <p className="text-white/50 text-[10px] uppercase tracking-widest font-bold">Chuẩn bảo quản</p>
+                  <p className="text-white font-bold text-sm mt-1">GSP Quốc gia</p>
+                </div>
               </div>
-            ))}
+            </div>
           </motion.div>
         </div>
       </div>
