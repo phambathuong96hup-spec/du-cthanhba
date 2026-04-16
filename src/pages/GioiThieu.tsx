@@ -14,9 +14,9 @@ const features = [
 ];
 
 const leaders = [
-  { name: 'DSCK1. Nguyễn Văn A', role: 'Trưởng Khoa Dược', exp: '20 năm kinh nghiệm', desc: 'Phụ trách chỉ đạo chuyên môn toàn khoa, triển khai quy trình GSP và đào tạo nhân lực.', img: '/images/leadership_doctor.png' },
-  { name: 'ThS.DS. Trần Thị B', role: 'Phó Trưởng Khoa', exp: '15 năm kinh nghiệm', desc: 'Chuyên sâu Dược Lâm Sàng, cá thể hóa phác đồ điều trị và tư vấn tương tác thuốc.', img: '/images/leadership_doctor.png' },
-  { name: 'DS. Lê Văn C', role: 'Trưởng nhóm Kho dược', exp: '12 năm kinh nghiệm', desc: 'Quản lý kho thuốc chuẩn GSP, điều phối cấp phát thuốc nội và ngoại trú.', img: '/images/leadership_doctor.png' },
+  { name: 'DSCK1. Nguyễn Văn A', role: 'Trưởng Khoa Dược', exp: '20 năm kinh nghiệm', desc: 'Phụ trách chỉ đạo chuyên môn toàn khoa, triển khai quy trình GSP và đào tạo nhân lực.', img: `${import.meta.env.BASE_URL}images/leadership_doctor.png` },
+  { name: 'ThS.DS. Trần Thị B', role: 'Phó Trưởng Khoa', exp: '15 năm kinh nghiệm', desc: 'Chuyên sâu Dược Lâm Sàng, cá thể hóa phác đồ điều trị và tư vấn tương tác thuốc.', img: `${import.meta.env.BASE_URL}images/leadership_doctor.png` },
+  { name: 'DS. Lê Văn C', role: 'Trưởng nhóm Kho dược', exp: '12 năm kinh nghiệm', desc: 'Quản lý kho thuốc chuẩn GSP, điều phối cấp phát thuốc nội và ngoại trú.', img: `${import.meta.env.BASE_URL}images/leadership_doctor.png` },
 ];
 
 export default function GioiThieu() {
@@ -27,7 +27,7 @@ export default function GioiThieu() {
       {/* Hero */}
       <section className="relative pt-[120px] pb-0 min-h-[380px] flex items-end overflow-hidden">
         <div className="absolute inset-0">
-          <img src="/images/about_team.png" alt="Đội ngũ Khoa Dược" className="w-full h-full object-cover" />
+          <img src={`${import.meta.env.BASE_URL}images/about_team.png`} alt="Đội ngũ Khoa Dược" className="w-full h-full object-cover" />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg,rgba(15,23,42,0.82) 0%,rgba(22,163,74,0.45) 100%)' }} />
         </div>
         <div className="relative max-w-7xl mx-auto px-8 md:px-16 pb-16 pt-16 w-full">
@@ -85,7 +85,7 @@ export default function GioiThieu() {
               </p>
             </div>
             <div className="rounded-3xl overflow-hidden shadow-2xl">
-              <img src="/images/hero_pharmacy.png" alt="Lịch sử Khoa Dược" className="w-full object-cover max-h-[480px]" />
+              <img src={`${import.meta.env.BASE_URL}images/hero_pharmacy.png`} alt="Lịch sử Khoa Dược" className="w-full object-cover max-h-[480px]" />
             </div>
           </div>
         </div>

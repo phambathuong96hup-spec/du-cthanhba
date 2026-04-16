@@ -14,7 +14,7 @@ export default function LienHe() {
       {/* Hero */}
       <section className="relative pt-[120px] min-h-[320px] flex items-end overflow-hidden">
         <div className="absolute inset-0">
-          <img src="/images/hero_pharmacy.png" alt="Liên hệ" className="w-full h-full object-cover" />
+          <img src={`${import.meta.env.BASE_URL}images/hero_pharmacy.png`} alt="Liên hệ" className="w-full h-full object-cover" />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg,rgba(15,23,42,0.88) 0%,rgba(22,163,74,0.4) 100%)' }} />
         </div>
         <div className="relative max-w-7xl mx-auto px-8 md:px-16 pb-14 pt-14 w-full">

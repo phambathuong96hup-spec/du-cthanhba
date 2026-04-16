@@ -136,7 +136,7 @@ export default function TuongTacThuoc() {
       {/* Hero Section */}
       <section className="relative overflow-hidden" style={{ paddingTop: '88px', minHeight: '280px' }}>
         <div className="absolute inset-0">
-          <img src="/images/tracuu_tuongtac.png" alt="Tra cứu tương tác thuốc"
+          <img src={`${import.meta.env.BASE_URL}images/tracuu_tuongtac.png`} alt="Tra cứu tương tác thuốc"
             className="w-full h-full object-cover object-center" />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(127,29,29,0.93) 0%, rgba(30,27,75,0.88) 60%, rgba(15,23,42,0.75) 100%)' }} />
         </div>

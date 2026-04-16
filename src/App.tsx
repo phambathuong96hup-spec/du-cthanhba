@@ -32,9 +32,9 @@ const features = [
 ];
 
 const newsItems = [
-  { id: 1, title: 'Hội nghị tập huấn sử dụng thuốc an toàn, hợp lý năm 2024', date: '15 tháng 3, 2024', category: 'Tập huấn', summary: 'Khoa Dược tổ chức buổi tập huấn cho đội ngũ y bác sĩ về các quy định mới trong kê đơn và sử dụng thuốc an toàn.', image: '/images/news_training.png' },
-  { id: 2, title: 'Triển khai quy trình cấp phát thuốc nội trú mới theo chuẩn số hóa', date: '10 tháng 3, 2024', category: 'Quy trình', summary: 'Nhằm nâng cao hiệu quả và giảm thời gian chờ đợi, Khoa Dược áp dụng quy trình số hóa trong cấp phát thuốc.', image: '/images/news_dispensing.png' },
-  { id: 3, title: 'Đoàn kiểm tra Sở Y tế đánh giá cao công tác bảo quản thuốc', date: '5 tháng 3, 2024', category: 'Kiểm định', summary: 'Hệ thống kho thuốc đạt chuẩn GSP của TTYT Thanh Ba được đánh giá là một trong những đơn vị dẫn đầu khu vực.', image: '/images/news_inspection.png' },
+  { id: 1, title: 'Hội nghị tập huấn sử dụng thuốc an toàn, hợp lý năm 2024', date: '15 tháng 3, 2024', category: 'Tập huấn', summary: 'Khoa Dược tổ chức buổi tập huấn cho đội ngũ y bác sĩ về các quy định mới trong kê đơn và sử dụng thuốc an toàn.', image: `${import.meta.env.BASE_URL}images/news_training.png` },
+  { id: 2, title: 'Triển khai quy trình cấp phát thuốc nội trú mới theo chuẩn số hóa', date: '10 tháng 3, 2024', category: 'Quy trình', summary: 'Nhằm nâng cao hiệu quả và giảm thời gian chờ đợi, Khoa Dược áp dụng quy trình số hóa trong cấp phát thuốc.', image: `${import.meta.env.BASE_URL}images/news_dispensing.png` },
+  { id: 3, title: 'Đoàn kiểm tra Sở Y tế đánh giá cao công tác bảo quản thuốc', date: '5 tháng 3, 2024', category: 'Kiểm định', summary: 'Hệ thống kho thuốc đạt chuẩn GSP của TTYT Thanh Ba được đánh giá là một trong những đơn vị dẫn đầu khu vực.', image: `${import.meta.env.BASE_URL}images/news_inspection.png` },
 ];
 
 // ─── COUNTER ANIMATION HOOK ────────────────────────────────────────────────────
@@ -73,7 +73,7 @@ const Hero = () => {
     <section className="relative min-h-screen overflow-hidden flex items-center" style={{ paddingTop: '120px' }}>
       {/* Parallax background */}
       <motion.div style={{ y }} className="absolute inset-0 scale-110">
-        <img src="/images/hero_pharmacy.png" alt="TTYT Thanh Ba" className="w-full h-full object-cover" />
+        <img src={`${import.meta.env.BASE_URL}images/hero_pharmacy.png`} alt="TTYT Thanh Ba" className="w-full h-full object-cover" />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(5,10,25,0.75) 0%, rgba(10,30,60,0.55) 50%, rgba(5,40,20,0.45) 100%)' }} />
         {/* Mesh overlay for depth */}
         <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(ellipse at 20% 50%, rgba(16,185,129,0.12) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(59,130,246,0.15) 0%, transparent 50%)' }} />
@@ -212,12 +212,12 @@ const About = () => {
             className="relative">
             {/* Main image */}
             <div className="rounded-3xl overflow-hidden shadow-2xl aspect-[4/3]">
-              <img src="/images/about_team.png" alt="Đội ngũ Dược sĩ" className="w-full h-full object-cover" />
+              <img src={`${import.meta.env.BASE_URL}images/about_team.png`} alt="Đội ngũ Dược sĩ" className="w-full h-full object-cover" />
             </div>
             {/* Overlay card: clinical image */}
             <motion.div initial={{ opacity: 0, scale: 0.8 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: 0.4 }}
               className="absolute -bottom-10 -right-6 w-52 h-40 rounded-2xl overflow-hidden shadow-xl border-4 border-white hidden md:block">
-              <img src="/images/about_clinical.png" alt="Dược lâm sàng" className="w-full h-full object-cover" />
+              <img src={`${import.meta.env.BASE_URL}images/about_clinical.png`} alt="Dược lâm sàng" className="w-full h-full object-cover" />
             </motion.div>
             {/* GSP badge */}
             <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 0.6 }}
@@ -338,7 +338,7 @@ const Functions = () => (
 const GspBanner = () => (
   <section className="relative py-0 overflow-hidden h-[480px] md:h-[520px]">
     <div className="absolute inset-0">
-      <img src="/images/banner_warehouse.png" alt="Kho GSP" className="w-full h-full object-cover" />
+      <img src={`${import.meta.env.BASE_URL}images/banner_warehouse.png`} alt="Kho GSP" className="w-full h-full object-cover" />
       <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg,rgba(5,10,30,0.88) 0%, rgba(5,80,40,0.75) 60%, rgba(5,10,60,0.80) 100%)' }} />
     </div>
     <div className="relative h-full flex items-center">

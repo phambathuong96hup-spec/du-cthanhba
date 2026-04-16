@@ -221,7 +221,7 @@ export default function TraCuuTuongHop() {
       {/* Hero */}
       <section className="relative overflow-hidden" style={{ paddingTop: '88px', minHeight: '280px' }}>
         <div className="absolute inset-0">
-          <img src="/images/tracuu_tuonghop.png" alt="Tra cứu tương hợp Y-site"
+          <img src={`${import.meta.env.BASE_URL}images/tracuu_tuonghop.png`} alt="Tra cứu tương hợp Y-site"
             className="w-full h-full object-cover object-center" />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(120,53,15,0.93) 0%, rgba(15,23,42,0.88) 60%, rgba(15,23,42,0.75) 100%)' }} />
         </div>

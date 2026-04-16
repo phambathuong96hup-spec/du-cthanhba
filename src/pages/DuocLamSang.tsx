@@ -62,7 +62,7 @@ export default function DuocLamSang() {
       {/* Hero */}
       <section className="relative pt-[120px] min-h-[380px] flex items-end overflow-hidden">
         <div className="absolute inset-0">
-          <img src="/images/news_dispensing.png" alt="Dược lâm sàng" className="w-full h-full object-cover" />
+          <img src={`${import.meta.env.BASE_URL}images/news_dispensing.png`} alt="Dược lâm sàng" className="w-full h-full object-cover" />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg,rgba(15,23,42,0.85) 0%,rgba(16,163,74,0.4) 100%)' }} />
         </div>
         <div className="relative max-w-7xl mx-auto px-8 md:px-16 pb-16 pt-16 w-full">
@@ -156,7 +156,7 @@ export default function DuocLamSang() {
               ))}
             </div>
             <div className="rounded-3xl overflow-hidden shadow-2xl">
-              <img src="/images/news_training.png" alt="Tài liệu dược lâm sàng" className="w-full object-cover" />
+              <img src={`${import.meta.env.BASE_URL}images/news_training.png`} alt="Tài liệu dược lâm sàng" className="w-full object-cover" />
             </div>
           </div>
         </div>

@@ -436,7 +436,7 @@ export default function TraCuuTiemTruyen() {
       <section className="relative overflow-hidden" style={{ paddingTop: '88px', minHeight: '280px' }}>
         {/* Background image */}
         <div className="absolute inset-0">
-          <img src="/images/tracuu_tiemtruyen.png" alt="Tra cứu thuốc tiêm truyền"
+          <img src={`${import.meta.env.BASE_URL}images/tracuu_tiemtruyen.png`} alt="Tra cứu thuốc tiêm truyền"
             className="w-full h-full object-cover object-center" />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(6,95,70,0.92) 0%, rgba(15,23,42,0.88) 60%, rgba(15,23,42,0.7) 100%)' }} />
         </div>

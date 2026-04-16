@@ -180,7 +180,7 @@ export default function TraCuuThuoc() {
       <section className="relative overflow-hidden" style={{ paddingTop: '88px', minHeight: '280px' }}>
         {/* Background image */}
         <div className="absolute inset-0">
-          <img src="/images/tracuu_thongtinthuoc.png" alt="Tra cứu thông tin thuốc"
+          <img src={`${import.meta.env.BASE_URL}images/tracuu_thongtinthuoc.png`} alt="Tra cứu thông tin thuốc"
             className="w-full h-full object-cover object-center" />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(30,58,138,0.92) 0%, rgba(15,23,42,0.85) 60%, rgba(15,23,42,0.7) 100%)' }} />
         </div>

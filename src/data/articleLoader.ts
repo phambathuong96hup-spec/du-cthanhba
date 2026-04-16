@@ -53,6 +53,11 @@ export function parseFrontmatter(mdContent: string): Article {
     article.id = article.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || Math.random().toString(36).substring(7);
   }
 
+  // Prefix local image paths with BASE_URL for subdirectory deployment
+  if (article.image && article.image.startsWith('/')) {
+    article.image = `${import.meta.env.BASE_URL}${article.image.slice(1)}`;
+  }
+
   return article as Article;
 }
 
