@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface DropdownItem { label: string; href: string; }
+interface DropdownItem { label: string; href: string; external?: boolean; }
 interface NavMenuItem { label: string; href: string; id: string; children?: DropdownItem[]; }
 
 export const NAV_MENU: NavMenuItem[] = [
@@ -54,8 +54,8 @@ export const NAV_MENU: NavMenuItem[] = [
   {
     label: 'WEBAPP DƯỢC KHOA', href: '/webapp-duoc-khoa', id: 'webapp',
     children: [
-      { label: 'Quản lý công việc', href: '/webapp-duoc-khoa#cong-viec' },
-      { label: 'Quản lý trang thiết bị', href: '/webapp-duoc-khoa#thiet-bi' },
+      { label: 'Quản lý công việc', href: `${import.meta.env.BASE_URL}webapp/quan-ly-cong-viec.html`, external: true },
+      { label: 'Quản lý trang thiết bị', href: `${import.meta.env.BASE_URL}webapp/quan-ly-thiet-bi/index.html`, external: true },
     ]
   },
   { label: 'LIÊN HỆ', href: '/lien-he', id: 'contact' },
@@ -103,15 +103,24 @@ const NavDropdownItem = ({ item, active, onActivate }: { item: NavMenuItem; acti
             onMouseLeave={handleMouseLeave}
           >
             {item.children!.map((child, i) => (
-              <Link key={i} to={child.href}
-                className="flex items-center gap-2 px-5 py-3.5 text-[13px] text-white/80 hover:text-white hover:bg-white/10 transition-colors border-b border-white/5 font-medium"
-                onClick={() => {
-                  setOpen(false);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}>
-                <ChevronRight className="w-3 h-3 text-green-400 shrink-0" />
-                {child.label}
-              </Link>
+              child.external ? (
+                <a key={i} href={child.href} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-5 py-3.5 text-[13px] text-white/80 hover:text-white hover:bg-white/10 transition-colors border-b border-white/5 font-medium"
+                  onClick={() => setOpen(false)}>
+                  <ChevronRight className="w-3 h-3 text-green-400 shrink-0" />
+                  {child.label}
+                </a>
+              ) : (
+                <Link key={i} to={child.href}
+                  className="flex items-center gap-2 px-5 py-3.5 text-[13px] text-white/80 hover:text-white hover:bg-white/10 transition-colors border-b border-white/5 font-medium"
+                  onClick={() => {
+                    setOpen(false);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}>
+                  <ChevronRight className="w-3 h-3 text-green-400 shrink-0" />
+                  {child.label}
+                </Link>
+              )
             ))}
           </motion.div>
         )}
@@ -240,14 +249,22 @@ export const Header = () => {
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden bg-gray-50 rounded-xl mb-1">
                         {item.children.map((child, ci) => (
-                          <Link key={ci} to={child.href}
-                            className="flex items-center gap-2 px-5 py-3 text-sm font-semibold text-gray-700 hover:text-green-700 border-b border-gray-100"
-                            onClick={() => {
-                              setIsMobileOpen(false);
-                              window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}>
-                            <ChevronRight className="w-3 h-3 text-green-500" />{child.label}
-                          </Link>
+                          child.external ? (
+                            <a key={ci} href={child.href} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-2 px-5 py-3 text-sm font-semibold text-gray-700 hover:text-green-700 border-b border-gray-100"
+                              onClick={() => setIsMobileOpen(false)}>
+                              <ChevronRight className="w-3 h-3 text-green-500" />{child.label}
+                            </a>
+                          ) : (
+                            <Link key={ci} to={child.href}
+                              className="flex items-center gap-2 px-5 py-3 text-sm font-semibold text-gray-700 hover:text-green-700 border-b border-gray-100"
+                              onClick={() => {
+                                setIsMobileOpen(false);
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }}>
+                              <ChevronRight className="w-3 h-3 text-green-500" />{child.label}
+                            </Link>
+                          )
                         ))}
                       </motion.div>
                     )}
