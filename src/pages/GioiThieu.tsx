@@ -155,8 +155,8 @@ export default function GioiThieu() {
             {leaders.map((l, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15 }}
                 className="rounded-2xl overflow-hidden bg-gray-50 border border-gray-100 hover:shadow-xl transition-all group">
-                <div className="overflow-hidden">
-                  <img src={l.img} alt={l.name} className="w-full group-hover:scale-105 transition-transform duration-500" />
+                <div className="overflow-hidden h-72">
+                  <img src={l.img} alt={l.name} className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500" />
                 </div>
                 <div className="p-6">
                   <p className="text-[10px] uppercase tracking-widest text-green-600 font-bold mb-1">{l.role}</p>
