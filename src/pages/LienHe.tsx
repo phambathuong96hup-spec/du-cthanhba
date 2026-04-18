@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { Header, Footer, Breadcrumb } from '../components/SharedLayout';
@@ -6,6 +6,10 @@ import { Phone, Mail, MapPin, Clock, Send, Facebook, Youtube, ChevronRight } fro
 
 export default function LienHe() {
   const [sent, setSent] = useState(false);
+
+  useEffect(() => {
+    document.title = 'Liên hệ | Khoa Dược - TTYT Thanh Ba';
+  }, []);
 
   return (
     <div className="min-h-screen bg-white font-sans">
@@ -32,8 +36,9 @@ export default function LienHe() {
         <div className="max-w-7xl mx-auto px-8 md:px-16">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { Icon: Mail, title: 'Email liên hệ', val: 'thuocvabietduoc.bvthanhba@gmail.com', sub: 'Phản hồi trong 24 giờ', color: 'bg-green-600', bg: 'bg-green-50 border-green-100', text: 'text-green-700' },
               { Icon: Phone, title: 'Cấp cứu thuốc', val: '0210 656 8197', sub: 'Hỗ trợ 24/7', color: 'bg-red-500', bg: 'bg-red-50 border-red-100', text: 'text-red-700' },
+              { Icon: Mail, title: 'Email liên hệ', val: 'thuocvabietduoc.bvthanhba@gmail.com', sub: 'Phản hồi trong 24 giờ', color: 'bg-green-600', bg: 'bg-green-50 border-green-100', text: 'text-green-700' },
+              { Icon: MapPin, title: 'Địa chỉ', val: 'TT. Thanh Ba, H. Thanh Ba, Phú Thọ', sub: 'T2–T6: 07:00 – 17:00', color: 'bg-blue-600', bg: 'bg-blue-50 border-blue-100', text: 'text-blue-700' },
             ].map((c, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
                 className={`flex items-center gap-5 p-6 rounded-2xl border ${c.bg} hover:shadow-lg transition-shadow`}>
@@ -168,17 +173,16 @@ export default function LienHe() {
         </div>
       </section>
 
-      {/* Map Placeholder */}
+      {/* Google Maps */}
       <section className="h-80 bg-gray-200 relative overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center flex-col gap-3"
-          style={{ background: 'linear-gradient(135deg,#e2e8f0,#c7d2fe)' }}>
-          <MapPin className="w-10 h-10 text-blue-500" />
-          <p className="text-gray-700 font-bold text-lg">Thị trấn Thanh Ba, Huyện Thanh Ba, Phú Thọ</p>
-          <a href="https://maps.google.com" target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors">
-            Xem trên Google Maps <ChevronRight className="w-4 h-4" />
-          </a>
-        </div>
+        <iframe
+          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3723.123!2d105.145!3d21.3955!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31348b56f8e2f3a7%3A0x4b8b7b8e6f8c8a9b!2zVHJ1bmcgdMOibSB5IHThur8ga2h1IHbhu7FjIFRoYW5oIEJh!5e0!3m2!1svi!2svn!4v1700000000000!5m2!1svi!2svn"
+          className="w-full h-full border-0"
+          allowFullScreen
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          title="Bản đồ TTYT Khu vực Thanh Ba"
+        />
       </section>
 
       <Footer />

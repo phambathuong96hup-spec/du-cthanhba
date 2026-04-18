@@ -72,7 +72,7 @@ export default function TraCuuThuoc() {
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
+    document.title = 'Tra cứu thông tin thuốc | Khoa Dược - TTYT Thanh Ba';
     fetchData();
   }, []);
 

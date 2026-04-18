@@ -307,9 +307,9 @@ export default function TraCuuTiemTruyen() {
     return () => document.removeEventListener('click', handler);
   }, []);
 
-  // Scroll to top on page mount
+  // Set page title
   useEffect(() => {
-    window.scrollTo(0, 0);
+    document.title = 'Tra cứu thuốc tiêm truyền | Khoa Dược - TTYT Thanh Ba';
   }, []);
 
   const fetchData = async () => {

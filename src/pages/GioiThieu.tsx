@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { Header, Footer, Breadcrumb } from '../components/SharedLayout';
@@ -19,6 +19,10 @@ const leaders = [
 ];
 
 export default function GioiThieu() {
+  useEffect(() => {
+    document.title = 'Giới thiệu | Khoa Dược - TTYT Thanh Ba';
+  }, []);
+
   return (
     <div className="min-h-screen bg-white font-sans">
       <Header />

@@ -35,7 +35,6 @@ export const CapNhatChuyenMon = () => {
   }, [location.hash]);
 
   useEffect(() => {
-    if (!location.hash) window.scrollTo(0, 0);
     document.title = 'Cập nhật chuyên môn | Khoa Dược - TTYT Thanh Ba';
     let metaDesc = document.querySelector('meta[name="description"]');
     if (!metaDesc) {

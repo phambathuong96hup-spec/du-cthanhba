@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
-import { HashRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 
 import GioiThieu from './pages/GioiThieu';
 import DuocLamSang from './pages/DuocLamSang';
@@ -15,6 +15,7 @@ import { CapNhatChuyenMonDetail } from './pages/CapNhatChuyenMonDetail';
 import DeepMedAI from './pages/DeepMedAI';
 import WebAppDuocKhoa from './pages/WebAppDuocKhoa';
 import { Header, Footer } from './components/SharedLayout';
+import ScrollToHash from './components/ScrollToHash';
 import {
   Stethoscope, Pill, ClipboardList, Phone, Mail, MapPin, ChevronRight,
   ShieldCheck, FlaskConical, Truck, Microscope, BookOpen, ArrowRight,
@@ -388,6 +389,46 @@ const GspBanner = () => (
 );
 
 // ─── CONTACT SECTION ──────────────────────────────────────────────────────────
+// ─── HOME CONTACT FORM (functional) ──────────────────────────────────────────
+const HomeContactForm = () => {
+  const [sent, setSent] = useState(false);
+  if (sent) {
+    return (
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-10">
+        <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+          <ShieldCheck className="w-7 h-7 text-green-600" />
+        </div>
+        <h4 className="font-serif text-slate-900 text-xl mb-2">Đã gửi thành công!</h4>
+        <p className="text-slate-600 text-sm font-medium">Chúng tôi sẽ liên hệ với bạn trong vòng 24 giờ.</p>
+      </motion.div>
+    );
+  }
+  return (
+    <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); setSent(true); }}>
+      {[
+        { label: 'Họ và tên', placeholder: 'Nhập họ và tên của bạn', type: 'text' },
+        { label: 'Điện thoại hoặc Email', placeholder: 'Để chúng tôi liên hệ lại', type: 'text' },
+      ].map((f, i) => (
+        <div key={i}>
+          <label className="block text-[11px] uppercase tracking-widest text-slate-500 font-black mb-2">{f.label}</label>
+          <input required type={f.type} placeholder={f.placeholder}
+            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-slate-800 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400 transition-all placeholder:text-slate-300" />
+        </div>
+      ))}
+      <div>
+        <label className="block text-[11px] uppercase tracking-widest text-slate-500 font-black mb-2">Nội dung tư vấn</label>
+        <textarea required rows={4} placeholder="Loại thuốc, số lượng, hoặc câu hỏi dược lâm sàng..."
+          className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-slate-800 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400 transition-all resize-none placeholder:text-slate-300" />
+      </div>
+      <button type="submit"
+        className="w-full py-4 rounded-xl font-bold text-sm text-white hover:scale-[1.02] hover:shadow-xl transition-all shadow-lg"
+        style={{ background: 'linear-gradient(135deg,#059669,#1d4ed8)' }}>
+        Gửi câu hỏi ngay
+      </button>
+    </form>
+  );
+};
+
 const Contact = () => (
   <section className="bg-white py-28 md:py-36 overflow-hidden">
     <div className="max-w-7xl mx-auto px-6 lg:px-12">
@@ -437,28 +478,7 @@ const Contact = () => (
         <motion.div initial={{ opacity: 0, x: 40 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
           <div className="bg-slate-50 rounded-3xl p-9 border border-slate-100">
             <h3 className="font-serif text-slate-900 text-2xl font-bold mb-7">Gửi câu hỏi cho chúng tôi</h3>
-            <form className="space-y-5">
-              {[
-                { label: 'Họ và tên', placeholder: 'Nhập họ và tên của bạn', type: 'text' },
-                { label: 'Điện thoại hoặc Email', placeholder: 'Để chúng tôi liên hệ lại', type: 'text' },
-              ].map((f, i) => (
-                <div key={i}>
-                  <label className="block text-[11px] uppercase tracking-widest text-slate-500 font-black mb-2">{f.label}</label>
-                  <input type={f.type} placeholder={f.placeholder}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-slate-800 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400 transition-all placeholder:text-slate-300" />
-                </div>
-              ))}
-              <div>
-                <label className="block text-[11px] uppercase tracking-widest text-slate-500 font-black mb-2">Nội dung tư vấn</label>
-                <textarea rows={4} placeholder="Loại thuốc, số lượng, hoặc câu hỏi dược lâm sàng..."
-                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-slate-800 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400 transition-all resize-none placeholder:text-slate-300" />
-              </div>
-              <button type="button"
-                className="w-full py-4 rounded-xl font-bold text-sm text-white hover:scale-[1.02] hover:shadow-xl transition-all shadow-lg"
-                style={{ background: 'linear-gradient(135deg,#059669,#1d4ed8)' }}>
-                Gửi câu hỏi ngay
-              </button>
-            </form>
+            <HomeContactForm />
           </div>
         </motion.div>
       </div>
@@ -508,7 +528,8 @@ const Home = () => (
 // ─── APP ROUTER ───────────────────────────────────────────────────────────────
 export default function App() {
   return (
-    <Router>
+    <Router basename={import.meta.env.BASE_URL}>
+      <ScrollToHash />
       <Routes>
         <Route path="/" element={<Home />} />
 

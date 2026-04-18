@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Khoa Dược - TTYT Khu vực Thanh Ba</title>
+    <script>
+      // GitHub Pages SPA redirect hack
+      // When GitHub Pages returns a 404, this script redirects to index.html
+      // with the original path preserved as a query parameter, which index.html
+      // then reads and converts back to a proper route.
+      var pathSegmentsToKeep = 1; // /du-cthanhba/ = 1 segment
+      var l = window.location;
+      l.replace(
+        l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+        l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
+        l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
+        (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+        l.hash
+      );
+    </script>
+  </head>
+  <body>
+  </body>
+</html>

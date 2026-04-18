@@ -47,7 +47,7 @@ export default function TuongTacThuoc() {
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
+    document.title = 'Tra cứu tương tác thuốc | Khoa Dược - TTYT Thanh Ba';
     fetchData();
   }, []);
 

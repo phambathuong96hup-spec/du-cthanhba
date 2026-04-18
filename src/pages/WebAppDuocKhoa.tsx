@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Header, Footer, Breadcrumb } from '../components/SharedLayout';
-import { LayoutDashboard, ClipboardList, Wrench, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Wrench, ExternalLink, Shield, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
 
 const apps = [
@@ -11,6 +11,7 @@ const apps = [
     href: `${import.meta.env.BASE_URL}webapp/quan-ly-cong-viec.html`,
     color: 'from-blue-600 to-cyan-500',
     shadow: '0 20px 48px -10px rgba(29,78,216,0.4)',
+    features: ['Kanban Board', 'Giao việc & nhắc nhở', 'Báo cáo tự động'],
   },
   {
     title: 'Quản lý trang thiết bị',
@@ -19,27 +20,69 @@ const apps = [
     href: `${import.meta.env.BASE_URL}webapp/quan-ly-thiet-bi/index.html`,
     color: 'from-emerald-600 to-teal-500',
     shadow: '0 20px 48px -10px rgba(5,150,105,0.4)',
+    features: ['Hồ sơ thiết bị', 'Lịch bảo trì GSP', 'Báo cáo thống kê'],
   },
 ];
 
 export default function WebAppDuocKhoa() {
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      <Breadcrumb items={[{ label: 'WebApp Dược Khoa' }]} />
+  useEffect(() => {
+    document.title = 'WebApp Dược Khoa | Khoa Dược - TTYT Thanh Ba';
+  }, []);
 
-      <section className="py-16">
+  return (
+    <div className="min-h-screen bg-white font-sans">
+      <Header />
+
+      {/* Hero */}
+      <section className="relative pt-[120px] min-h-[340px] flex items-end overflow-hidden">
+        <div className="absolute inset-0">
+          <img src={`${import.meta.env.BASE_URL}images/hero_pharmacy.png`} alt="WebApp Dược Khoa" className="w-full h-full object-cover" />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg,rgba(15,23,42,0.88) 0%,rgba(159,18,57,0.5) 100%)' }} />
+        </div>
+        <div className="relative max-w-7xl mx-auto px-8 md:px-16 pb-14 pt-14 w-full">
+          <Breadcrumb items={[{ label: 'Trang chủ', href: '/' }, { label: 'WebApp Dược Khoa' }]} />
+          <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}
+            className="font-serif text-white mt-4 leading-tight" style={{ fontSize: 'clamp(2.2rem,5vw,4rem)' }}>
+            WebApp <em style={{ background: 'linear-gradient(90deg,#fda4af,#fb923c)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Dược Khoa</em>
+          </motion.h1>
+          <p className="text-white/85 text-base md:text-lg mt-3 max-w-xl font-sans font-semibold">
+            Hệ thống ứng dụng web quản trị hoạt động nội bộ Khoa Dược
+          </p>
+        </div>
+      </section>
+
+      {/* Stats bar */}
+      <section className="bg-white border-b border-gray-100 py-8">
+        <div className="max-w-5xl mx-auto px-8 md:px-16">
+          <div className="grid grid-cols-3 gap-6 text-center">
+            {[
+              { icon: <LayoutDashboard className="w-5 h-5" />, label: 'Ứng dụng', val: '2', color: 'text-rose-600 bg-rose-50' },
+              { icon: <Shield className="w-5 h-5" />, label: 'Bảo mật', val: 'SSL', color: 'text-blue-600 bg-blue-50' },
+              { icon: <Sparkles className="w-5 h-5" />, label: 'Truy cập', val: '24/7', color: 'text-emerald-600 bg-emerald-50' },
+            ].map((s, i) => (
+              <div key={i} className="flex flex-col items-center gap-2">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${s.color}`}>{s.icon}</div>
+                <p className="font-black text-2xl text-gray-900">{s.val}</p>
+                <p className="text-gray-500 text-xs uppercase tracking-wider font-bold">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* App Cards */}
+      <section className="py-16 bg-gray-50">
         <div className="max-w-5xl mx-auto px-6">
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-rose-50 border border-rose-200 mb-4">
               <LayoutDashboard className="w-4 h-4 text-rose-600" />
-              <span className="text-xs font-bold uppercase tracking-widest text-rose-700">WebApp Dược Khoa</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-rose-700">Ứng dụng nội bộ</span>
             </div>
-            <h1 className="font-serif text-3xl md:text-4xl text-gray-900 mb-3">
+            <h2 className="font-serif text-3xl md:text-4xl text-gray-900 mb-3">
               Quản trị hoạt động <em className="text-rose-600">nội bộ khoa</em>
-            </h1>
+            </h2>
             <p className="text-gray-500 max-w-2xl mx-auto">
-              Hệ thống ứng dụng web hỗ trợ quản lý công việc và trang thiết bị của Khoa Dược.
+              Chọn ứng dụng bạn muốn sử dụng để bắt đầu
             </p>
           </div>
 
@@ -67,6 +110,16 @@ export default function WebAppDuocKhoa() {
                     {app.title}
                   </h3>
                   <p className="text-gray-500 text-sm leading-relaxed mb-5">{app.desc}</p>
+
+                  {/* Feature tags */}
+                  <div className="flex flex-wrap gap-2 mb-5">
+                    {app.features.map((f, fi) => (
+                      <span key={fi} className="px-2.5 py-1 bg-gray-50 rounded-lg text-[11px] font-bold text-gray-500 border border-gray-100">
+                        {f}
+                      </span>
+                    ))}
+                  </div>
+
                   <div className="flex items-center gap-2 text-sm font-bold text-blue-600 group-hover:text-blue-800 transition-colors">
                     Mở ứng dụng <ExternalLink className="w-4 h-4" />
                   </div>

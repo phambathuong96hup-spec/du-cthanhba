@@ -128,7 +128,7 @@ export default function TraCuuTuongHop() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
+    document.title = 'Tra cứu tương hợp Y-site | Khoa Dược - TTYT Thanh Ba';
     fetchData();
   }, []);
 

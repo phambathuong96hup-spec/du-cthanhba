@@ -49,7 +49,6 @@ const modules = [
 
 export default function TraCuuNhanh() {
   useEffect(() => {
-    window.scrollTo(0, 0);
     document.title = 'Tra Cứu Nhanh | Khoa Dược - TTYT Thanh Ba';
   }, []);
 
