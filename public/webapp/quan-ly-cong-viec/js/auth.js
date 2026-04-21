@@ -26,7 +26,7 @@ function applyLoginState() {
     if (btnChangePin) btnChangePin.style.display = isLoggedIn ? 'block' : 'none';
     if (userDisplay) userDisplay.innerText = isLoggedIn ? currentUser.name : "Khách";
 
-    const isAdmin = currentUser && currentUser.role === 'Admin';
+    const isAdmin = isAdminUser(currentUser);
     document.querySelectorAll('.admin-only').forEach(el => {
         // Skip tab panes — their visibility is managed by switchTab()
         if (el.classList.contains('tab-pane-custom')) {

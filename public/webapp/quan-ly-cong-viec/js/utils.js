@@ -73,6 +73,13 @@ function showToast(message, type = 'primary') {
 }
 
 /**
+ * Normalize role checks to avoid case-sensitive admin bugs
+ */
+function isAdminUser(user = currentUser) {
+    return String(user?.role || '').trim().toLowerCase() === 'admin';
+}
+
+/**
  * Escape HTML to prevent XSS
  */
 function escapeHtml(text) {

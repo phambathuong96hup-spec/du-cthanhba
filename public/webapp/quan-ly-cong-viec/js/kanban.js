@@ -136,7 +136,7 @@ async function updateTaskStatusFromKanban(id, newStatus) {
     const newProgress = progressMap[newStatus] || 0;
 
     try {
-        if (newStatus === 'Done' && currentUser.role === 'Admin') {
+        if (newStatus === 'Done' && isAdminUser(currentUser)) {
             await apiFetch('approve_done', { id, role: currentUser.role });
         } else if (newStatus === 'Waiting') {
             // Submit for review

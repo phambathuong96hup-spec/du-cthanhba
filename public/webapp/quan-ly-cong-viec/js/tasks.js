@@ -194,7 +194,7 @@ function renderTable() {
         const dlDisp = dlRaw ? new Date(dlRaw).toLocaleDateString('vi-VN') : '';
         const fileUrl = r[13] || "";
         const prog = parseProgress(r[8]);
-        const isOwner = currentUser && (currentUser.role === 'Admin' || assignee.includes(currentUser.name));
+        const isOwner = currentUser && (isAdminUser(currentUser) || assignee.includes(currentUser.name));
         const disableControl = isOwner ? "" : "pointer-events:none;opacity:0.5;";
         const isOverdue = dlRaw && new Date(dlRaw) < today && status !== 'Done' && status !== 'Waiting';
 
@@ -255,7 +255,7 @@ function renderTable() {
         // Action buttons
         let actionBtns = '';
         const safeId = escapeHtml(id);
-        const attachLink = (fileUrl && currentUser && currentUser.role === 'Admin')
+        const attachLink = (fileUrl && currentUser && isAdminUser(currentUser))
             ? `<button onclick="event.stopPropagation();openReviewModal('${safeId}')" class="btn btn-sm border text-primary" title="Xem báo cáo" style="border-radius:8px"><i class="bi bi-file-earmark-text-fill"></i></button> `
             : '';
 
@@ -263,13 +263,13 @@ function renderTable() {
             actionBtns = '<span class="text-success"><i class="bi bi-check-circle-fill fs-5"></i></span>';
         } else if (status === 'Waiting') {
             actionBtns = attachLink;
-            if (currentUser && currentUser.role === 'Admin') {
+            if (currentUser && isAdminUser(currentUser)) {
                 actionBtns += `<button class="btn btn-sm btn-success ms-1" onclick="event.stopPropagation();approveTask('${safeId}')" title="Duyệt" style="border-radius:8px"><i class="bi bi-check-lg"></i></button>
                     <button class="btn btn-sm btn-danger ms-1" onclick="event.stopPropagation();rejectTask('${safeId}')" title="Từ chối" style="border-radius:8px"><i class="bi bi-x-lg"></i></button>`;
             } else {
                 actionBtns += '<span class="text-muted small fst-italic">Đợi duyệt...</span>';
             }
-        } else if (currentUser && currentUser.role === 'Admin') {
+        } else if (currentUser && isAdminUser(currentUser)) {
             actionBtns = `<button class="btn btn-sm btn-outline-success rounded-pill px-3" onclick="event.stopPropagation();approveTask('${safeId}')">Duyệt</button>`;
         } else {
             actionBtns = `<div style="${disableControl}">
@@ -277,7 +277,7 @@ function renderTable() {
             </div>`;
         }
 
-        const editBtn = (currentUser && currentUser.role === 'Admin')
+        const editBtn = (currentUser && isAdminUser(currentUser))
             ? `<button class="btn btn-sm text-muted p-0 ms-2" style="opacity:0.4" onclick="event.stopPropagation();openEditTask('${safeId}')" title="Sửa"><i class="bi bi-pencil-square"></i></button>`
             : '';
 
@@ -348,7 +348,7 @@ function startTask(id) {
 async function updateProgress(id, v) {
     if (!currentUser) return showToast("Vui lòng đăng nhập!", 'warning');
 
-    if (v == 100 && currentUser.role !== 'Admin') {
+    if (v == 100 && !isAdminUser(currentUser)) {
         if (confirm("Bạn muốn báo cáo hoàn thành công việc này?")) {
             openReportModal(id);
             const el = document.getElementById(`val-${id}`);
@@ -369,7 +369,7 @@ async function updateProgress(id, v) {
         if (res.status === 'error') {
             showToast(res.message, 'danger');
             loadTaskList();
-        } else if (v == 100 && currentUser.role === 'Admin') {
+        } else if (v == 100 && isAdminUser(currentUser)) {
             loadTaskList();
         }
     } catch (err) {
@@ -488,7 +488,7 @@ async function submitReport() {
 }
 
 async function approveTask(id) {
-    if (!currentUser || currentUser.role !== 'Admin') return showToast("⛔ Chỉ Admin!", 'warning');
+    if (!currentUser || !isAdminUser(currentUser)) return showToast("⛔ Chỉ Admin!", 'warning');
     if (!confirm('Duyệt hoàn thành công việc này?')) return;
     try {
         const res = await apiFetch('approve_done', { id, role: currentUser.role });
@@ -498,7 +498,7 @@ async function approveTask(id) {
 }
 
 async function rejectTask(id) {
-    if (!currentUser || currentUser.role !== 'Admin') return showToast("⛔ Chỉ Admin!", 'warning');
+    if (!currentUser || !isAdminUser(currentUser)) return showToast("⛔ Chỉ Admin!", 'warning');
     if (!confirm('Từ chối báo cáo này?')) return;
     try {
         const res = await apiFetch('reject_done', { id, role: currentUser.role });
@@ -587,7 +587,7 @@ async function sendEmailBackend(id) {
 }
 
 async function triggerBulkEmail(btn) {
-    if (!currentUser || currentUser.role !== 'Admin') return showToast("⛔ Chỉ Admin!", 'warning');
+    if (!currentUser || !isAdminUser(currentUser)) return showToast("⛔ Chỉ Admin!", 'warning');
 
     const pending = globalData.filter(r => {
         const status = String(r[2]).trim();

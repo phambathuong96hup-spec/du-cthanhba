@@ -247,20 +247,16 @@ body {
     border-radius: var(--card-radius);
     box-shadow: var(--card-shadow);
     border: 1px solid var(--border-light);
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     overflow: hidden;
     transition: var(--transition);
 }
 
-.card-modern:hover {
-    box-shadow: var(--card-shadow-hover);
-}
-
 .card-header-modern {
-    padding: 14px 20px;
+    padding: 10px 20px;
     border-bottom: 1px solid var(--border-light);
     font-weight: 700;
-    font-size: 0.88rem;
+    font-size: 0.82rem;
     color: var(--text-main);
     display: flex;
     justify-content: space-between;
@@ -346,10 +342,10 @@ body {
     background: var(--bg-body);
     color: var(--text-light);
     font-weight: 700;
-    font-size: 0.68rem;
+    font-size: 0.65rem;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    padding: 12px 16px;
+    padding: 10px 14px;
     border-bottom: 1px solid var(--border-color);
     position: sticky;
     top: 0;
@@ -357,12 +353,12 @@ body {
 }
 
 .table-modern tbody td {
-    padding: 14px 16px;
+    padding: 10px 14px;
     border-bottom: 1px solid var(--border-light);
     vertical-align: middle;
     background: var(--surface);
     color: var(--text-main);
-    font-size: 0.84rem;
+    font-size: 0.82rem;
     transition: var(--transition-fast);
     position: relative;
 }

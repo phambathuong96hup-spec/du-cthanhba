@@ -158,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Task form submit
     document.getElementById('taskForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!currentUser || currentUser.role !== 'Admin') return showToast("⛔ Chỉ Admin!", 'warning');
+        if (!currentUser || !isAdminUser(currentUser)) return showToast("⛔ Chỉ Admin!", 'warning');
 
         const btn = document.getElementById('submitBtn');
         setBtnLoading(btn, true);
@@ -187,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Compliance form submit
     document.getElementById('complianceForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!currentUser || currentUser.role !== 'Admin') return showToast("⛔ Chỉ Admin!", 'warning');
+        if (!currentUser || !isAdminUser(currentUser)) return showToast("⛔ Chỉ Admin!", 'warning');
 
         const btn = document.getElementById('btnCompliance');
         setBtnLoading(btn, true);
