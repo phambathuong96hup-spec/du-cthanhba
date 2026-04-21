@@ -54,15 +54,26 @@ function syncSearch(val) {
     renderTable();
 }
 
-// ── Toggle Inline Task Form → navigate to pills-input tab ──
-function toggleInlineTaskForm(forceOpen) {
+// ── Task Modal ──
+function showTaskModal() {
     if (!currentUser || !isAdminUser(currentUser)) {
         showToast('Chỉ Admin mới được tạo việc mới!', 'warning');
         return;
     }
-    const navLink = document.querySelector('a[onclick*="pills-input"]');
-    switchTab('pills-input', navLink);
+    new bootstrap.Modal(document.getElementById('taskModal')).show();
 }
+
+// ── Compliance Modal ──
+function showComplianceModal() {
+    if (!currentUser || !isAdminUser(currentUser)) {
+        showToast('Chỉ Admin mới được ghi nhận!', 'warning');
+        return;
+    }
+    new bootstrap.Modal(document.getElementById('complianceModal')).show();
+}
+
+// Alias for backward compatibility
+function toggleInlineTaskForm() { showTaskModal(); }
 
 // ── Deadline Toggle ──
 function toggleDeadline() {
@@ -182,9 +193,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.target.reset();
                 document.querySelectorAll('#checkboxContainer input').forEach(c => c.checked = false);
                 updateAssigneeDisplay();
-                // Go back to task list after saving
-                const listLink = document.querySelector('a[onclick*="pills-list"]');
-                switchTab('pills-list', listLink);
+                // Đóng modal sau khi lưu thành công
+                bootstrap.Modal.getInstance(document.getElementById('taskModal'))?.hide();
                 loadTaskList();
             }
         } catch (err) {
@@ -210,6 +220,8 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast(res.message, res.status === 'success' ? 'success' : 'danger');
             if (res.status === 'success') {
                 e.target.reset();
+                // Đóng modal sau khi lưu thành công
+                bootstrap.Modal.getInstance(document.getElementById('complianceModal'))?.hide();
                 loadCompliance();
             }
         } catch (err) {

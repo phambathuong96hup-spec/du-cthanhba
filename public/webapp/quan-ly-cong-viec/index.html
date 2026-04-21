@@ -47,11 +47,6 @@
                     <i class="bi bi-bar-chart-line"></i> Báo cáo & Thống kê
                 </a>
             </li>
-            <li class="admin-only">
-                <a href="#" class="nav-link-custom" onclick="switchTab('pills-input', this)">
-                    <i class="bi bi-plus-circle"></i> Giao Việc Mới
-                </a>
-            </li>
             <li>
                 <a href="#" class="nav-link-custom" onclick="switchTab('pills-compliance', this)">
                     <i class="bi bi-shield-check"></i> Nội quy
@@ -92,6 +87,11 @@
             </div>
 
             <div class="d-flex align-items-center gap-2">
+
+                <!-- Create Task Button (Admin only) -->
+                <button class="btn-create-main admin-only" onclick="showTaskModal()" id="btnCreateMain">
+                    <i class="bi bi-plus-lg"></i> Tạo Mới
+                </button>
 
                 <!-- Notifications -->
                 <div class="dropdown">
@@ -779,6 +779,167 @@
 
 <!-- Toast Container -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:1100"></div>
+
+<!-- ═══ MODAL: Tạo Việc Mới ═══ -->
+<div class="modal fade" id="taskModal" tabindex="-1" aria-labelledby="taskModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content" style="background:var(--surface);border:1px solid var(--border-color);border-radius:16px;">
+      <div class="modal-header" style="border-bottom:1px solid var(--border-color);padding:20px 24px;">
+        <div class="d-flex align-items-center gap-3">
+          <div style="width:40px;height:40px;border-radius:12px;background:var(--gradient-primary);display:flex;align-items:center;justify-content:center;">
+            <i class="bi bi-rocket-takeoff text-white" style="font-size:1.1rem;"></i>
+          </div>
+          <div>
+            <h5 class="modal-title fw-bold mb-0" id="taskModalLabel" style="color:var(--text-main);">Tạo Công Việc Mới</h5>
+            <small class="text-muted" style="font-size:0.78rem;">Giao việc rõ ràng — theo dõi dễ dàng</small>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="taskForm">
+          <div class="row g-3">
+            <!-- Tên công việc -->
+            <div class="col-12">
+              <label class="form-label fw-semibold small" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;font-size:.73rem;">Tên công việc <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text" style="background:transparent;border-color:var(--border-color);color:var(--primary);"><i class="bi bi-card-heading"></i></span>
+                <input type="text" class="form-control" name="taskName" placeholder="Nhập tên nhiệm vụ..." required style="border-color:var(--border-color);background:var(--bg-body);color:var(--text-main);">
+              </div>
+            </div>
+
+            <!-- Loại & Hạn -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;font-size:.73rem;">Loại công việc</label>
+              <div class="input-group">
+                <span class="input-group-text" style="background:transparent;border-color:var(--border-color);color:var(--primary);"><i class="bi bi-tag"></i></span>
+                <select class="form-select" name="type" id="taskTypeSelect" onchange="toggleDeadline()" style="border-color:var(--border-color);background:var(--bg-body);color:var(--text-main);">
+                  <option>Thực hiện C.Đạo</option>
+                  <option>Thường quy</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;font-size:.73rem;">Hạn chờ <span class="text-danger" id="deadlineRequired">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text" style="background:transparent;border-color:var(--border-color);color:var(--primary);"><i class="bi bi-calendar-event"></i></span>
+                <input type="date" class="form-control" name="deadline" id="deadlineInput" required style="border-color:var(--border-color);background:var(--bg-body);color:var(--text-main);">
+              </div>
+            </div>
+
+            <!-- Tổ & Độ khó -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;font-size:.73rem;">Tổ phụ trách <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text" style="background:transparent;border-color:var(--border-color);color:var(--primary);"><i class="bi bi-building"></i></span>
+                <select class="form-select" name="group" id="groupSelect" required style="border-color:var(--border-color);background:var(--bg-body);color:var(--text-main);"></select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;font-size:.73rem;">Mức ưu tiên</label>
+              <div class="input-group">
+                <span class="input-group-text" style="background:transparent;border-color:var(--border-color);color:var(--primary);"><i class="bi bi-lightning-charge"></i></span>
+                <select class="form-select" name="difficulty" style="border-color:var(--border-color);background:var(--bg-body);color:var(--text-main);font-weight:600;">
+                  <option value="1">⭐ Thấp</option>
+                  <option value="2">⭐⭐ Trung bình</option>
+                  <option value="3" selected>⭐⭐⭐ Cao</option>
+                  <option value="4">🔥 Khẩn cấp</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Người thực hiện -->
+            <div class="col-12">
+              <label class="form-label fw-semibold small" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;font-size:.73rem;">Người thực hiện <span class="text-danger">*</span></label>
+              <div class="dropdown">
+                <button class="btn w-100 d-flex justify-content-between align-items-center dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                  style="background:var(--bg-body);border:1px solid var(--border-color);color:var(--text-main);border-radius:10px;font-weight:500;">
+                  <span><i class="bi bi-people me-2" style="color:var(--primary);"></i><span id="selectedText">-- Chọn nhân sự --</span></span>
+                  <span class="badge rounded-pill ms-2" id="selectedCount" style="background:var(--primary);">0</span>
+                </button>
+                <div class="dropdown-menu w-100 p-0 shadow border-0 mt-1" style="max-height:220px;overflow-y:auto;border-radius:12px;background:var(--surface);">
+                  <div id="checkboxContainer"></div>
+                </div>
+              </div>
+              <select id="hiddenAssigneeSelect" multiple class="d-none" required></select>
+            </div>
+
+            <!-- Ghi chú -->
+            <div class="col-12">
+              <label class="form-label fw-semibold small" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;font-size:.73rem;">Ghi chú / Checklist</label>
+              <div class="input-group">
+                <span class="input-group-text align-items-start pt-2" style="background:transparent;border-color:var(--border-color);color:var(--primary);"><i class="bi bi-check2-square"></i></span>
+                <textarea class="form-control" name="notes" rows="3" placeholder="Ghi chú hoặc tạo checklist với '- [ ]' ở đầu mỗi dòng..." style="border-color:var(--border-color);background:var(--bg-body);color:var(--text-main);resize:none;"></textarea>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer" style="border-top:1px solid var(--border-color);padding:16px 24px;">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="border-radius:10px;">Hủy</button>
+        <button type="submit" form="taskForm" class="btn btn-primary-custom" id="submitBtn">
+          <i class="bi bi-send-fill me-2"></i>LƯU CÔNG VIỌC
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Ghi nhận Nội quy ═══ -->
+<div class="modal fade" id="complianceModal" tabindex="-1" aria-labelledby="complianceModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:var(--surface);border:1px solid var(--border-color);border-radius:16px;">
+      <div class="modal-header" style="border-bottom:1px solid var(--border-color);padding:20px 24px;">
+        <div class="d-flex align-items-center gap-3">
+          <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#ef4444,#f97316);display:flex;align-items:center;justify-content:center;">
+            <i class="bi bi-shield-exclamation text-white" style="font-size:1.1rem;"></i>
+          </div>
+          <div>
+            <h5 class="modal-title fw-bold mb-0" id="complianceModalLabel" style="color:var(--text-main);">Ghi nhận Nội quy</h5>
+            <small class="text-muted" style="font-size:.78rem;">Vi phạm hoặc Khen thưởng</small>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="complianceForm">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;font-size:.73rem;">Nhân viên</label>
+              <select class="form-select" name="person" id="compliancePerson" required style="border-color:var(--border-color);background:var(--bg-body);color:var(--text-main);"></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;font-size:.73rem;">Loại</label>
+              <select class="form-select" name="type" style="border-color:var(--border-color);background:var(--bg-body);color:var(--text-main);">
+                <option value="Vi phạm">⚠️ Vi phạm</option>
+                <option value="Khen thưởng">🏆 Khen thưởng</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;font-size:.73rem;">Ngày</label>
+              <input type="date" class="form-control" name="date" required style="border-color:var(--border-color);background:var(--bg-body);color:var(--text-main);">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;font-size:.73rem;">Nội dung <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="content" placeholder="Chi tiết..." required style="border-color:var(--border-color);background:var(--bg-body);color:var(--text-main);">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold small" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;font-size:.73rem;">Ghi chú</label>
+              <input type="text" class="form-control" name="note" placeholder="Ghi chú thêm..." style="border-color:var(--border-color);background:var(--bg-body);color:var(--text-main);">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer" style="border-top:1px solid var(--border-color);padding:16px 24px;">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="border-radius:10px;">Hủy</button>
+        <button type="submit" form="complianceForm" class="btn" id="btnCompliance"
+          style="background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;border-radius:10px;font-weight:600;">
+          <i class="bi bi-save me-2"></i>Lưu ghi nhận
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ═══ SCRIPTS ═══ -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
