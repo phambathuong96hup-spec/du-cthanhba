@@ -38,7 +38,8 @@ function switchTab(tabId, el) {
     const titles = {
         'pills-list': 'Danh sách công việc',
         'pills-report': 'Báo cáo & Thống kê',
-        'pills-compliance': 'Quản lý Nội quy'
+        'pills-compliance': 'Quản lý Nội quy',
+        'pills-input': 'Giao Việc Mới'
     };
     document.getElementById('pageTitle').innerText = titles[tabId] || '';
 
@@ -53,35 +54,14 @@ function syncSearch(val) {
     renderTable();
 }
 
-function mountInlineTaskForm() {
-    const sourceTab = document.getElementById('pills-input');
-    const target = document.getElementById('inlineTaskFormMount');
-    if (!sourceTab || !target || target.dataset.mounted === 'true') return;
-
-    const formLayout = sourceTab.firstElementChild;
-    if (!formLayout) return;
-
-    target.appendChild(formLayout);
-    sourceTab.classList.add('d-none');
-    target.dataset.mounted = 'true';
-}
-
+// ── Toggle Inline Task Form → navigate to pills-input tab ──
 function toggleInlineTaskForm(forceOpen) {
     if (!currentUser || !isAdminUser(currentUser)) {
-        showToast("Chỉ Admin mới được tạo việc mới!", 'warning');
+        showToast('Chỉ Admin mới được tạo việc mới!', 'warning');
         return;
     }
-
-    const wrap = document.getElementById('inlineTaskFormWrap');
-    if (!wrap) return;
-
-    const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : wrap.classList.contains('d-none');
-
-    wrap.classList.toggle('d-none', !shouldOpen);
-
-    if (shouldOpen) {
-        wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    const navLink = document.querySelector('a[onclick*="pills-input"]');
+    switchTab('pills-input', navLink);
 }
 
 // ── Deadline Toggle ──
@@ -125,11 +105,9 @@ function initGroupSelect() {
 function initCheckboxes() {
     const container = document.getElementById('checkboxContainer');
     const hidden = document.getElementById('hiddenAssigneeSelect');
-    const textEl = document.getElementById('selectedText');
-    const countEl = document.getElementById('selectedCount');
 
-    container.innerHTML = "";
-    hidden.innerHTML = "";
+    container.innerHTML = '';
+    hidden.innerHTML = '';
 
     ALL_STAFF.forEach((name, i) => {
         hidden.add(new Option(name, name));
@@ -163,7 +141,7 @@ function updateAssigneeDisplay() {
         if (o.selected) { cnt++; names.push(o.value); }
     });
     c.innerText = cnt;
-    t.innerText = cnt === 0 ? "-- Chọn nhân sự --" : (cnt <= 2 ? names.join(", ") : `Đã chọn ${cnt} người`);
+    t.innerText = cnt === 0 ? '-- Chọn nhân sự --' : (cnt <= 2 ? names.join(', ') : `Đã chọn ${cnt} người`);
 }
 
 function initSingleSelect(elId) {
@@ -179,7 +157,6 @@ function initSingleSelect(elId) {
 
 // ── DOMContentLoaded ──
 document.addEventListener('DOMContentLoaded', () => {
-    mountInlineTaskForm();
     initUI();
     checkSession();
     loadTaskList();
@@ -189,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Task form submit
     document.getElementById('taskForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!currentUser || !isAdminUser(currentUser)) return showToast("⛔ Chỉ Admin!", 'warning');
+        if (!currentUser || !isAdminUser(currentUser)) return showToast('⛔ Chỉ Admin!', 'warning');
 
         const btn = document.getElementById('submitBtn');
         setBtnLoading(btn, true);
@@ -205,12 +182,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.target.reset();
                 document.querySelectorAll('#checkboxContainer input').forEach(c => c.checked = false);
                 updateAssigneeDisplay();
-                toggleInlineTaskForm(false);
-                document.querySelector('a[onclick*="pills-list"]').click();
+                // Go back to task list after saving
+                const listLink = document.querySelector('a[onclick*="pills-list"]');
+                switchTab('pills-list', listLink);
                 loadTaskList();
             }
         } catch (err) {
-            showToast("Lỗi: " + err.message, 'danger');
+            showToast('Lỗi: ' + err.message, 'danger');
         } finally {
             setBtnLoading(btn, false, 'LƯU CÔNG VIỆC');
         }
@@ -219,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Compliance form submit
     document.getElementById('complianceForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!currentUser || !isAdminUser(currentUser)) return showToast("⛔ Chỉ Admin!", 'warning');
+        if (!currentUser || !isAdminUser(currentUser)) return showToast('⛔ Chỉ Admin!', 'warning');
 
         const btn = document.getElementById('btnCompliance');
         setBtnLoading(btn, true);
@@ -235,11 +213,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadCompliance();
             }
         } catch (err) {
-            showToast("Lỗi: " + err.message, 'danger');
+            showToast('Lỗi: ' + err.message, 'danger');
         } finally {
             setBtnLoading(btn, false, 'Lưu ghi nhận');
         }
     });
 });
-
-
