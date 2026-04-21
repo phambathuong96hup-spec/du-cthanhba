@@ -167,3 +167,28 @@ function animateCounter(el, target, duration = 600) {
     requestAnimationFrame(step);
 }
 
+/* ── Avatar helpers ── */
+function getRandomColor(name) {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    const h = Math.abs(hash % 360);
+    return `hsl(${h}, 55%, 50%)`;
+}
+
+function getInitials(name) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+    return name.substring(0, 2).toUpperCase();
+}
+
+/* ── Sidebar toggle desktop ── */
+function toggleSidebarDesktop() {
+    const sidebar = document.getElementById('sidebar');
+    const icon = document.getElementById('sidebarCollapseIcon');
+    sidebar.classList.toggle('collapsed');
+    if (sidebar.classList.contains('collapsed')) {
+        icon.className = 'bi bi-chevron-bar-right';
+    } else {
+        icon.className = 'bi bi-chevron-bar-left';
+    }
+}

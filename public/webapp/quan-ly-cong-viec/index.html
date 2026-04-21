@@ -27,10 +27,13 @@
     <nav id="sidebar">
         <div class="brand-logo">
             <div class="brand-icon"><i class="bi bi-capsule"></i></div>
-            <div>
+            <div style="flex:1">
                 <h5 class="fw-bold mb-0" style="color:var(--text-main)">Khoa Dược</h5>
                 <small class="text-muted" style="font-size:0.68rem">TTYT KV Thanh Ba</small>
             </div>
+            <button class="sidebar-collapse-btn d-none d-lg-flex" onclick="toggleSidebarDesktop()" title="Thu gọn">
+                <i class="bi bi-chevron-bar-left" id="sidebarCollapseIcon"></i>
+            </button>
         </div>
 
         <ul class="components mt-2">
@@ -117,12 +120,48 @@
         <div class="content-body">
             <!-- ═══ TAB: TASK LIST ═══ -->
             <div id="pills-list" class="tab-pane-custom fade-in">
+                <!-- View Toggle -->
+                <div class="view-toggle-bar">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <div class="view-toggle-group">
+                            <button class="view-toggle-btn active" data-view="table" onclick="switchView('table',this)">
+                                <i class="bi bi-table"></i> Bảng
+                            </button>
+                            <button class="view-toggle-btn" data-view="kanban" onclick="switchView('kanban',this)">
+                                <i class="bi bi-kanban"></i> Kanban
+                            </button>
+                            <button class="view-toggle-btn" data-view="calendar" onclick="switchTab('pills-report',document.querySelector('[onclick*=pills-report]'));loadDashboard()">
+                                <i class="bi bi-calendar3"></i> Lịch
+                            </button>
+                        </div>
+                        <!-- Quick time filters -->
+                        <div class="quick-filter-chips d-none d-md-flex">
+                            <button class="chip-btn" onclick="applyQuickFilter('7days',this)">7 ngày</button>
+                            <button class="chip-btn" onclick="applyQuickFilter('30days',this)">30 ngày</button>
+                            <button class="chip-btn chip-danger" onclick="applyQuickFilter('overdue',this)">Quá hạn</button>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button class="btn btn-sm btn-outline-secondary admin-only" onclick="triggerBulkEmail(this)" style="border-radius:8px;font-size:0.78rem">
+                            <i class="bi bi-envelope"></i> Gửi mail
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Status Tabs -->
+                <div class="status-tabs" id="statusTabs">
+                    <button class="status-tab active" data-status="" onclick="filterByStatusTab('',this)">Tất cả <span class="tab-count" id="count-all">0</span></button>
+                    <button class="status-tab" data-status="Doing" onclick="filterByStatusTab('Doing',this)">Đang làm <span class="tab-count" id="count-doing">0</span></button>
+                    <button class="status-tab" data-status="Waiting" onclick="filterByStatusTab('Waiting',this)">Chờ duyệt <span class="tab-count" id="count-waiting">0</span></button>
+                    <button class="status-tab" data-status="Overdue" onclick="filterByStatusTab('Overdue',this)">Quá hạn <span class="tab-count tab-count-danger" id="count-overdue">0</span></button>
+                    <button class="status-tab" data-status="Done" onclick="filterByStatusTab('Done',this)">Hoàn thành <span class="tab-count tab-count-success" id="count-done">0</span></button>
+                </div>
+
+                <!-- Filter Panel -->
                 <div class="card-modern">
                     <div class="card-header-modern">
-                        <span><i class="bi bi-funnel me-1"></i>Bộ lọc</span>
-                        <button class="btn btn-sm btn-outline-secondary admin-only" onclick="triggerBulkEmail(this)" style="border-radius:8px;font-size:0.78rem">
-                            <i class="bi bi-envelope"></i> Gửi mail nhắc
-                        </button>
+                        <span><i class="bi bi-funnel me-1"></i>Bộ lọc nâng cao</span>
+                        <button class="btn btn-sm text-muted" onclick="this.closest('.card-modern').querySelector('.p-3').classList.toggle('d-none')" style="font-size:0.75rem"><i class="bi bi-chevron-down"></i></button>
                     </div>
                     <div class="p-3">
                         <div class="row g-2 align-items-end">
@@ -150,13 +189,13 @@
                                 </select>
                             </div>
                             <div class="col-6 col-md-2">
-                                <label class="filter-label">Độ khó</label>
+                                <label class="filter-label">Mức ưu tiên</label>
                                 <select class="form-select form-select-sm" id="filterDifficulty" onchange="renderTable()">
                                     <option value="">Tất cả</option>
-                                    <option value="1">⭐ Dễ</option>
-                                    <option value="2">⭐⭐ TB</option>
-                                    <option value="3">⭐⭐⭐ Khó</option>
-                                    <option value="4">⭐⭐⭐⭐ Phức tạp</option>
+                                    <option value="1">Thấp</option>
+                                    <option value="2">Trung bình</option>
+                                    <option value="3">Cao</option>
+                                    <option value="4">Khẩn cấp</option>
                                 </select>
                             </div>
                             <div class="col-6 col-md-2 d-md-none">
@@ -169,16 +208,20 @@
 
                 <!-- Hidden filter text for desktop search sync -->
                 <input type="hidden" id="filterText">
+                <input type="hidden" id="quickFilterMode">
+                <input type="hidden" id="statusTabFilter">
 
-                <div class="card-modern">
+                <!-- Table View -->
+                <div id="tableViewContainer" class="card-modern">
                     <div class="table-responsive">
                         <table class="table-modern">
                             <thead>
                                 <tr>
+                                    <th style="width:60px">ID</th>
                                     <th style="min-width:200px">Công việc</th>
-                                    <th class="text-center" style="width:70px">Độ khó</th>
+                                    <th class="text-center" style="width:80px">Ưu tiên</th>
                                     <th style="width:120px">Tiến độ</th>
-                                    <th style="min-width:120px">Người thực hiện</th>
+                                    <th style="min-width:120px">Phụ trách</th>
                                     <th style="width:100px">Hạn chót</th>
                                     <th style="width:100px">Trạng thái</th>
                                     <th class="text-center" style="width:110px">Thao tác</th>
@@ -186,6 +229,35 @@
                             </thead>
                             <tbody id="taskTableBody"></tbody>
                         </table>
+                    </div>
+                    <!-- Pagination -->
+                    <div class="pagination-bar" id="paginationBar">
+                        <span class="pagination-info" id="paginationInfo">0 công việc</span>
+                        <div class="pagination-controls">
+                            <button class="pagination-btn" id="btnPrevPage" onclick="changePage(-1)" disabled><i class="bi bi-chevron-left"></i></button>
+                            <span class="pagination-current" id="paginationCurrent">1/1</span>
+                            <button class="pagination-btn" id="btnNextPage" onclick="changePage(1)" disabled><i class="bi bi-chevron-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kanban View -->
+                <div id="kanbanViewContainer" class="kanban-board" style="display:none">
+                    <div class="kanban-column" data-status="Todo">
+                        <div class="kanban-col-header"><span class="kanban-dot" style="background:#f59e0b"></span>Cần làm <span class="kanban-count" id="kanban-count-todo">0</span></div>
+                        <div class="kanban-col-body" id="kanban-todo"></div>
+                    </div>
+                    <div class="kanban-column" data-status="Doing">
+                        <div class="kanban-col-header"><span class="kanban-dot" style="background:#3b82f6"></span>Đang làm <span class="kanban-count" id="kanban-count-doing">0</span></div>
+                        <div class="kanban-col-body" id="kanban-doing"></div>
+                    </div>
+                    <div class="kanban-column" data-status="Waiting">
+                        <div class="kanban-col-header"><span class="kanban-dot" style="background:#8b5cf6"></span>Chờ duyệt <span class="kanban-count" id="kanban-count-waiting">0</span></div>
+                        <div class="kanban-col-body" id="kanban-waiting"></div>
+                    </div>
+                    <div class="kanban-column" data-status="Done">
+                        <div class="kanban-col-header"><span class="kanban-dot" style="background:#10b981"></span>Hoàn thành <span class="kanban-count" id="kanban-count-done">0</span></div>
+                        <div class="kanban-col-body" id="kanban-done"></div>
                     </div>
                 </div>
             </div>
@@ -533,8 +605,66 @@
         </div>
     </div>
 </div>
-
 <!-- ═══ CHATBOT ═══ -->
+<!-- Task Detail Modal -->
+<div class="modal fade" id="taskDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:var(--gradient-primary);color:white;border-radius:20px 20px 0 0">
+                <div>
+                    <div class="small opacity-75" id="detailTaskId">TASK-001</div>
+                    <h5 class="modal-title fw-bold mb-0" id="detailTaskName">Tên công việc</h5>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-3 mb-4">
+                    <div class="col-6 col-md-3">
+                        <div class="detail-label">Trạng thái</div>
+                        <div id="detailStatus"></div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="detail-label">Mức ưu tiên</div>
+                        <div id="detailPriority"></div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="detail-label">Hạn chót</div>
+                        <div id="detailDeadline" class="fw-bold small"></div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="detail-label">Tiến độ</div>
+                        <div id="detailProgress"></div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="detail-label">Người thực hiện</div>
+                    <div id="detailAssignee" class="d-flex flex-wrap gap-2"></div>
+                </div>
+                <div class="mb-3">
+                    <div class="detail-label">Ghi chú</div>
+                    <div id="detailNotes" class="small" style="color:var(--text-secondary)"></div>
+                </div>
+                <!-- Checklist -->
+                <div class="mb-3">
+                    <div class="detail-label d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-check2-square me-1"></i>Checklist</span>
+                        <span class="small" id="checklistProgress" style="color:var(--primary)">0/0</span>
+                    </div>
+                    <div id="checklistContainer" class="checklist-list"></div>
+                    <div class="checklist-add mt-2">
+                        <input type="text" class="form-control form-control-sm" id="newChecklistItem" placeholder="Thêm đầu việc nhỏ..." onkeydown="if(event.key==='Enter'){addChecklistItem();event.preventDefault()}">
+                        <button class="btn btn-sm btn-primary-custom" onclick="addChecklistItem()" style="border-radius:8px;padding:4px 12px"><i class="bi bi-plus"></i></button>
+                    </div>
+                </div>
+                <!-- Timeline -->
+                <div>
+                    <div class="detail-label"><i class="bi bi-clock-history me-1"></i>Lịch sử</div>
+                    <div id="detailTimeline" class="timeline-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 <button class="chat-btn" onclick="toggleChat()" title="Chat với Lily AI">
     <i class="bi bi-chat-dots-fill"></i>
 </button>
@@ -581,6 +711,7 @@
 <script src="js/tasks.js"></script>
 <script src="js/compliance.js"></script>
 <script src="js/chat.js"></script>
+<script src="js/kanban.js"></script>
 <script src="js/dashboard.js"></script>
 <script src="js/app.js"></script>
 

@@ -44,6 +44,10 @@ function populateFilter() {
     });
 }
 
+let currentPage = 1;
+const PAGE_SIZE = 15;
+let filteredData = [];
+
 function renderTable() {
     const tb = document.getElementById('taskTableBody');
     const fMonth = document.getElementById('filterMonth').value;
@@ -52,7 +56,11 @@ function renderTable() {
     const fS = document.getElementById('filterStatus').value;
     const fD = document.getElementById('filterDifficulty').value;
     const fT = document.getElementById('filterText').value.toLowerCase().trim();
+    const quickMode = document.getElementById('quickFilterMode').value;
+    const statusTab = document.getElementById('statusTabFilter').value;
     const today = getToday();
+    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+    const weekAhead = new Date(today); weekAhead.setDate(weekAhead.getDate() + 7);
 
     let filterStart = null, filterEnd = null;
     if (fMonth) {
@@ -60,6 +68,25 @@ function renderTable() {
         filterStart = new Date(y, m - 1, 1);
         filterEnd = new Date(y, m, 0, 23, 59, 59);
     }
+
+    // Count all statuses for tabs (before filtering)
+    let countAll = 0, countDoing = 0, countWaiting = 0, countOverdue = 0, countDone = 0;
+    globalData.forEach(r => {
+        const st = getEffectiveStatus(String(r[2]).trim(), r[6]);
+        const dlRaw = r[9] || r[4];
+        const isOvd = dlRaw && new Date(dlRaw) < today && st !== 'Done' && st !== 'Waiting';
+        countAll++;
+        if (st === 'Done') countDone++;
+        else if (st === 'Waiting') countWaiting++;
+        else if (isOvd) countOverdue++;
+        else countDoing++;
+    });
+    const ce = id => document.getElementById(id);
+    if (ce('count-all')) ce('count-all').innerText = countAll;
+    if (ce('count-doing')) ce('count-doing').innerText = countDoing;
+    if (ce('count-waiting')) ce('count-waiting').innerText = countWaiting;
+    if (ce('count-overdue')) ce('count-overdue').innerText = countOverdue;
+    if (ce('count-done')) ce('count-done').innerText = countDone;
 
     let flt = globalData.filter(r => {
         const group = String(r[11] || "").toLowerCase();
@@ -72,7 +99,27 @@ function renderTable() {
         const dlRaw = r[9] || r[4];
         const isOverdue = dlRaw && new Date(dlRaw) < today && st !== 'Done' && st !== 'Waiting';
 
-        // Status filter
+        // Status tab filter
+        if (statusTab) {
+            if (statusTab === 'Doing' && (st === 'Done' || st === 'Waiting' || isOverdue)) return false;
+            if (statusTab === 'Waiting' && st !== 'Waiting') return false;
+            if (statusTab === 'Overdue' && !isOverdue) return false;
+            if (statusTab === 'Done' && st !== 'Done') return false;
+        }
+
+        // Quick time filter
+        if (quickMode === '7days') {
+            const dl = dlRaw ? new Date(dlRaw) : null;
+            if (!dl || dl > weekAhead || dl < today) return false;
+        } else if (quickMode === '30days') {
+            const thirtyDays = new Date(today); thirtyDays.setDate(thirtyDays.getDate() + 30);
+            const dl = dlRaw ? new Date(dlRaw) : null;
+            if (!dl || dl > thirtyDays || dl < today) return false;
+        } else if (quickMode === 'overdue') {
+            if (!isOverdue) return false;
+        }
+
+        // Status filter (dropdown)
         let statusMatch = true;
         if (fS === 'Pending') statusMatch = st !== 'Done' && st !== 'Waiting';
         else if (fS === 'Done') statusMatch = st === 'Done';
@@ -98,11 +145,10 @@ function renderTable() {
             && (fT === "" || nm.includes(fT));
     });
 
-    // Sort: Waiting first, Done last, then by deadline
+    // Sort
     flt.sort((a, b) => {
         const grpA = (a[11] || "").toLowerCase(), grpB = (b[11] || "").toLowerCase();
-        if (grpA < grpB) return -1;
-        if (grpA > grpB) return 1;
+        if (grpA < grpB) return -1; if (grpA > grpB) return 1;
         const stA = getEffectiveStatus(String(a[2]).trim(), a[6]);
         const stB = getEffectiveStatus(String(b[2]).trim(), b[6]);
         if (stA === 'Waiting' && stB !== 'Waiting') return -1;
@@ -114,16 +160,32 @@ function renderTable() {
         return dA - dB;
     });
 
+    filteredData = flt;
+
+    // Pagination
+    const totalPages = Math.max(1, Math.ceil(flt.length / PAGE_SIZE));
+    if (currentPage > totalPages) currentPage = totalPages;
+    const startIdx = (currentPage - 1) * PAGE_SIZE;
+    const pageData = flt.slice(startIdx, startIdx + PAGE_SIZE);
+
+    // Update pagination UI
+    document.getElementById('paginationInfo').innerText = `${flt.length} công việc`;
+    document.getElementById('paginationCurrent').innerText = `${currentPage}/${totalPages}`;
+    document.getElementById('btnPrevPage').disabled = currentPage <= 1;
+    document.getElementById('btnNextPage').disabled = currentPage >= totalPages;
+
     if (flt.length === 0) {
-        tb.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-5">
+        tb.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-5">
             <i class="bi bi-inbox fs-3 d-block mb-2 opacity-50"></i>
             Không tìm thấy công việc nào.
         </td></tr>`;
         return;
     }
 
+    const priorityLabels = { '1': 'Thấp', '2': 'TB', '3': 'Cao', '4': 'Khẩn cấp' };
+
     const rows = [];
-    flt.forEach(r => {
+    pageData.forEach((r, idx) => {
         const id = r[0], name = r[1], rawStatus = String(r[2]).trim(), assignee = r[7];
         const type = r[10] || "Thường quy", group = r[11] || "";
         const difficulty = r[12] || "";
@@ -136,10 +198,14 @@ function renderTable() {
         const disableControl = isOwner ? "" : "pointer-events:none;opacity:0.5;";
         const isOverdue = dlRaw && new Date(dlRaw) < today && status !== 'Done' && status !== 'Waiting';
 
+        // Task ID
+        const globalIdx = globalData.indexOf(r);
+        const taskIdStr = `CV-${String(globalIdx + 1).padStart(3, '0')}`;
+
         // Status badge
         let statusBadgeHtml = '';
         if (status === 'Todo' && isOwner) {
-            statusBadgeHtml = `<span class="status-badge bg-todo cursor-pointer" onclick="startTask('${escapeHtml(id)}')" title="Bấm để bắt đầu"><i class="bi bi-play-circle-fill me-1"></i>Bắt đầu</span>`;
+            statusBadgeHtml = `<span class="status-badge bg-todo cursor-pointer" onclick="event.stopPropagation();startTask('${escapeHtml(id)}')" title="Bấm để bắt đầu"><i class="bi bi-play-circle-fill me-1"></i>Bắt đầu</span>`;
         } else if (status === 'Done') {
             statusBadgeHtml = '<span class="status-badge bg-done">Hoàn thành</span>';
         } else if (status === 'Waiting') {
@@ -152,26 +218,37 @@ function renderTable() {
             statusBadgeHtml = '<span class="status-badge bg-todo">Mới tạo</span>';
         }
 
-        // Deadline display
+        // Priority badge (replaces stars)
+        let priorityHtml = '';
+        if (difficulty) {
+            const label = priorityLabels[difficulty] || 'TB';
+            priorityHtml = `<span class="priority-badge priority-${escapeHtml(difficulty)}">${escapeHtml(label)}</span>`;
+        }
+
+        // Date badge with color coding
         let dlHtml = '';
         if (!dlRaw || type === 'Thường quy') {
-            dlHtml = '<span class="text-muted small"><i class="bi bi-infinity"></i> Thường quy</span>';
-        } else if (isOverdue) {
-            dlHtml = `<span class="text-danger fw-bold"><i class="bi bi-exclamation-circle-fill"></i> ${escapeHtml(dlDisp)}</span>`;
-        } else if (r[9] && r[9] !== r[4]) {
-            dlHtml = `<div class="d-flex flex-column">
-                <span class="text-decoration-line-through text-muted" style="font-size:0.72em">${escapeHtml(new Date(r[4]).toLocaleDateString('vi-VN'))}</span>
-                <span class="text-primary fw-bold" style="font-size:0.82em">${escapeHtml(dlDisp)}</span>
-            </div>`;
+            dlHtml = '<span class="text-muted small"><i class="bi bi-infinity"></i> TQ</span>';
         } else {
-            dlHtml = `<span class="fw-bold" style="color:var(--text-main)">${escapeHtml(dlDisp)}</span>`;
+            const dlDate = new Date(dlRaw);
+            let dateClass = '';
+            if (isOverdue) dateClass = 'date-overdue';
+            else if (dlDate.toDateString() === today.toDateString()) dateClass = 'date-today';
+            else if (dlDate.toDateString() === tomorrow.toDateString()) dateClass = 'date-tomorrow';
+            else if (dlDate <= weekAhead) dateClass = 'date-week';
+
+            if (dateClass) {
+                dlHtml = `<span class="date-badge ${dateClass}">${escapeHtml(dlDisp)}</span>`;
+            } else {
+                dlHtml = `<span class="fw-bold small" style="color:var(--text-main)">${escapeHtml(dlDisp)}</span>`;
+            }
         }
 
         // Progress slider
         let slider = status === 'Done'
             ? `<div class="progress" style="height:5px;width:90px;border-radius:10px;"><div class="progress-bar bg-success" style="width:100%"></div></div>`
             : `<div class="d-flex align-items-center" style="${disableControl}">
-                <input type="range" class="form-range me-2" style="width:65px" min="0" max="100" step="10" value="${prog}" onchange="updateProgress('${escapeHtml(id)}',this.value)">
+                <input type="range" class="form-range me-2" style="width:65px" min="0" max="100" step="10" value="${prog}" onclick="event.stopPropagation()" onchange="updateProgress('${escapeHtml(id)}',this.value)">
                 <span class="badge bg-light text-dark border" id="val-${escapeHtml(id)}" style="width:38px;font-size:0.72rem">${prog}%</span>
                </div>`;
 
@@ -179,7 +256,7 @@ function renderTable() {
         let actionBtns = '';
         const safeId = escapeHtml(id);
         const attachLink = (fileUrl && currentUser && currentUser.role === 'Admin')
-            ? `<button onclick="openReviewModal('${safeId}')" class="btn btn-sm border text-primary" title="Xem báo cáo" style="border-radius:8px"><i class="bi bi-file-earmark-text-fill"></i></button> `
+            ? `<button onclick="event.stopPropagation();openReviewModal('${safeId}')" class="btn btn-sm border text-primary" title="Xem báo cáo" style="border-radius:8px"><i class="bi bi-file-earmark-text-fill"></i></button> `
             : '';
 
         if (status === 'Done') {
@@ -187,50 +264,41 @@ function renderTable() {
         } else if (status === 'Waiting') {
             actionBtns = attachLink;
             if (currentUser && currentUser.role === 'Admin') {
-                actionBtns += `<button class="btn btn-sm btn-success ms-1" onclick="approveTask('${safeId}')" title="Duyệt" style="border-radius:8px"><i class="bi bi-check-lg"></i></button>
-                    <button class="btn btn-sm btn-danger ms-1" onclick="rejectTask('${safeId}')" title="Từ chối" style="border-radius:8px"><i class="bi bi-x-lg"></i></button>`;
+                actionBtns += `<button class="btn btn-sm btn-success ms-1" onclick="event.stopPropagation();approveTask('${safeId}')" title="Duyệt" style="border-radius:8px"><i class="bi bi-check-lg"></i></button>
+                    <button class="btn btn-sm btn-danger ms-1" onclick="event.stopPropagation();rejectTask('${safeId}')" title="Từ chối" style="border-radius:8px"><i class="bi bi-x-lg"></i></button>`;
             } else {
                 actionBtns += '<span class="text-muted small fst-italic">Đợi duyệt...</span>';
             }
         } else if (currentUser && currentUser.role === 'Admin') {
-            actionBtns = `<button class="btn btn-sm btn-outline-success rounded-pill px-3" onclick="approveTask('${safeId}')">Duyệt</button>`;
+            actionBtns = `<button class="btn btn-sm btn-outline-success rounded-pill px-3" onclick="event.stopPropagation();approveTask('${safeId}')">Duyệt</button>`;
         } else {
             actionBtns = `<div style="${disableControl}">
-                <button class="btn btn-sm btn-primary-custom py-1 px-2" style="font-size:0.78rem" onclick="openReportModal('${safeId}')" title="Báo cáo"><i class="bi bi-send-fill"></i></button>
-                <button class="btn btn-sm border text-warning ms-1 py-1 px-2" style="font-size:0.78rem;background:var(--surface)" onclick="sendEmailBackend('${safeId}')" title="Nhắc"><i class="bi bi-envelope-fill"></i></button>
+                <button class="btn btn-sm btn-primary-custom py-1 px-2" style="font-size:0.78rem" onclick="event.stopPropagation();openReportModal('${safeId}')" title="Báo cáo"><i class="bi bi-send-fill"></i></button>
             </div>`;
         }
 
-        // Group badge + difficulty
-        const groupBadge = group ? `<span class="badge bg-light text-secondary border fw-normal mb-1" style="font-size:0.62em;letter-spacing:0.02em">${escapeHtml(group.toUpperCase())}</span>` : '';
-        let diffHtml = '';
-        if (difficulty) {
-            let stars = '';
-            for (let i = 0; i < parseInt(difficulty); i++) stars += '<i class="bi bi-star-fill text-warning" style="font-size:0.65rem;margin-right:1px"></i>';
-            diffHtml = `<div>${stars}</div>`;
-        }
-
         const editBtn = (currentUser && currentUser.role === 'Admin')
-            ? `<button class="btn btn-sm text-muted p-0 ms-2" style="opacity:0.4" onclick="openEditTask('${safeId}')" title="Sửa"><i class="bi bi-pencil-square"></i></button>`
+            ? `<button class="btn btn-sm text-muted p-0 ms-2" style="opacity:0.4" onclick="event.stopPropagation();openEditTask('${safeId}')" title="Sửa"><i class="bi bi-pencil-square"></i></button>`
             : '';
 
         const assignees = assignee.split(',').map(s => s.trim()).filter(Boolean);
-        const assigneeHtml = assignees.length > 0
-            ? `<span class="fw-bold" style="font-size:0.82rem;color:var(--text-main)">${escapeHtml(assignees.join(', '))}</span>`
+        const firstAssignee = assignees[0] || '';
+        const assigneeHtml = firstAssignee
+            ? `<div class="d-flex align-items-center gap-2">
+                <div style="width:24px;height:24px;border-radius:7px;background:${getRandomColor(firstAssignee)};color:white;display:flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:700;flex-shrink:0">${escapeHtml(getInitials(firstAssignee))}</div>
+                <span class="fw-bold" style="font-size:0.8rem;color:var(--text-main)">${escapeHtml(firstAssignee)}${assignees.length > 1 ? ' <span class="text-muted">+' + (assignees.length - 1) + '</span>' : ''}</span>
+              </div>`
             : '<span class="text-muted small">Chưa giao</span>';
 
-        rows.push(`<tr>
+        rows.push(`<tr style="cursor:pointer" onclick="openTaskDetail('${safeId}')">
+            <td><span class="text-muted" style="font-size:0.72rem;font-weight:600">${escapeHtml(taskIdStr)}</span></td>
             <td>
-                ${groupBadge}
                 <div class="d-flex align-items-center">
-                    <span class="fw-bold text-wrap" style="font-size:0.9rem;color:var(--text-main)">${escapeHtml(name)}</span>
+                    <span class="fw-bold text-wrap" style="font-size:0.88rem;color:var(--text-main)">${escapeHtml(name)}</span>
                     ${editBtn}
                 </div>
-                <div class="text-muted mt-1 text-wrap d-flex align-items-center gap-1" style="font-size:0.75em;max-width:300px">
-                    <i class="bi bi-info-circle"></i> ${escapeHtml(r[5] || 'Không có ghi chú')}
-                </div>
             </td>
-            <td class="text-center">${diffHtml}</td>
+            <td class="text-center">${priorityHtml}</td>
             <td>${slider}</td>
             <td>${assigneeHtml}</td>
             <td class="small">${dlHtml}</td>
@@ -240,6 +308,36 @@ function renderTable() {
     });
 
     tb.innerHTML = rows.join('');
+
+    // If kanban is active, also update it
+    if (currentView === 'kanban') renderKanban();
+}
+
+function changePage(delta) {
+    currentPage += delta;
+    renderTable();
+}
+
+function filterByStatusTab(status, btn) {
+    document.querySelectorAll('.status-tab').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    document.getElementById('statusTabFilter').value = status;
+    currentPage = 1;
+    renderTable();
+}
+
+function applyQuickFilter(mode, btn) {
+    const current = document.getElementById('quickFilterMode').value;
+    document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active'));
+
+    if (current === mode) {
+        document.getElementById('quickFilterMode').value = '';
+    } else {
+        document.getElementById('quickFilterMode').value = mode;
+        if (btn) btn.classList.add('active');
+    }
+    currentPage = 1;
+    renderTable();
 }
 
 function startTask(id) {
