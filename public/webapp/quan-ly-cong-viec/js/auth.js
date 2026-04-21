@@ -28,7 +28,12 @@ function applyLoginState() {
 
     const isAdmin = currentUser && currentUser.role === 'Admin';
     document.querySelectorAll('.admin-only').forEach(el => {
-        el.style.setProperty("display", isAdmin ? "block" : "none", "important");
+        // Skip tab panes — their visibility is managed by switchTab()
+        if (el.classList.contains('tab-pane-custom')) {
+            if (!isAdmin) el.classList.add('d-none');
+            return;
+        }
+        el.style.display = isAdmin ? '' : 'none';
     });
 }
 

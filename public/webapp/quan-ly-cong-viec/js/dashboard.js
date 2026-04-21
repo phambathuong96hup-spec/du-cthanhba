@@ -66,11 +66,11 @@ function updateReport() {
         return st !== 'Done' && dl && dl < today;
     }).length;
 
-    document.getElementById('stat-total').innerText = sTotal;
-    document.getElementById('stat-done').innerText = sDone;
-    document.getElementById('stat-doing-deadline').innerText = sDoingDeadline;
-    document.getElementById('stat-doing-routine').innerText = sDoingRoutine;
-    document.getElementById('stat-overdue').innerText = sOverdue;
+    animateCounter(document.getElementById('stat-total'), sTotal);
+    animateCounter(document.getElementById('stat-done'), sDone);
+    animateCounter(document.getElementById('stat-doing-deadline'), sDoingDeadline);
+    animateCounter(document.getElementById('stat-doing-routine'), sDoingRoutine);
+    animateCounter(document.getElementById('stat-overdue'), sOverdue);
 
     drawCharts(filteredTasks, filteredCompliance);
     renderCal(filteredTasks, filteredCompliance, today);

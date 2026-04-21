@@ -147,3 +147,23 @@ function setBtnLoading(btn, loading, originalText) {
         btn.disabled = false;
     }
 }
+
+/**
+ * Animate counter from 0 to target value
+ */
+function animateCounter(el, target, duration = 600) {
+    if (!el) return;
+    const start = parseInt(el.innerText) || 0;
+    const diff = target - start;
+    if (diff === 0) { el.innerText = target; return; }
+    const startTime = performance.now();
+    function step(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+        el.innerText = Math.round(start + diff * eased);
+        if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+}
+
