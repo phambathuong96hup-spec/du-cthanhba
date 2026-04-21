@@ -47,11 +47,6 @@
                     <i class="bi bi-bar-chart-line"></i> Báo cáo & Thống kê
                 </a>
             </li>
-            <li class="admin-only">
-                <a href="#" class="nav-link-custom" onclick="switchTab('pills-input', this)">
-                    <i class="bi bi-plus-circle"></i> Giao việc mới
-                </a>
-            </li>
             <li>
                 <a href="#" class="nav-link-custom" onclick="switchTab('pills-compliance', this)">
                     <i class="bi bi-shield-check"></i> Nội quy
@@ -92,11 +87,6 @@
             </div>
 
             <div class="d-flex align-items-center gap-2">
-                <!-- Search -->
-                <div class="position-relative d-none d-md-block">
-                    <i class="bi bi-search position-absolute" style="left:12px;top:50%;transform:translateY(-50%);color:var(--text-light);font-size:0.8rem"></i>
-                    <input type="text" class="form-control form-control-sm" placeholder="Tìm kiếm..." style="padding-left:34px;width:200px;border-radius:10px;font-size:0.82rem" oninput="syncSearch(this.value)">
-                </div>
 
                 <!-- Notifications -->
                 <div class="dropdown">
@@ -120,92 +110,95 @@
         <div class="content-body">
             <!-- ═══ TAB: TASK LIST ═══ -->
             <div id="pills-list" class="tab-pane-custom fade-in">
-                <!-- View Toggle -->
-                <div class="view-toggle-bar">
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <div class="view-toggle-group">
-                            <button class="view-toggle-btn active" data-view="table" onclick="switchView('table',this)">
-                                <i class="bi bi-table"></i> Bảng
+                <div class="task-command-panel">
+                    <div class="task-command-main">
+                        <div class="task-search-shell">
+                            <i class="bi bi-search"></i>
+                            <input type="text" placeholder="Tim kiem cong viec..." oninput="syncSearch(this.value)">
+                        </div>
+                        <div class="task-command-actions">
+                            <button class="toolbar-icon-btn" type="button" onclick="switchTab('pills-report',document.querySelector('[onclick*=pills-report]'));loadDashboard()" title="Thong ke">
+                                <i class="bi bi-bar-chart-line"></i>
                             </button>
-                            <button class="view-toggle-btn" data-view="kanban" onclick="switchView('kanban',this)">
-                                <i class="bi bi-kanban"></i> Kanban
+                            <button class="btn btn-sm btn-outline-secondary admin-only" onclick="triggerBulkEmail(this)">
+                                <i class="bi bi-envelope"></i> Gui mail
                             </button>
-                            <button class="view-toggle-btn" data-view="calendar" onclick="switchTab('pills-report',document.querySelector('[onclick*=pills-report]'));loadDashboard()">
-                                <i class="bi bi-calendar3"></i> Lịch
+                            <button class="btn-create-task admin-only" type="button" onclick="toggleInlineTaskForm()">
+                                <i class="bi bi-plus-lg"></i> Tao moi
                             </button>
                         </div>
-                        <!-- Quick time filters -->
-                        <div class="quick-filter-chips d-none d-md-flex">
-                            <button class="chip-btn" onclick="applyQuickFilter('7days',this)">7 ngày</button>
-                            <button class="chip-btn" onclick="applyQuickFilter('30days',this)">30 ngày</button>
-                            <button class="chip-btn chip-danger" onclick="applyQuickFilter('overdue',this)">Quá hạn</button>
+                    </div>
+
+                    <div class="task-toolbar-filters">
+                        <div class="toolbar-filter">
+                            <label>Th�ng</label>
+                            <input type="month" class="form-control form-control-sm" id="filterMonth" onchange="renderTable()">
+                        </div>
+                        <div class="toolbar-filter">
+                            <label>To phu trach</label>
+                            <select class="form-select form-select-sm" id="filterGroup" onchange="renderTable()"></select>
+                        </div>
+                        <div class="toolbar-filter">
+                            <label>Nhan su</label>
+                            <select class="form-select form-select-sm" id="filterAssignee" onchange="renderTable()"></select>
+                        </div>
+                        <div class="toolbar-filter">
+                            <label>Trang thai</label>
+                            <select class="form-select form-select-sm" id="filterStatus" onchange="renderTable()">
+                                <option value="">Tat ca</option>
+                                <option value="Pending">Chua xong</option>
+                                <option value="Done">Da xong</option>
+                                <option value="Waiting">Cho duyet</option>
+                                <option value="Overdue">Qua han</option>
+                                <option value="NoRoutine">Co han</option>
+                            </select>
+                        </div>
+                        <div class="toolbar-filter">
+                            <label>Muc uu tien</label>
+                            <select class="form-select form-select-sm" id="filterDifficulty" onchange="renderTable()">
+                                <option value="">Tat ca</option>
+                                <option value="1">Thap</option>
+                                <option value="2">Trung b�nh</option>
+                                <option value="3">Cao</option>
+                                <option value="4">Khan cap</option>
+                            </select>
                         </div>
                     </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <button class="btn btn-sm btn-outline-secondary admin-only" onclick="triggerBulkEmail(this)" style="border-radius:8px;font-size:0.78rem">
-                            <i class="bi bi-envelope"></i> Gửi mail
-                        </button>
-                    </div>
-                </div>
 
-                <!-- Status Tabs -->
-                <div class="status-tabs" id="statusTabs">
-                    <button class="status-tab active" data-status="" onclick="filterByStatusTab('',this)">Tất cả <span class="tab-count" id="count-all">0</span></button>
-                    <button class="status-tab" data-status="Doing" onclick="filterByStatusTab('Doing',this)">Đang làm <span class="tab-count" id="count-doing">0</span></button>
-                    <button class="status-tab" data-status="Waiting" onclick="filterByStatusTab('Waiting',this)">Chờ duyệt <span class="tab-count" id="count-waiting">0</span></button>
-                    <button class="status-tab" data-status="Overdue" onclick="filterByStatusTab('Overdue',this)">Quá hạn <span class="tab-count tab-count-danger" id="count-overdue">0</span></button>
-                    <button class="status-tab" data-status="Done" onclick="filterByStatusTab('Done',this)">Hoàn thành <span class="tab-count tab-count-success" id="count-done">0</span></button>
-                </div>
-
-                <!-- Filter Panel -->
-                <div class="card-modern">
-                    <div class="card-header-modern">
-                        <span><i class="bi bi-funnel me-1"></i>Bộ lọc nâng cao</span>
-                        <button class="btn btn-sm text-muted" onclick="this.closest('.card-modern').querySelector('.p-3').classList.toggle('d-none')" style="font-size:0.75rem"><i class="bi bi-chevron-down"></i></button>
+                    <div id="inlineTaskFormWrap" class="inline-task-form-wrap d-none admin-only">
+                        <div class="inline-task-form-head">
+                            <div>
+                                <div class="inline-task-eyebrow">Quan tri task</div>
+                                <h3>Tao cong viec moi</h3>
+                            </div>
+                            <button class="toolbar-icon-btn" type="button" onclick="toggleInlineTaskForm(false)" title="Dong">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div id="inlineTaskFormMount"></div>
                     </div>
-                    <div class="p-3 d-none">
-                        <div class="row g-2 align-items-end">
-                            <div class="col-6 col-md-2">
-                                <label class="filter-label">Tháng</label>
-                                <input type="month" class="form-control form-control-sm" id="filterMonth" onchange="renderTable()">
+
+                    <div class="view-toggle-bar">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <div class="view-toggle-group">
+                                <button class="view-toggle-btn active" data-view="table" onclick="switchView('table',this)">
+                                    <i class="bi bi-table"></i> Bang
+                                </button>
+                                <button class="view-toggle-btn" data-view="kanban" onclick="switchView('kanban',this)">
+                                    <i class="bi bi-kanban"></i> Kanban
+                                </button>
+                                <button class="view-toggle-btn" data-view="calendar" onclick="switchTab('pills-report',document.querySelector('[onclick*=pills-report]'));loadDashboard()">
+                                    <i class="bi bi-calendar3"></i> Lich
+                                </button>
                             </div>
-                            <div class="col-6 col-md-2">
-                                <label class="filter-label">Tổ</label>
-                                <select class="form-select form-select-sm" id="filterGroup" onchange="renderTable()"></select>
-                            </div>
-                            <div class="col-6 col-md-2">
-                                <label class="filter-label">Nhân viên</label>
-                                <select class="form-select form-select-sm" id="filterAssignee" onchange="renderTable()"></select>
-                            </div>
-                            <div class="col-6 col-md-2">
-                                <label class="filter-label">Trạng thái</label>
-                                <select class="form-select form-select-sm" id="filterStatus" onchange="renderTable()">
-                                    <option value="">Tất cả</option>
-                                    <option value="Pending">Chưa xong</option>
-                                    <option value="Done">Đã xong</option>
-                                    <option value="Waiting">Chờ duyệt</option>
-                                    <option value="Overdue">Quá hạn</option>
-                                    <option value="NoRoutine">Có hạn</option>
-                                </select>
-                            </div>
-                            <div class="col-6 col-md-2">
-                                <label class="filter-label">Mức ưu tiên</label>
-                                <select class="form-select form-select-sm" id="filterDifficulty" onchange="renderTable()">
-                                    <option value="">Tất cả</option>
-                                    <option value="1">Thấp</option>
-                                    <option value="2">Trung bình</option>
-                                    <option value="3">Cao</option>
-                                    <option value="4">Khẩn cấp</option>
-                                </select>
-                            </div>
-                            <div class="col-6 col-md-2 d-md-none">
-                                <label class="filter-label">Tìm kiếm</label>
-                                <input type="text" class="form-control form-control-sm" id="filterTextMobile" placeholder="Tìm..." oninput="document.getElementById('filterText').value=this.value;renderTable()">
+                            <div class="quick-filter-chips">
+                                <button class="chip-btn" onclick="applyQuickFilter('7days',this)">7 ngay</button>
+                                <button class="chip-btn" onclick="applyQuickFilter('30days',this)">30 ngay</button>
+                                <button class="chip-btn chip-danger" onclick="applyQuickFilter('overdue',this)">Qua han</button>
                             </div>
                         </div>
                     </div>
                 </div>
-
                 <!-- Hidden filter text for desktop search sync -->
                 <input type="hidden" id="filterText">
                 <input type="hidden" id="quickFilterMode">
@@ -319,71 +312,142 @@
                     <div class="col-md-6"><div class="card-modern"><div class="card-header-modern">🏆 Khen thưởng</div><div id="columnchart_reward" style="height:250px"></div></div></div>
                 </div>
 
+            <!-- ═══ TAB: INPUT (Admin) ═══ -->
                 <!-- Calendar -->
                 <div class="card-modern">
-                    <div class="card-header-modern"><i class="bi bi-calendar3 me-1"></i>Lịch công tác</div>
+                    <div class="card-header-modern"><i class="bi bi-calendar3 me-1"></i>Lich cong tac</div>
                     <div class="p-3"><div id="calendar"></div></div>
                 </div>
             </div>
 
-            <!-- ═══ TAB: INPUT (Admin) ═══ -->
             <div id="pills-input" class="tab-pane-custom d-none fade-in admin-only">
-                <div class="card-modern">
-                    <div class="card-header-modern"><i class="bi bi-plus-circle me-1"></i>Tạo công việc mới</div>
-                    <div class="p-4">
-                        <form id="taskForm">
-                            <div class="mb-3">
-                                <label class="form-label fw-bold small">Tên công việc</label>
-                                <input type="text" class="form-control" name="taskName" placeholder="Nhập tên công việc..." required>
+                <div class="row g-4">
+                    <!-- Left column: Hero/Decoration -->
+                    <div class="col-lg-4">
+                        <div class="card-modern h-100 p-4 d-flex flex-column justify-content-center align-items-center text-center" style="background: linear-gradient(135deg, rgba(var(--primary-rgb, 59,130,246), 0.05), rgba(var(--primary-rgb, 59,130,246), 0.15)); border: none;">
+                            <div class="mb-4" style="width: 120px; height: 120px; border-radius: 50%; background: var(--gradient-primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px var(--primary-glow);">
+                                <i class="bi bi-rocket-takeoff text-white" style="font-size: 3.5rem;"></i>
                             </div>
-                            <div class="row g-3 mb-3">
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold small">Loại</label>
-                                    <select class="form-select" name="taskType" id="taskTypeSelect" onchange="toggleDeadline()">
-                                        <option value="Thường quy">📌 Thường quy</option>
-                                        <option value="Có hạn">⏰ Có hạn</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold small">Tổ</label>
-                                    <select class="form-select" name="group" id="groupSelect"></select>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold small">Deadline</label>
-                                    <input type="date" class="form-control" name="deadline" id="deadlineInput" disabled>
-                                </div>
-                            </div>
-                            <div class="row g-3 mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label fw-bold small">Độ khó</label>
-                                    <select class="form-select" name="difficulty">
-                                        <option value="1">⭐ Dễ</option>
-                                        <option value="2" selected>⭐⭐ Trung bình</option>
-                                        <option value="3">⭐⭐⭐ Khó</option>
-                                        <option value="4">⭐⭐⭐⭐ Phức tạp</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fw-bold small">Ghi chú</label>
-                                    <input type="text" class="form-control" name="notes" placeholder="Ghi chú...">
-                                </div>
-                            </div>
-
-                            <!-- Assignee -->
-                            <div class="mb-3">
-                                <label class="form-label fw-bold small">Người thực hiện <span class="badge bg-primary-subtle text-primary ms-1" id="selectedCount">0</span></label>
-                                <select id="hiddenAssigneeSelect" multiple style="display:none"></select>
-                                <div class="form-control p-0" style="max-height:200px;overflow-y:auto;cursor:pointer" onclick="this.querySelector('.collapse').classList.toggle('show')">
-                                    <div class="p-2 border-bottom d-flex justify-content-between align-items-center">
-                                        <span class="text-muted small" id="selectedText">-- Chọn nhân sự --</span>
-                                        <i class="bi bi-chevron-down text-muted"></i>
+                            <h4 class="fw-bold mb-3" style="color: var(--primary);">Giao Việc Mới</h4>
+                            <p class="text-muted mb-0" style="font-size: 0.95rem; line-height: 1.6;">
+                                Khởi tạo nhiệm vụ rõ ràng và phân công đúng người để đạt hiệu quả cao nhất. Theo dõi tiến độ dễ dàng qua Kanban & Báo cáo.
+                            </p>
+                            <div class="mt-auto pt-4 w-100">
+                                <div class="d-flex justify-content-around">
+                                    <div class="text-center p-2 rounded-3" style="background: var(--surface);">
+                                        <i class="bi bi-check2-circle mb-2 d-block" style="font-size: 1.4rem; color: #16a34a;"></i>
+                                        <small class="text-muted fw-bold" style="font-size: 0.75rem; letter-spacing: 0.5px; text-transform: uppercase;">Rõ ràng</small>
                                     </div>
-                                    <div class="collapse" id="checkboxContainer"></div>
+                                    <div class="text-center p-2 rounded-3" style="background: var(--surface);">
+                                        <i class="bi bi-stopwatch mb-2 d-block" style="font-size: 1.4rem; color: #ea580c;"></i>
+                                        <small class="text-muted fw-bold" style="font-size: 0.75rem; letter-spacing: 0.5px; text-transform: uppercase;">Kịp thời</small>
+                                    </div>
+                                    <div class="text-center p-2 rounded-3" style="background: var(--surface);">
+                                        <i class="bi bi-bar-chart-line mb-2 d-block" style="font-size: 1.4rem; color: #2563eb;"></i>
+                                        <small class="text-muted fw-bold" style="font-size: 0.75rem; letter-spacing: 0.5px; text-transform: uppercase;">Đo lường</small>
+                                    </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
 
-                            <button type="submit" class="btn btn-primary-custom w-100 py-3" id="submitBtn">LƯU CÔNG VIỆC</button>
-                        </form>
+                    <!-- Right column: The Form -->
+                    <div class="col-lg-8">
+                        <div class="card-modern border-0 shadow-sm h-100" style="background: var(--surface); overflow: hidden;">
+                            <div class="card-header-modern bg-transparent border-bottom px-4 py-3 d-flex align-items-center" style="border-left: 4px solid var(--primary);">
+                                <div style="width: 38px; height: 38px; border-radius: 10px; background: var(--primary-bg); display: flex; align-items: center; justify-content: center; margin-right: 12px; margin-left: -5px;">
+                                    <i class="bi bi-journal-plus" style="color: var(--primary); font-size: 1.2rem;"></i>
+                                </div>
+                                <h5 class="mb-0 fw-bold" style="color: var(--text-main); font-size: 1.1rem;">Chi tiết công việc</h5>
+                            </div>
+                            
+                            <div class="p-4" style="background: var(--surface);">
+                                <form id="taskForm">
+                                    <div class="row g-4 mb-4">
+                                        <!-- Task Name -->
+                                        <div class="col-12">
+                                            <label class="form-label fw-bold text-muted small text-uppercase" style="letter-spacing: 0.5px; font-size: 0.75rem;">Tên công việc <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--border-color); color: var(--primary);"><i class="bi bi-card-heading"></i></span>
+                                                <input type="text" class="form-control border-start-0 ps-0" name="taskName" placeholder="Nhập tên nhiệm vụ cần xử lý..." required style="box-shadow: none; font-weight: 500;">
+                                            </div>
+                                        </div>
+
+                                        <!-- Type and Deadline -->
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold text-muted small text-uppercase" style="letter-spacing: 0.5px; font-size: 0.75rem;">Phân loại & Hạn xử lý <span class="text-danger">*</span></label>
+                                            <div class="d-flex gap-2">
+                                                <div class="input-group" style="width: 45%;">
+                                                    <span class="input-group-text bg-transparent border-end-0 px-2" style="border-color: var(--border-color); color: var(--primary);"><i class="bi bi-tag"></i></span>
+                                                    <select class="form-select border-start-0 ps-0 text-truncate" name="type" id="taskTypeSelect" onchange="toggleDeadline()" style="box-shadow: none; font-weight: 500;">
+                                                        <option>Thực hiện C.Đạo</option>
+                                                        <option>Thường quy</option>
+                                                    </select>
+                                                </div>
+                                                <div class="input-group" style="width: 55%;">
+                                                    <span class="input-group-text bg-transparent border-end-0 px-2" style="border-color: var(--border-color); color: var(--primary);"><i class="bi bi-calendar-event"></i></span>
+                                                    <input type="date" class="form-control border-start-0 ps-0" name="deadline" id="deadlineInput" required style="box-shadow: none; font-weight: 500;">
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Group & Difficulty -->
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold text-muted small text-uppercase" style="letter-spacing: 0.5px; font-size: 0.75rem;">Tổ phụ trách & Độ khó <span class="text-danger">*</span></label>
+                                            <div class="d-flex gap-2">
+                                                <div class="input-group" style="width: 60%;">
+                                                    <span class="input-group-text bg-transparent border-end-0 px-2" style="border-color: var(--border-color); color: var(--primary);"><i class="bi bi-building"></i></span>
+                                                    <select class="form-select border-start-0 ps-0 text-truncate" name="group" id="groupSelect" required style="box-shadow: none; font-weight: 500;"></select>
+                                                </div>
+                                                <div class="input-group" style="width: 40%;">
+                                                    <span class="input-group-text bg-transparent border-end-0 px-2" style="border-color: var(--border-color); color: var(--primary);"><i class="bi bi-lightning-charge"></i></span>
+                                                    <select class="form-select border-start-0 ps-0 fw-bold text-center" name="difficulty" style="box-shadow: none; color: #ea580c;">
+                                                        <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Assignee Selection (Custom UI) -->
+                                        <div class="col-12">
+                                            <label class="form-label fw-bold text-muted small text-uppercase" style="letter-spacing: 0.5px; font-size: 0.75rem;">Người thực hiện <span class="text-danger">*</span></label>
+                                            <div class="dropdown">
+                                                <button class="btn w-100 d-flex justify-content-between align-items-center py-2 px-3 dropdown-toggle shadow-none" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" style="text-align: left; background: transparent; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 10px; font-weight: 500;">
+                                                    <span>
+                                                        <i class="bi bi-people me-2" style="color: var(--primary);"></i>
+                                                        <span id="selectedText">-- Chọn nhân sự --</span>
+                                                    </span>
+                                                    <span class="badge rounded-pill ms-2" id="selectedCount" style="background: var(--primary); font-size: 0.75rem;">0</span>
+                                                </button>
+                                                <div class="dropdown-menu w-100 p-0 shadow-lg border-0 mt-2" style="max-height: 250px; overflow-y: auto; border-radius: 12px; background: var(--surface);">
+                                                    <div id="checkboxContainer"></div>
+                                                </div>
+                                            </div>
+                                            <select id="hiddenAssigneeSelect" multiple class="d-none" required></select>
+                                        </div>
+
+                                        <!-- Notes/Checklist -->
+                                        <div class="col-12">
+                                            <label class="form-label fw-bold text-muted small text-uppercase" style="letter-spacing: 0.5px; font-size: 0.75rem;">Ghi chú / Checklist phụ</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-transparent border-end-0 pt-2 align-items-start" style="border-color: var(--border-color); color: var(--primary);"><i class="bi bi-check2-square"></i></span>
+                                                <textarea class="form-control border-start-0 ps-0" name="notes" rows="3" placeholder="Nhập thêm ghi chú hoặc tạo checklist bằng cách thêm '- [ ]' ở đầu mỗi dòng..." style="box-shadow: none; resize: none; line-height: 1.5; font-weight: 500;"></textarea>
+                                            </div>
+                                            <div class="form-text mt-2" style="font-size: 0.8rem; color: var(--text-light);">
+                                                <i class="bi bi-magic me-1 text-warning"></i><span>Hỗ trợ tự động chuyển đổi markdown checklist trên Kanban board</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Form Action -->
+                                    <div class="d-flex justify-content-end mt-4 pt-3 border-top" style="border-color: var(--border-light) !important;">
+                                        <button type="submit" class="btn btn-primary-custom d-flex align-items-center" id="submitBtn">
+                                            <i class="bi bi-send-fill me-2" style="font-size: 1.1rem;"></i> LƯU CÔNG VIỆC
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -717,3 +781,5 @@
 
 </body>
 </html>
+
+

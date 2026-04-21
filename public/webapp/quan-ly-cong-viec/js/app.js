@@ -4,7 +4,7 @@
 
 // ── Theme ──
 (function initTheme() {
-    const saved = localStorage.getItem('theme') || 'light';
+    const saved = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', saved);
 })();
 
@@ -33,12 +33,11 @@ function switchTab(tabId, el) {
     document.querySelectorAll('.tab-pane-custom').forEach(d => d.classList.add('d-none'));
     document.getElementById(tabId).classList.remove('d-none');
     document.querySelectorAll('.nav-link-custom').forEach(l => l.classList.remove('active'));
-    el.classList.add('active');
+    if (el) el.classList.add('active');
 
     const titles = {
         'pills-list': 'Danh sách công việc',
         'pills-report': 'Báo cáo & Thống kê',
-        'pills-input': 'Giao việc mới',
         'pills-compliance': 'Quản lý Nội quy'
     };
     document.getElementById('pageTitle').innerText = titles[tabId] || '';
@@ -52,6 +51,37 @@ function syncSearch(val) {
     }
     document.getElementById('filterText').value = val;
     renderTable();
+}
+
+function mountInlineTaskForm() {
+    const sourceTab = document.getElementById('pills-input');
+    const target = document.getElementById('inlineTaskFormMount');
+    if (!sourceTab || !target || target.dataset.mounted === 'true') return;
+
+    const formLayout = sourceTab.firstElementChild;
+    if (!formLayout) return;
+
+    target.appendChild(formLayout);
+    sourceTab.classList.add('d-none');
+    target.dataset.mounted = 'true';
+}
+
+function toggleInlineTaskForm(forceOpen) {
+    if (!currentUser || !isAdminUser(currentUser)) {
+        showToast("Chi Admin moi duoc tao viec moi!", 'warning');
+        return;
+    }
+
+    const wrap = document.getElementById('inlineTaskFormWrap');
+    if (!wrap) return;
+
+    const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : wrap.classList.contains('d-none');
+
+    wrap.classList.toggle('d-none', !shouldOpen);
+
+    if (shouldOpen) {
+        wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 }
 
 // ── Deadline Toggle ──
@@ -149,6 +179,7 @@ function initSingleSelect(elId) {
 
 // ── DOMContentLoaded ──
 document.addEventListener('DOMContentLoaded', () => {
+    mountInlineTaskForm();
     initUI();
     checkSession();
     loadTaskList();
@@ -174,6 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.target.reset();
                 document.querySelectorAll('#checkboxContainer input').forEach(c => c.checked = false);
                 updateAssigneeDisplay();
+                toggleInlineTaskForm(false);
                 document.querySelector('a[onclick*="pills-list"]').click();
                 loadTaskList();
             }
@@ -209,3 +241,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
