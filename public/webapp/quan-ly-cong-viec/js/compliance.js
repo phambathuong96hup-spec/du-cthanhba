@@ -14,6 +14,7 @@ async function loadCompliance(isPolling = false) {
         const res = await apiFetch('read_compliance');
         globalCompliance = res.data || [];
         checkComplianceNotifications(globalCompliance);
+        updateComplianceSummary(globalCompliance);
         renderComplianceTable(globalCompliance);
     } catch (err) {
         console.error("Load compliance failed:", err);
@@ -24,6 +25,24 @@ async function loadCompliance(isPolling = false) {
     }
 }
 
+function updateComplianceSummary(data) {
+    const violationEl = document.getElementById('complianceViolationCount');
+    const rewardEl = document.getElementById('complianceRewardCount');
+    if (!violationEl || !rewardEl) return;
+
+    let violations = 0;
+    let rewards = 0;
+
+    (data || []).forEach(r => {
+        const hasExtraCol = r.length >= 6;
+        const type = hasExtraCol ? r[3] : (String(r[3]).includes('Khen') ? 'Khen thu?ng' : 'Vi ph?m');
+        if (String(type).includes('Khen')) rewards++;
+        else violations++;
+    });
+
+    violationEl.innerText = violations;
+    rewardEl.innerText = rewards;
+}
 function renderComplianceTable(data) {
     const tb = document.getElementById('complianceBody');
     tb.innerHTML = "";
@@ -72,3 +91,4 @@ function renderComplianceTable(data) {
 
     tb.innerHTML = html.join('');
 }
+

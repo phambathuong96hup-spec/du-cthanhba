@@ -35,6 +35,14 @@ function applyLoginState() {
         }
         el.style.display = isAdmin ? '' : 'none';
     });
+    if (typeof toggleInlineTaskForm === 'function') {
+        if (isAdmin) {
+            toggleInlineTaskForm(true);
+        } else {
+            const wrap = document.getElementById('inlineTaskFormWrap');
+            if (wrap) wrap.classList.add('d-none');
+        }
+    }
 }
 
 function showLoginModal() {

@@ -114,17 +114,17 @@
                     <div class="task-command-main">
                         <div class="task-search-shell">
                             <i class="bi bi-search"></i>
-                            <input type="text" placeholder="Tim kiem cong viec..." oninput="syncSearch(this.value)">
+                            <input type="text" placeholder="Tìm ki?m công vi?c..." oninput="syncSearch(this.value)">
                         </div>
                         <div class="task-command-actions">
-                            <button class="toolbar-icon-btn" type="button" onclick="switchTab('pills-report',document.querySelector('[onclick*=pills-report]'));loadDashboard()" title="Thong ke">
+                            <button class="toolbar-icon-btn" type="button" onclick="switchTab('pills-report',document.querySelector('[onclick*=pills-report]'));loadDashboard()" title="Th?ng kê">
                                 <i class="bi bi-bar-chart-line"></i>
                             </button>
                             <button class="btn btn-sm btn-outline-secondary admin-only" onclick="triggerBulkEmail(this)">
-                                <i class="bi bi-envelope"></i> Gui mail
+                                <i class="bi bi-envelope"></i> G?i mail
                             </button>
                             <button class="btn-create-task admin-only" type="button" onclick="toggleInlineTaskForm()">
-                                <i class="bi bi-plus-lg"></i> Tao moi
+                                <i class="bi bi-plus-lg"></i> T?o m?i
                             </button>
                         </div>
                     </div>
@@ -135,32 +135,32 @@
                             <input type="month" class="form-control form-control-sm" id="filterMonth" onchange="renderTable()">
                         </div>
                         <div class="toolbar-filter">
-                            <label>To phu trach</label>
+                            <label>T? ph? trách</label>
                             <select class="form-select form-select-sm" id="filterGroup" onchange="renderTable()"></select>
                         </div>
                         <div class="toolbar-filter">
-                            <label>Nhan su</label>
+                            <label>Nhân s?</label>
                             <select class="form-select form-select-sm" id="filterAssignee" onchange="renderTable()"></select>
                         </div>
                         <div class="toolbar-filter">
-                            <label>Trang thai</label>
+                            <label>Tr?ng thái</label>
                             <select class="form-select form-select-sm" id="filterStatus" onchange="renderTable()">
-                                <option value="">Tat ca</option>
+                                <option value="">T?t c?</option>
                                 <option value="Pending">Chua xong</option>
-                                <option value="Done">Da xong</option>
-                                <option value="Waiting">Cho duyet</option>
-                                <option value="Overdue">Qua han</option>
-                                <option value="NoRoutine">Co han</option>
+                                <option value="Done">Ðã xong</option>
+                                <option value="Waiting">Ch? duy?t</option>
+                                <option value="Overdue">Quá h?n</option>
+                                <option value="NoRoutine">Có h?n</option>
                             </select>
                         </div>
                         <div class="toolbar-filter">
-                            <label>Muc uu tien</label>
+                            <label>M?c uu tiên</label>
                             <select class="form-select form-select-sm" id="filterDifficulty" onchange="renderTable()">
-                                <option value="">Tat ca</option>
-                                <option value="1">Thap</option>
+                                <option value="">T?t c?</option>
+                                <option value="1">Th?p</option>
                                 <option value="2">Trung bình</option>
                                 <option value="3">Cao</option>
-                                <option value="4">Khan cap</option>
+                                <option value="4">Kh?n c?p</option>
                             </select>
                         </div>
                     </div>
@@ -168,10 +168,10 @@
                     <div id="inlineTaskFormWrap" class="inline-task-form-wrap d-none admin-only">
                         <div class="inline-task-form-head">
                             <div>
-                                <div class="inline-task-eyebrow">Quan tri task</div>
-                                <h3>Tao cong viec moi</h3>
+                                <div class="inline-task-eyebrow">Qu?n tr? task</div>
+                                <h3>T?o công vi?c m?i</h3>
                             </div>
-                            <button class="toolbar-icon-btn" type="button" onclick="toggleInlineTaskForm(false)" title="Dong">
+                            <button class="toolbar-icon-btn" type="button" onclick="toggleInlineTaskForm(false)" title="Ðóng">
                                 <i class="bi bi-x-lg"></i>
                             </button>
                         </div>
@@ -182,19 +182,19 @@
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                             <div class="view-toggle-group">
                                 <button class="view-toggle-btn active" data-view="table" onclick="switchView('table',this)">
-                                    <i class="bi bi-table"></i> Bang
+                                    <i class="bi bi-table"></i> B?ng
                                 </button>
                                 <button class="view-toggle-btn" data-view="kanban" onclick="switchView('kanban',this)">
                                     <i class="bi bi-kanban"></i> Kanban
                                 </button>
                                 <button class="view-toggle-btn" data-view="calendar" onclick="switchTab('pills-report',document.querySelector('[onclick*=pills-report]'));loadDashboard()">
-                                    <i class="bi bi-calendar3"></i> Lich
+                                    <i class="bi bi-calendar3"></i> L?ch
                                 </button>
                             </div>
                             <div class="quick-filter-chips">
-                                <button class="chip-btn" onclick="applyQuickFilter('7days',this)">7 ngay</button>
-                                <button class="chip-btn" onclick="applyQuickFilter('30days',this)">30 ngay</button>
-                                <button class="chip-btn chip-danger" onclick="applyQuickFilter('overdue',this)">Qua han</button>
+                                <button class="chip-btn" onclick="applyQuickFilter('7days',this)">7 ngày</button>
+                                <button class="chip-btn" onclick="applyQuickFilter('30days',this)">30 ngày</button>
+                                <button class="chip-btn chip-danger" onclick="applyQuickFilter('overdue',this)">Quá h?n</button>
                             </div>
                         </div>
                     </div>
@@ -315,7 +315,7 @@
             <!-- â•â•â• TAB: INPUT (Admin) â•â•â• -->
                 <!-- Calendar -->
                 <div class="card-modern">
-                    <div class="card-header-modern"><i class="bi bi-calendar3 me-1"></i>Lich cong tac</div>
+                    <div class="card-header-modern"><i class="bi bi-calendar3 me-1"></i>L?ch công tác</div>
                     <div class="p-3"><div id="calendar"></div></div>
                 </div>
             </div>
@@ -491,6 +491,20 @@
                     </div>
                 </div>
 
+                <div class="row g-3 mb-3" id="complianceSummaryCards">
+                    <div class="col-md-6">
+                        <div class="stat-card">
+                            <div class="stat-icon-wrapper" style="background:#fee2e2;color:#ef4444"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                            <div><div class="text-muted small fw-bold">VI PH?M</div><h3 class="fw-bold mb-0" id="complianceViolationCount" style="color:var(--text-main)">0</h3></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="stat-card">
+                            <div class="stat-icon-wrapper" style="background:#fef3c7;color:#f59e0b"><i class="bi bi-trophy-fill"></i></div>
+                            <div><div class="text-muted small fw-bold">KHEN THU?NG</div><h3 class="fw-bold mb-0" id="complianceRewardCount" style="color:var(--text-main)">0</h3></div>
+                        </div>
+                    </div>
+                </div>
                 <!-- Table -->
                 <div class="card-modern">
                     <div class="card-header-modern"><i class="bi bi-table me-1"></i>Lá»‹ch sá»­ ná»™i quy</div>

@@ -68,7 +68,7 @@ function mountInlineTaskForm() {
 
 function toggleInlineTaskForm(forceOpen) {
     if (!currentUser || !isAdminUser(currentUser)) {
-        showToast("Chi Admin moi duoc tao viec moi!", 'warning');
+        showToast("Ch? Admin m?i du?c t?o vi?c m?i!", 'warning');
         return;
     }
 
@@ -241,4 +241,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
 
