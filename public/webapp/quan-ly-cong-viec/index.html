@@ -114,53 +114,53 @@
                     <div class="task-command-main">
                         <div class="task-search-shell">
                             <i class="bi bi-search"></i>
-                            <input type="text" placeholder="T�m ki?m c�ng vi?c..." oninput="syncSearch(this.value)">
+                            <input type="text" placeholder="Tìm kiếm công việc..." oninput="syncSearch(this.value)">
                         </div>
                         <div class="task-command-actions">
-                            <button class="toolbar-icon-btn" type="button" onclick="switchTab('pills-report',document.querySelector('[onclick*=pills-report]'));loadDashboard()" title="Th?ng k�">
+                            <button class="toolbar-icon-btn" type="button" onclick="switchTab('pills-report',document.querySelector('[onclick*=pills-report]'));loadDashboard()" title="Thống kê">
                                 <i class="bi bi-bar-chart-line"></i>
                             </button>
                             <button class="btn btn-sm btn-outline-secondary admin-only" onclick="triggerBulkEmail(this)">
-                                <i class="bi bi-envelope"></i> G?i mail
+                                <i class="bi bi-envelope"></i> Gửi mail
                             </button>
                             <button class="btn-create-task admin-only" type="button" onclick="toggleInlineTaskForm()">
-                                <i class="bi bi-plus-lg"></i> T?o m?i
+                                <i class="bi bi-plus-lg"></i> Tạo mới
                             </button>
                         </div>
                     </div>
 
                     <div class="task-toolbar-filters">
                         <div class="toolbar-filter">
-                            <label>Th�ng</label>
+                            <label>Tháng</label>
                             <input type="month" class="form-control form-control-sm" id="filterMonth" onchange="renderTable()">
                         </div>
                         <div class="toolbar-filter">
-                            <label>T? ph? tr�ch</label>
+                            <label>Tổ phụ trách</label>
                             <select class="form-select form-select-sm" id="filterGroup" onchange="renderTable()"></select>
                         </div>
                         <div class="toolbar-filter">
-                            <label>Nh�n s?</label>
+                            <label>Nhân sự</label>
                             <select class="form-select form-select-sm" id="filterAssignee" onchange="renderTable()"></select>
                         </div>
                         <div class="toolbar-filter">
-                            <label>Tr?ng th�i</label>
+                            <label>Trạng thái</label>
                             <select class="form-select form-select-sm" id="filterStatus" onchange="renderTable()">
-                                <option value="">T?t c?</option>
-                                <option value="Pending">Chua xong</option>
-                                <option value="Done">�� xong</option>
-                                <option value="Waiting">Ch? duy?t</option>
-                                <option value="Overdue">Qu� h?n</option>
-                                <option value="NoRoutine">C� h?n</option>
+                                <option value="">Tất cả</option>
+                                <option value="Pending">Chưa xong</option>
+                                <option value="Done">Đã xong</option>
+                                <option value="Waiting">Chờ duyệt</option>
+                                <option value="Overdue">Quá hạn</option>
+                                <option value="NoRoutine">Có hạn</option>
                             </select>
                         </div>
                         <div class="toolbar-filter">
-                            <label>M?c uu ti�n</label>
+                            <label>Mức ưu tiên</label>
                             <select class="form-select form-select-sm" id="filterDifficulty" onchange="renderTable()">
-                                <option value="">T?t c?</option>
-                                <option value="1">Th?p</option>
-                                <option value="2">Trung b�nh</option>
+                                <option value="">Tất cả</option>
+                                <option value="1">Thấp</option>
+                                <option value="2">Trung bình</option>
                                 <option value="3">Cao</option>
-                                <option value="4">Kh?n c?p</option>
+                                <option value="4">Khẩn cấp</option>
                             </select>
                         </div>
                     </div>
@@ -168,10 +168,10 @@
                     <div id="inlineTaskFormWrap" class="inline-task-form-wrap d-none admin-only">
                         <div class="inline-task-form-head">
                             <div>
-                                <div class="inline-task-eyebrow">Qu?n tr? task</div>
-                                <h3>T?o c�ng vi?c m?i</h3>
+                                <div class="inline-task-eyebrow">Quản trị task</div>
+                                <h3>Tạo công việc mới</h3>
                             </div>
-                            <button class="toolbar-icon-btn" type="button" onclick="toggleInlineTaskForm(false)" title="��ng">
+                            <button class="toolbar-icon-btn" type="button" onclick="toggleInlineTaskForm(false)" title="Đóng">
                                 <i class="bi bi-x-lg"></i>
                             </button>
                         </div>
@@ -182,19 +182,19 @@
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                             <div class="view-toggle-group">
                                 <button class="view-toggle-btn active" data-view="table" onclick="switchView('table',this)">
-                                    <i class="bi bi-table"></i> B?ng
+                                    <i class="bi bi-table"></i> Bảng
                                 </button>
                                 <button class="view-toggle-btn" data-view="kanban" onclick="switchView('kanban',this)">
                                     <i class="bi bi-kanban"></i> Kanban
                                 </button>
                                 <button class="view-toggle-btn" data-view="calendar" onclick="switchTab('pills-report',document.querySelector('[onclick*=pills-report]'));loadDashboard()">
-                                    <i class="bi bi-calendar3"></i> L?ch
+                                    <i class="bi bi-calendar3"></i> Lịch
                                 </button>
                             </div>
                             <div class="quick-filter-chips">
-                                <button class="chip-btn" onclick="applyQuickFilter('7days',this)">7 ng�y</button>
-                                <button class="chip-btn" onclick="applyQuickFilter('30days',this)">30 ng�y</button>
-                                <button class="chip-btn chip-danger" onclick="applyQuickFilter('overdue',this)">Qu� h?n</button>
+                                <button class="chip-btn" onclick="applyQuickFilter('7days',this)">7 ngày</button>
+                                <button class="chip-btn" onclick="applyQuickFilter('30days',this)">30 ngày</button>
+                                <button class="chip-btn chip-danger" onclick="applyQuickFilter('overdue',this)">Quá hạn</button>
                             </div>
                         </div>
                     </div>
@@ -312,14 +312,14 @@
                     <div class="col-md-6"><div class="card-modern"><div class="card-header-modern">🏆 Khen thưởng</div><div id="columnchart_reward" style="height:250px"></div></div></div>
                 </div>
 
-            <!-- ═══ TAB: INPUT (Admin) ═══ -->
                 <!-- Calendar -->
                 <div class="card-modern">
-                    <div class="card-header-modern"><i class="bi bi-calendar3 me-1"></i>L?ch c�ng t�c</div>
+                    <div class="card-header-modern"><i class="bi bi-calendar3 me-1"></i>Lịch công tác</div>
                     <div class="p-3"><div id="calendar"></div></div>
                 </div>
             </div>
 
+            <!-- ═══ TAB: INPUT (Admin) ═══ -->
             <div id="pills-input" class="tab-pane-custom d-none fade-in admin-only">
                 <div class="row g-4">
                     <!-- Left column: Hero/Decoration -->
@@ -495,13 +495,13 @@
                     <div class="col-md-6">
                         <div class="stat-card">
                             <div class="stat-icon-wrapper" style="background:#fee2e2;color:#ef4444"><i class="bi bi-exclamation-triangle-fill"></i></div>
-                            <div><div class="text-muted small fw-bold">VI PH?M</div><h3 class="fw-bold mb-0" id="complianceViolationCount" style="color:var(--text-main)">0</h3></div>
+                            <div><div class="text-muted small fw-bold">VI PHẠM</div><h3 class="fw-bold mb-0" id="complianceViolationCount" style="color:var(--text-main)">0</h3></div>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="stat-card">
                             <div class="stat-icon-wrapper" style="background:#fef3c7;color:#f59e0b"><i class="bi bi-trophy-fill"></i></div>
-                            <div><div class="text-muted small fw-bold">KHEN THU?NG</div><h3 class="fw-bold mb-0" id="complianceRewardCount" style="color:var(--text-main)">0</h3></div>
+                            <div><div class="text-muted small fw-bold">KHEN THƯỞNG</div><h3 class="fw-bold mb-0" id="complianceRewardCount" style="color:var(--text-main)">0</h3></div>
                         </div>
                     </div>
                 </div>

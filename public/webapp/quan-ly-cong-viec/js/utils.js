@@ -73,10 +73,19 @@ function showToast(message, type = 'primary') {
 }
 
 /**
- * Normalize role checks to avoid case-sensitive admin bugs
+ * Normalize role checks to avoid case/spacing issues from backend values
  */
+function normalizeRole(role) {
+    return String(role ?? '')
+        .normalize('NFKC')
+        .trim()
+        .replace(/\s+/g, '')
+        .toLowerCase();
+}
+
 function isAdminUser(user = currentUser) {
-    return String(user?.role || '').trim().toLowerCase() === 'admin';
+    const role = normalizeRole(user?.role);
+    return role === 'admin' || role.includes('admin');
 }
 
 /**
@@ -99,26 +108,6 @@ function parseProgress(val) {
     if (isNaN(n)) return 0;
     if (n <= 1 && n > 0 && s.includes('.')) return Math.round(n * 100);
     return Math.round(Math.min(100, Math.max(0, n)));
-}
-
-/**
- * Get initials from name
- */
-function getInitials(name) {
-    if (!name) return "?";
-    const parts = name.trim().split(" ");
-    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-/**
- * Get deterministic color for name
- */
-function getRandomColor(name) {
-    const colors = ['#0ea5e9', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1'];
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    return colors[Math.abs(hash) % colors.length];
 }
 
 /**

@@ -68,7 +68,7 @@ function mountInlineTaskForm() {
 
 function toggleInlineTaskForm(forceOpen) {
     if (!currentUser || !isAdminUser(currentUser)) {
-        showToast("Ch? Admin m?i du?c t?o vi?c m?i!", 'warning');
+        showToast("Chỉ Admin mới được tạo việc mới!", 'warning');
         return;
     }
 

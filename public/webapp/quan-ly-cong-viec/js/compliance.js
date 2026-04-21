@@ -35,7 +35,7 @@ function updateComplianceSummary(data) {
 
     (data || []).forEach(r => {
         const hasExtraCol = r.length >= 6;
-        const type = hasExtraCol ? r[3] : (String(r[3]).includes('Khen') ? 'Khen thu?ng' : 'Vi ph?m');
+        const type = hasExtraCol ? r[3] : (String(r[3]).includes('Khen') ? 'Khen thưởng' : 'Vi phạm');
         if (String(type).includes('Khen')) rewards++;
         else violations++;
     });

@@ -153,22 +153,14 @@ Repo GitHub Pages đang publish tại:
 
 ### 4.2. Đã sửa trong phiên gần nhất
 
-- khôi phục logic nhận diện quyền admin theo hướng ổn định hơn
-- không còn phụ thuộc cứng vào đúng chuỗi `Admin`
-- áp dụng lại cho:
-  - hiển thị vùng admin
-  - giao việc mới
-  - duyệt task
-  - sửa task
-  - thao tác admin trong bảng và kanban
+- khôi phục logic nhận diện quyền admin theo hướng ổn định không phụ thuộc cứng chuỗi "Admin" (áp dụng rải rác ở tab, nut tạo việc, sửa việc vv.)
+- Sửa triệt để lỗi mã hóa HTML (HTML entities encoding) rải rác toàn bộ các input/label/nút bấm trên trang.
+- Sửa lại cấu trúc giao diện `index.html` bị lệch: Đưa Lịch công tác về đúng tab `Báo cáo`, tab `Giao việc mới` (Admin Input) hiển thị rõ ràng với form 2 cột đẹp mắt.
 
 ## 5. Các vấn đề còn tồn tại
 
 ### 5.1. Ưu tiên cao
-
-- phần `Giao việc mới` đã có trong HTML nhưng cần rà lại kỹ để chắc chắn layout và logic đều hoạt động ổn định sau khi publish
-- file `index.html` đang có dấu hiệu sửa dở ở local, cần dọn sạch trước khi push tiếp
-- cần kiểm tra lại tab `Báo cáo` để chắc phần lịch công tác không bị lệch cấu trúc HTML
+- Cần dọn sạch thêm các file thừa để build production (chạy qua github pages).
 
 ### 5.2. Logic chưa khớp hoàn toàn
 
