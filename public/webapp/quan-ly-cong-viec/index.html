@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Công việc — Khoa Dược</title>
+    <meta name="description" content="Hệ thống quản lý công việc nội bộ Khoa Dược - Trung tâm Y tế khu vực Thanh Ba">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap 5 + Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- FullCalendar -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.css" rel="stylesheet">
+
+    <!-- App Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="wrapper">
+    <!-- ═══ SIDEBAR ═══ -->
+    <nav id="sidebar">
+        <div class="brand-logo">
+            <div class="brand-icon"><i class="bi bi-capsule"></i></div>
+            <div>
+                <h5 class="fw-bold mb-0" style="color:var(--text-main)">Khoa Dược</h5>
+                <small class="text-muted" style="font-size:0.68rem">TTYT KV Thanh Ba</small>
+            </div>
+        </div>
+
+        <ul class="components mt-2">
+            <li>
+                <a href="#" class="nav-link-custom active" onclick="switchTab('pills-list', this)">
+                    <i class="bi bi-list-check"></i> Danh sách công việc
+                </a>
+            </li>
+            <li>
+                <a href="#" class="nav-link-custom" onclick="switchTab('pills-report', this); loadDashboard();">
+                    <i class="bi bi-bar-chart-line"></i> Báo cáo & Thống kê
+                </a>
+            </li>
+            <li class="admin-only">
+                <a href="#" class="nav-link-custom" onclick="switchTab('pills-input', this)">
+                    <i class="bi bi-plus-circle"></i> Giao việc mới
+                </a>
+            </li>
+            <li>
+                <a href="#" class="nav-link-custom" onclick="switchTab('pills-compliance', this)">
+                    <i class="bi bi-shield-check"></i> Nội quy
+                </a>
+            </li>
+        </ul>
+
+        <!-- User Card -->
+        <div class="user-card">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <div style="width:32px;height:32px;border-radius:10px;background:var(--primary-bg);display:flex;align-items:center;justify-content:center;color:var(--primary);flex-shrink:0">
+                    <i class="bi bi-person-fill"></i>
+                </div>
+                <div>
+                    <div class="fw-bold small" id="userDisplay" style="color:var(--text-main)">Khách</div>
+                </div>
+            </div>
+            <div class="d-grid gap-1">
+                <button id="btnLogin" class="btn btn-sm btn-primary-custom w-100" onclick="showLoginModal()">Đăng nhập</button>
+                <button id="btnChangePin" class="btn btn-sm btn-outline-secondary w-100" onclick="showChangePinModal()" style="display:none;border-radius:8px">Đổi PIN</button>
+                <button id="btnLogout" class="btn btn-sm btn-outline-danger w-100" onclick="logout()" style="display:none;border-radius:8px">Đăng xuất</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ═══ OVERLAY ═══ -->
+    <div class="overlay" onclick="toggleSidebar()"></div>
+
+    <!-- ═══ CONTENT ═══ -->
+    <div id="content">
+        <!-- Header -->
+        <div class="main-header">
+            <div class="d-flex align-items-center gap-3">
+                <button class="btn d-lg-none p-0" onclick="toggleSidebar()" style="font-size:1.3rem;color:var(--text-main)">
+                    <i class="bi bi-list"></i>
+                </button>
+                <h5 id="pageTitle" class="fw-bold mb-0" style="font-size:1rem">Danh sách công việc</h5>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+                <!-- Search -->
+                <div class="position-relative d-none d-md-block">
+                    <i class="bi bi-search position-absolute" style="left:12px;top:50%;transform:translateY(-50%);color:var(--text-light);font-size:0.8rem"></i>
+                    <input type="text" class="form-control form-control-sm" placeholder="Tìm kiếm..." style="padding-left:34px;width:200px;border-radius:10px;font-size:0.82rem" oninput="syncSearch(this.value)">
+                </div>
+
+                <!-- Notifications -->
+                <div class="dropdown">
+                    <button class="theme-toggle position-relative" data-bs-toggle="dropdown" onclick="markAllRead()">
+                        <i class="bi bi-bell"></i>
+                        <span id="notiBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.6rem;display:none">0</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end p-0 notification-dropdown" id="notificationList">
+                        <li class="p-4 text-center text-muted small">Không có thông báo</li>
+                    </ul>
+                </div>
+
+                <!-- Theme -->
+                <button class="theme-toggle" onclick="toggleTheme()">
+                    <i id="themeIcon" class="bi bi-moon-stars-fill"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Content Body -->
+        <div class="content-body">
+            <!-- ═══ TAB: TASK LIST ═══ -->
+            <div id="pills-list" class="tab-pane-custom fade-in">
+                <div class="card-modern">
+                    <div class="card-header-modern">
+                        <span><i class="bi bi-funnel me-1"></i>Bộ lọc</span>
+                        <button class="btn btn-sm btn-outline-secondary admin-only" onclick="triggerBulkEmail(this)" style="border-radius:8px;font-size:0.78rem">
+                            <i class="bi bi-envelope"></i> Gửi mail nhắc
+                        </button>
+                    </div>
+                    <div class="p-3">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-6 col-md-2">
+                                <label class="filter-label">Tháng</label>
+                                <input type="month" class="form-control form-control-sm" id="filterMonth" onchange="renderTable()">
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <label class="filter-label">Tổ</label>
+                                <select class="form-select form-select-sm" id="filterGroup" onchange="renderTable()"></select>
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <label class="filter-label">Nhân viên</label>
+                                <select class="form-select form-select-sm" id="filterAssignee" onchange="renderTable()"></select>
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <label class="filter-label">Trạng thái</label>
+                                <select class="form-select form-select-sm" id="filterStatus" onchange="renderTable()">
+                                    <option value="">Tất cả</option>
+                                    <option value="Pending">Chưa xong</option>
+                                    <option value="Done">Đã xong</option>
+                                    <option value="Waiting">Chờ duyệt</option>
+                                    <option value="Overdue">Quá hạn</option>
+                                    <option value="NoRoutine">Có hạn</option>
+                                </select>
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <label class="filter-label">Độ khó</label>
+                                <select class="form-select form-select-sm" id="filterDifficulty" onchange="renderTable()">
+                                    <option value="">Tất cả</option>
+                                    <option value="1">⭐ Dễ</option>
+                                    <option value="2">⭐⭐ TB</option>
+                                    <option value="3">⭐⭐⭐ Khó</option>
+                                    <option value="4">⭐⭐⭐⭐ Phức tạp</option>
+                                </select>
+                            </div>
+                            <div class="col-6 col-md-2 d-md-none">
+                                <label class="filter-label">Tìm kiếm</label>
+                                <input type="text" class="form-control form-control-sm" id="filterTextMobile" placeholder="Tìm..." oninput="document.getElementById('filterText').value=this.value;renderTable()">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hidden filter text for desktop search sync -->
+                <input type="hidden" id="filterText">
+
+                <div class="card-modern">
+                    <div class="table-responsive">
+                        <table class="table-modern">
+                            <thead>
+                                <tr>
+                                    <th style="min-width:200px">Công việc</th>
+                                    <th class="text-center" style="width:70px">Độ khó</th>
+                                    <th style="width:120px">Tiến độ</th>
+                                    <th style="min-width:120px">Người thực hiện</th>
+                                    <th style="width:100px">Hạn chót</th>
+                                    <th style="width:100px">Trạng thái</th>
+                                    <th class="text-center" style="width:110px">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="taskTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ TAB: REPORT ═══ -->
+            <div id="pills-report" class="tab-pane-custom d-none fade-in">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="fw-bold small" style="color:var(--text-main)">Chọn tháng:</label>
+                        <input type="month" class="form-control form-control-sm" id="reportMonthSelect" onchange="updateReport()" style="width:160px">
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-success" onclick="exportExcelReport()" style="border-radius:8px"><i class="bi bi-file-earmark-excel me-1"></i>Xuất Excel</button>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="row g-3 mb-4">
+                    <div class="col-6 col-lg">
+                        <div class="stat-card">
+                            <div class="stat-icon-wrapper" style="background:#dbeafe;color:#3b82f6"><i class="bi bi-grid-3x3-gap-fill"></i></div>
+                            <div><div class="text-muted small fw-bold" style="font-size:0.72rem">TỔNG CỘNG</div><h3 class="fw-bold mb-0" id="stat-total" style="color:var(--text-main)">0</h3></div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg">
+                        <div class="stat-card">
+                            <div class="stat-icon-wrapper" style="background:#dcfce7;color:#10b981"><i class="bi bi-check-circle-fill"></i></div>
+                            <div><div class="text-muted small fw-bold" style="font-size:0.72rem">HOÀN THÀNH</div><h3 class="fw-bold mb-0" id="stat-done" style="color:var(--text-main)">0</h3></div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg">
+                        <div class="stat-card">
+                            <div class="stat-icon-wrapper" style="background:#dbeafe;color:#3b82f6"><i class="bi bi-hourglass-split"></i></div>
+                            <div><div class="text-muted small fw-bold" style="font-size:0.72rem">CÓ HẠN</div><h3 class="fw-bold mb-0" id="stat-doing-deadline" style="color:var(--text-main)">0</h3></div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg">
+                        <div class="stat-card">
+                            <div class="stat-icon-wrapper" style="background:#f0fdf4;color:#16a34a"><i class="bi bi-arrow-repeat"></i></div>
+                            <div><div class="text-muted small fw-bold" style="font-size:0.72rem">THƯỜNG QUY</div><h3 class="fw-bold mb-0" id="stat-doing-routine" style="color:var(--text-main)">0</h3></div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg">
+                        <div class="stat-card">
+                            <div class="stat-icon-wrapper" style="background:#fee2e2;color:#ef4444"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                            <div><div class="text-muted small fw-bold" style="font-size:0.72rem">QUÁ HẠN</div><h3 class="fw-bold mb-0 text-danger" id="stat-overdue">0</h3></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4"><div class="card-modern"><div class="card-header-modern">Trạng thái tổng quan</div><div id="piechart_task" style="height:280px"></div></div></div>
+                    <div class="col-md-4"><div class="card-modern"><div class="card-header-modern">Phân bổ độ khó</div><div id="piechart_difficulty" style="height:280px"></div></div></div>
+                    <div class="col-md-4"><div class="card-modern"><div class="card-header-modern">Năng suất nhân viên</div><div id="barchart_task" style="height:280px"></div></div></div>
+                </div>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6"><div class="card-modern"><div class="card-header-modern">⚠️ Vi phạm</div><div id="columnchart_violation" style="height:250px"></div></div></div>
+                    <div class="col-md-6"><div class="card-modern"><div class="card-header-modern">🏆 Khen thưởng</div><div id="columnchart_reward" style="height:250px"></div></div></div>
+                </div>
+
+                <!-- Calendar -->
+                <div class="card-modern">
+                    <div class="card-header-modern"><i class="bi bi-calendar3 me-1"></i>Lịch công tác</div>
+                    <div class="p-3"><div id="calendar"></div></div>
+                </div>
+            </div>
+
+            <!-- ═══ TAB: INPUT (Admin) ═══ -->
+            <div id="pills-input" class="tab-pane-custom d-none fade-in admin-only">
+                <div class="card-modern">
+                    <div class="card-header-modern"><i class="bi bi-plus-circle me-1"></i>Tạo công việc mới</div>
+                    <div class="p-4">
+                        <form id="taskForm">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small">Tên công việc</label>
+                                <input type="text" class="form-control" name="taskName" placeholder="Nhập tên công việc..." required>
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small">Loại</label>
+                                    <select class="form-select" name="taskType" id="taskTypeSelect" onchange="toggleDeadline()">
+                                        <option value="Thường quy">📌 Thường quy</option>
+                                        <option value="Có hạn">⏰ Có hạn</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small">Tổ</label>
+                                    <select class="form-select" name="group" id="groupSelect"></select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small">Deadline</label>
+                                    <input type="date" class="form-control" name="deadline" id="deadlineInput" disabled>
+                                </div>
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Độ khó</label>
+                                    <select class="form-select" name="difficulty">
+                                        <option value="1">⭐ Dễ</option>
+                                        <option value="2" selected>⭐⭐ Trung bình</option>
+                                        <option value="3">⭐⭐⭐ Khó</option>
+                                        <option value="4">⭐⭐⭐⭐ Phức tạp</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Ghi chú</label>
+                                    <input type="text" class="form-control" name="notes" placeholder="Ghi chú...">
+                                </div>
+                            </div>
+
+                            <!-- Assignee -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small">Người thực hiện <span class="badge bg-primary-subtle text-primary ms-1" id="selectedCount">0</span></label>
+                                <select id="hiddenAssigneeSelect" multiple style="display:none"></select>
+                                <div class="form-control p-0" style="max-height:200px;overflow-y:auto;cursor:pointer" onclick="this.querySelector('.collapse').classList.toggle('show')">
+                                    <div class="p-2 border-bottom d-flex justify-content-between align-items-center">
+                                        <span class="text-muted small" id="selectedText">-- Chọn nhân sự --</span>
+                                        <i class="bi bi-chevron-down text-muted"></i>
+                                    </div>
+                                    <div class="collapse" id="checkboxContainer"></div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary-custom w-100 py-3" id="submitBtn">LƯU CÔNG VIỆC</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ TAB: COMPLIANCE ═══ -->
+            <div id="pills-compliance" class="tab-pane-custom d-none fade-in">
+                <!-- Admin form -->
+                <div class="card-modern admin-only">
+                    <div class="card-header-modern"><i class="bi bi-plus-circle me-1"></i>Ghi nhận mới</div>
+                    <div class="p-4">
+                        <form id="complianceForm">
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small">Nhân viên</label>
+                                    <select class="form-select" name="person" id="compliancePerson" required></select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small">Loại</label>
+                                    <select class="form-select" name="type">
+                                        <option value="Vi phạm">⚠️ Vi phạm</option>
+                                        <option value="Khen thưởng">🏆 Khen thưởng</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small">Ngày</label>
+                                    <input type="date" class="form-control" name="date" required>
+                                </div>
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Nội dung</label>
+                                    <input type="text" class="form-control" name="content" placeholder="Chi tiết..." required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Ghi chú</label>
+                                    <input type="text" class="form-control" name="note" placeholder="Ghi chú thêm...">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary-custom" id="btnCompliance" style="border-radius:10px">Lưu ghi nhận</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="card-modern">
+                    <div class="card-header-modern"><i class="bi bi-table me-1"></i>Lịch sử nội quy</div>
+                    <div class="table-responsive">
+                        <table class="table-modern">
+                            <thead>
+                                <tr>
+                                    <th style="width:100px">Ngày</th>
+                                    <th>Nhân viên</th>
+                                    <th style="width:120px">Loại</th>
+                                    <th>Nội dung</th>
+                                    <th>Ghi chú</th>
+                                </tr>
+                            </thead>
+                            <tbody id="complianceBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ MODALS ═══ -->
+
+<!-- Report Modal -->
+<div class="modal fade" id="reportModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#10b981,#059669);color:white;border-radius:20px 20px 0 0">
+                <h5 class="modal-title fw-bold">📤 Gửi Báo cáo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="reportTaskId">
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Đính kèm tài liệu</label>
+                    <input type="file" class="form-control" id="reportFile" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png" onchange="displaySelectedFiles()">
+                    <div id="fileListDisplay" class="mt-2 small"></div>
+                    <div id="fileError" class="text-danger small mt-1" style="display:none"></div>
+                </div>
+                <div id="uploadProgress" style="display:none" class="mb-3">
+                    <div class="progress" style="height:4px;border-radius:10px">
+                        <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" style="width:100%"></div>
+                    </div>
+                    <div class="form-text text-muted small mt-1" id="compressStatus"></div>
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal" style="border-radius:10px">Hủy</button>
+                    <button type="button" class="btn btn-success fw-bold px-4" id="btnSubmitReport" onclick="submitReport()" style="border-radius:10px">Gửi báo cáo</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Task Modal -->
+<div class="modal fade" id="editTaskModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#f59e0b;color:white;border-radius:20px 20px 0 0">
+                <h5 class="modal-title fw-bold">✏️ Chỉnh sửa Công việc</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="editTaskForm">
+                    <input type="hidden" id="editTaskId">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Tên công việc</label>
+                        <input type="text" class="form-control" id="editTaskName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Người thực hiện</label>
+                        <input type="text" class="form-control" style="background:var(--bg-body)" id="editTaskAssignee" readonly>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Hạn chót</label>
+                            <input type="date" class="form-control" id="editTaskDeadline">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Độ khó</label>
+                            <select class="form-select" id="editTaskDifficulty">
+                                <option value="1">⭐ Dễ</option>
+                                <option value="2">⭐⭐ Trung bình</option>
+                                <option value="3">⭐⭐⭐ Khó</option>
+                                <option value="4">⭐⭐⭐⭐ Phức tạp</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Ghi chú</label>
+                        <textarea class="form-control" id="editTaskNotes" rows="3"></textarea>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-light border" data-bs-dismiss="modal" style="border-radius:10px">Hủy</button>
+                        <button type="button" class="btn btn-primary fw-bold" onclick="submitEditTask()" style="border-radius:10px">Lưu thay đổi</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Review Modal -->
+<div class="modal fade" id="reviewModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#0ea5e9;color:white;border-radius:20px 20px 0 0">
+                <h5 class="modal-title fw-bold">📋 Duyệt Báo Cáo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="reviewTaskId">
+                <h5 id="reviewTaskName" class="fw-bold mb-1"></h5>
+                <p class="text-muted small mb-3">Thực hiện bởi: <span id="reviewAssignee" class="fw-bold" style="color:var(--text-main)"></span></p>
+                <div class="card border-0 mb-4" style="background:var(--bg-body);border-radius:12px">
+                    <div class="card-body">
+                        <label class="fw-bold small text-muted mb-2">Tài liệu đính kèm:</label>
+                        <div id="reviewFileContainer" class="d-grid gap-2"></div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                    <button class="btn btn-danger px-3" onclick="submitReviewDecision('reject')" style="border-radius:10px">Trả lại</button>
+                    <button class="btn btn-success px-3" onclick="submitReviewDecision('approve')" style="border-radius:10px">Phê duyệt</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Login Modal -->
+<div class="modal fade" id="loginModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body p-5 text-center">
+                <div class="mb-3" style="font-size:3rem;color:var(--primary)"><i class="bi bi-shield-lock-fill"></i></div>
+                <h4 class="fw-bold mb-4">Đăng nhập Hệ thống</h4>
+                <div class="form-floating mb-3">
+                    <input type="text" id="loginUsername" class="form-control" placeholder="Username">
+                    <label>Tên đăng nhập</label>
+                </div>
+                <div class="form-floating mb-4">
+                    <input type="password" id="loginPin" class="form-control" placeholder="PIN">
+                    <label>Mã PIN</label>
+                </div>
+                <button type="button" class="btn btn-primary-custom w-100 py-3 rounded-pill" onclick="performLogin(this)">Xác thực & Vào hệ thống</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Change PIN Modal -->
+<div class="modal fade" id="changePinModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-bold">Đổi Mã PIN</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-3">
+                    <label class="small fw-bold text-muted">PIN Cũ</label>
+                    <input type="password" id="oldPin" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label class="small fw-bold text-muted">PIN Mới</label>
+                    <input type="password" id="newPin" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label class="small fw-bold text-muted">Nhập lại PIN Mới</label>
+                    <input type="password" id="confirmPin" class="form-control">
+                </div>
+                <button type="button" class="btn btn-success w-100 mt-2" onclick="submitChangePin()" style="border-radius:10px">Lưu thay đổi</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ CHATBOT ═══ -->
+<button class="chat-btn" onclick="toggleChat()" title="Chat với Lily AI">
+    <i class="bi bi-chat-dots-fill"></i>
+</button>
+
+<div class="chat-box" id="chatBox">
+    <div class="chat-header">
+        <div>
+            <div class="fw-bold">Lily AI</div>
+            <div style="font-size:0.72rem;opacity:0.85">Trợ lý Khoa Dược</div>
+        </div>
+        <button class="btn btn-sm text-white" onclick="toggleChat()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="chat-body" id="chatHistory">
+        <div class="msg msg-ai">Xin chào! Tôi là <strong>Lily</strong>, trợ lý AI của Khoa Dược. Bạn cần hỗ trợ gì?</div>
+        <div class="d-flex flex-wrap gap-2 mt-2">
+            <span class="suggestion-chip" onclick="fillChat('Tổng hợp công việc hôm nay')">📊 Công việc hôm nay</span>
+            <span class="suggestion-chip" onclick="fillChat('Ai đang quá hạn?')">⏰ Quá hạn</span>
+            <span class="suggestion-chip" onclick="fillChat('Thống kê tháng này')">📈 Thống kê</span>
+        </div>
+    </div>
+    <div id="typingIndicator" style="display:none;padding:8px 18px">
+        <span class="text-muted small"><i class="bi bi-three-dots"></i> Lily đang trả lời...</span>
+    </div>
+    <div class="chat-footer">
+        <input type="text" class="form-control form-control-sm" id="chatInput" placeholder="Nhập câu hỏi..." onkeydown="handleEnter(event)" style="border-radius:10px">
+        <button class="btn btn-sm btn-primary-custom" onclick="sendMessage()" style="border-radius:10px;padding:6px 14px"><i class="bi bi-send-fill"></i></button>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:1100"></div>
+
+<!-- ═══ SCRIPTS ═══ -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.js"></script>
+<script src="https://www.gstatic.com/charts/loader.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+
+<!-- App Modules (order matters) -->
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/notifications.js"></script>
+<script src="js/tasks.js"></script>
+<script src="js/compliance.js"></script>
+<script src="js/chat.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>

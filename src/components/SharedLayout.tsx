@@ -84,7 +84,7 @@ const NavDropdownItem = ({ item, active, onActivate }: { item: NavMenuItem; acti
             ? 'text-white border-white bg-white/15'
             : 'text-white/90 border-transparent hover:text-white hover:bg-white/10 hover:border-white/40'
         )}
-        onClick={() => { onActivate(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+        onClick={() => { onActivate(); }}
       >
         {item.label}
         {hasChildren && <ChevronDown className={cn('w-3 h-3 transition-transform', open && 'rotate-180')} />}
@@ -115,7 +115,6 @@ const NavDropdownItem = ({ item, active, onActivate }: { item: NavMenuItem; acti
                   className="flex items-center gap-2 px-5 py-3.5 text-[13px] text-white/80 hover:text-white hover:bg-white/10 transition-colors border-b border-white/5 font-medium"
                   onClick={() => {
                     setOpen(false);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}>
                   <ChevronRight className="w-3 h-3 text-green-400 shrink-0" />
                   {child.label}
@@ -260,7 +259,6 @@ export const Header = () => {
                               className="flex items-center gap-2 px-5 py-3 text-sm font-semibold text-gray-700 hover:text-green-700 border-b border-gray-100"
                               onClick={() => {
                                 setIsMobileOpen(false);
-                                window.scrollTo({ top: 0, behavior: 'smooth' });
                               }}>
                               <ChevronRight className="w-3 h-3 text-green-500" />{child.label}
                             </Link>
@@ -321,7 +319,7 @@ export const Footer = () => (
         ))}
       </div>
       <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-        <p className="text-[10px] text-white/30 font-sans tracking-wider uppercase">© 2024 Khoa Dược – TTYT Thanh Ba</p>
+        <p className="text-[10px] text-white/30 font-sans tracking-wider uppercase">© {new Date().getFullYear()} Khoa Dược – TTYT Thanh Ba</p>
         <div className="flex gap-6">
           {[Facebook, Youtube, Globe].map((Icon, i) => (
             <a key={i} href="#" className="text-white/30 hover:text-white transition-colors"><Icon className="w-4 h-4" /></a>
