@@ -26,16 +26,13 @@ function applyLoginState() {
     if (btnChangePin) btnChangePin.style.display = isLoggedIn ? 'block' : 'none';
     if (userDisplay) userDisplay.innerText = isLoggedIn ? currentUser.name : "Khách";
 
+    // Toggle admin visibility via body class — CSS handles the rest
     const isAdmin = isAdminUser(currentUser);
-    document.querySelectorAll('.admin-only').forEach(el => {
-        // Skip tab panes — their visibility is managed by switchTab()
-        if (el.classList.contains('tab-pane-custom')) {
-            if (!isAdmin) el.classList.add('d-none');
-            return;
-        }
-        el.style.display = isAdmin ? '' : 'none';
-    });
-    // Legacy inline form removed — admin-only elements managed via CSS class toggle above
+    if (isAdmin) {
+        document.body.classList.add('is-admin');
+    } else {
+        document.body.classList.remove('is-admin');
+    }
 }
 
 function showLoginModal() {

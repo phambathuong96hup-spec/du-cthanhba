@@ -711,10 +711,65 @@ body {
 
 .modal-backdrop.show { backdrop-filter: blur(6px); }
 
-/* ═══════════════════════════════════════════
-   ADMIN ONLY
-   ═══════════════════════════════════════════ */
-.admin-only:not(.tab-pane-custom) { display: none; }
+/* Admin-only elements: hidden by default, shown when body has .is-admin */
+body:not(.is-admin) .admin-only:not(.tab-pane-custom) { display: none !important; }
+
+/* ── Create Task Button (Header) ── */
+.btn-create-main {
+    background: var(--gradient-primary);
+    border: none;
+    padding: 8px 18px;
+    border-radius: 10px;
+    color: white;
+    font-weight: 700;
+    font-size: 0.82rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 4px 14px var(--primary-glow);
+    transition: var(--transition);
+    white-space: nowrap;
+    font-family: inherit;
+    letter-spacing: 0.01em;
+}
+
+.btn-create-main:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px var(--primary-glow);
+}
+
+.btn-create-main:active {
+    transform: translateY(0);
+}
+
+.btn-create-main i {
+    font-size: 1rem;
+}
+
+/* ── Compliance Action Button ── */
+.btn-compliance-action {
+    background: var(--surface);
+    border: 1px solid var(--primary);
+    padding: 8px 18px;
+    border-radius: 10px;
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 0.82rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: var(--transition);
+    white-space: nowrap;
+    font-family: inherit;
+}
+
+.btn-compliance-action:hover {
+    background: var(--primary-bg);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px var(--primary-glow);
+}
 
 /* ═══════════════════════════════════════════
    UTILITIES & ANIMATIONS
