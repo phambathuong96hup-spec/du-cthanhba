@@ -128,12 +128,7 @@
                             <button class="btn btn-sm btn-outline-secondary admin-only" onclick="triggerBulkEmail(this)">
                                 <i class="bi bi-envelope"></i> Gửi mail
                             </button>
-                            <button class="btn-compliance-action admin-only" type="button" onclick="showComplianceModal()">
-                                <i class="bi bi-shield-exclamation"></i> Ghi nhận
-                            </button>
-                            <button class="btn-create-task admin-only" type="button" onclick="showTaskModal()">
-                                <i class="bi bi-plus-lg"></i> Tạo mới
-                            </button>
+
                         </div>
                     </div>
 
@@ -463,7 +458,7 @@
             <!-- ═══ TAB: COMPLIANCE ═══ -->
             <div id="pills-compliance" class="tab-pane-custom d-none fade-in">
                 <!-- Admin form -->
-                <div class="card-modern admin-only">
+                <div class="card-modern admin-only d-none">
                     <div class="card-header-modern"><i class="bi bi-plus-circle me-1"></i>Ghi nhận mới</div>
                     <div class="p-4">
                         <form id="complianceFormLegacy">
@@ -499,11 +494,7 @@
                     </div>
                 </div>
 
-                <div class="d-flex justify-content-end mb-3 admin-only">
-                    <button class="btn-compliance-action" onclick="showComplianceModal()">
-                        <i class="bi bi-plus-circle"></i> Ghi nhận mới
-                    </button>
-                </div>
+
 
                 <div class="row g-3 mb-3" id="complianceSummaryCards">
                     <div class="col-md-6">
@@ -521,7 +512,12 @@
                 </div>
                 <!-- Table -->
                 <div class="card-modern">
-                    <div class="card-header-modern"><i class="bi bi-table me-1"></i>Lịch sử nội quy</div>
+                    <div class="card-header-modern">
+                        <span><i class="bi bi-table me-1"></i>Lịch sử nội quy</span>
+                        <button class="btn-compliance-action admin-only" onclick="showComplianceModal()" style="padding:5px 14px;font-size:0.76rem;border-radius:8px;">
+                            <i class="bi bi-plus-circle"></i> Ghi nhận mới
+                        </button>
+                    </div>
                     <div class="table-responsive">
                         <table class="table-modern">
                             <thead>
