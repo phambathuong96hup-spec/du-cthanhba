@@ -39,7 +39,7 @@ function switchTab(tabId, el) {
         'pills-list': 'Danh sách công việc',
         'pills-report': 'Báo cáo & Thống kê',
         'pills-compliance': 'Quản lý Nội quy',
-        'pills-input': 'Giao Việc Mới'
+
     };
     document.getElementById('pageTitle').innerText = titles[tabId] || '';
 
@@ -73,7 +73,7 @@ function showComplianceModal() {
 }
 
 // Alias for backward compatibility
-function toggleInlineTaskForm() { showTaskModal(); }
+function toggleInlineTaskForm() { /* no-op: legacy inline form removed */ }
 
 // ── Deadline Toggle ──
 function toggleDeadline() {

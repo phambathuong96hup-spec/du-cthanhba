@@ -370,7 +370,7 @@
                             </div>
                             
                             <div class="p-4" style="background: var(--surface);">
-                                <form id="taskForm">
+                                <form id="taskFormLegacy">
                                     <div class="row g-4 mb-4">
                                         <!-- Task Name -->
                                         <div class="col-12">
@@ -387,14 +387,14 @@
                                             <div class="d-flex gap-2">
                                                 <div class="input-group" style="width: 45%;">
                                                     <span class="input-group-text bg-transparent border-end-0 px-2" style="border-color: var(--border-color); color: var(--primary);"><i class="bi bi-tag"></i></span>
-                                                    <select class="form-select border-start-0 ps-0 text-truncate" name="type" id="taskTypeSelect" onchange="toggleDeadline()" style="box-shadow: none; font-weight: 500;">
+                                                    <select class="form-select border-start-0 ps-0 text-truncate" name="type" id="taskTypeSelectLegacy" onchange="toggleDeadline()" style="box-shadow: none; font-weight: 500;">
                                                         <option>Thực hiện C.Đạo</option>
                                                         <option>Thường quy</option>
                                                     </select>
                                                 </div>
                                                 <div class="input-group" style="width: 55%;">
                                                     <span class="input-group-text bg-transparent border-end-0 px-2" style="border-color: var(--border-color); color: var(--primary);"><i class="bi bi-calendar-event"></i></span>
-                                                    <input type="date" class="form-control border-start-0 ps-0" name="deadline" id="deadlineInput" required style="box-shadow: none; font-weight: 500;">
+                                                    <input type="date" class="form-control border-start-0 ps-0" name="deadline" id="deadlineInputLegacy" required style="box-shadow: none; font-weight: 500;">
                                                 </div>
                                             </div>
                                         </div>
@@ -405,7 +405,7 @@
                                             <div class="d-flex gap-2">
                                                 <div class="input-group" style="width: 60%;">
                                                     <span class="input-group-text bg-transparent border-end-0 px-2" style="border-color: var(--border-color); color: var(--primary);"><i class="bi bi-building"></i></span>
-                                                    <select class="form-select border-start-0 ps-0 text-truncate" name="group" id="groupSelect" required style="box-shadow: none; font-weight: 500;"></select>
+                                                    <select class="form-select border-start-0 ps-0 text-truncate" name="group" id="groupSelectLegacy" required style="box-shadow: none; font-weight: 500;"></select>
                                                 </div>
                                                 <div class="input-group" style="width: 40%;">
                                                     <span class="input-group-text bg-transparent border-end-0 px-2" style="border-color: var(--border-color); color: var(--primary);"><i class="bi bi-lightning-charge"></i></span>
@@ -423,15 +423,15 @@
                                                 <button class="btn w-100 d-flex justify-content-between align-items-center py-2 px-3 dropdown-toggle shadow-none" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" style="text-align: left; background: transparent; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 10px; font-weight: 500;">
                                                     <span>
                                                         <i class="bi bi-people me-2" style="color: var(--primary);"></i>
-                                                        <span id="selectedText">-- Chọn nhân sự --</span>
+                                                        <span id="selectedTextLegacy">-- Chọn nhân sự --</span>
                                                     </span>
-                                                    <span class="badge rounded-pill ms-2" id="selectedCount" style="background: var(--primary); font-size: 0.75rem;">0</span>
+                                                    <span class="badge rounded-pill ms-2" id="selectedCountLegacy" style="background: var(--primary); font-size: 0.75rem;">0</span>
                                                 </button>
                                                 <div class="dropdown-menu w-100 p-0 shadow-lg border-0 mt-2" style="max-height: 250px; overflow-y: auto; border-radius: 12px; background: var(--surface);">
-                                                    <div id="checkboxContainer"></div>
+                                                    <div id="checkboxContainerLegacy"></div>
                                                 </div>
                                             </div>
-                                            <select id="hiddenAssigneeSelect" multiple class="d-none" required></select>
+                                            <select id="hiddenAssigneeSelectLegacy" multiple class="d-none" required></select>
                                         </div>
 
                                         <!-- Notes/Checklist -->
@@ -449,7 +449,7 @@
                                     
                                     <!-- Form Action -->
                                     <div class="d-flex justify-content-end mt-4 pt-3 border-top" style="border-color: var(--border-light) !important;">
-                                        <button type="submit" class="btn btn-primary-custom d-flex align-items-center" id="submitBtn">
+                                        <button type="submit" class="btn btn-primary-custom d-flex align-items-center" id="submitBtnLegacy">
                                             <i class="bi bi-send-fill me-2" style="font-size: 1.1rem;"></i> LƯU CÔNG VIỆC
                                         </button>
                                     </div>
@@ -466,11 +466,11 @@
                 <div class="card-modern admin-only">
                     <div class="card-header-modern"><i class="bi bi-plus-circle me-1"></i>Ghi nhận mới</div>
                     <div class="p-4">
-                        <form id="complianceForm">
+                        <form id="complianceFormLegacy">
                             <div class="row g-3 mb-3">
                                 <div class="col-md-4">
                                     <label class="form-label fw-bold small">Nhân viên</label>
-                                    <select class="form-select" name="person" id="compliancePerson" required></select>
+                                    <select class="form-select" name="person" id="compliancePersonLegacy" required></select>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label fw-bold small">Loại</label>
@@ -494,7 +494,7 @@
                                     <input type="text" class="form-control" name="note" placeholder="Ghi chú thêm...">
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-primary-custom" id="btnCompliance" style="border-radius:10px">Lưu ghi nhận</button>
+                            <button type="submit" class="btn btn-primary-custom" id="btnComplianceLegacy" style="border-radius:10px">Lưu ghi nhận</button>
                         </form>
                     </div>
                 </div>
@@ -881,7 +881,7 @@
       <div class="modal-footer" style="border-top:1px solid var(--border-color);padding:16px 24px;">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="border-radius:10px;">Hủy</button>
         <button type="submit" form="taskForm" class="btn btn-primary-custom" id="submitBtn">
-          <i class="bi bi-send-fill me-2"></i>LƯU CÔNG VIỌC
+          <i class="bi bi-send-fill me-2"></i>LƯU CÔNG VIỆC
         </button>
       </div>
     </div>

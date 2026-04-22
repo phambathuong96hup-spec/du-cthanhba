@@ -35,14 +35,7 @@ function applyLoginState() {
         }
         el.style.display = isAdmin ? '' : 'none';
     });
-    if (typeof toggleInlineTaskForm === 'function') {
-        if (isAdmin) {
-            toggleInlineTaskForm(true);
-        } else {
-            const wrap = document.getElementById('inlineTaskFormWrap');
-            if (wrap) wrap.classList.add('d-none');
-        }
-    }
+    // Legacy inline form removed — admin-only elements managed via CSS class toggle above
 }
 
 function showLoginModal() {
