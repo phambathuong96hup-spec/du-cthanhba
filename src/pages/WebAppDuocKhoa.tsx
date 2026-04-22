@@ -91,7 +91,7 @@ export default function WebAppDuocKhoa() {
               <motion.a
                 key={i}
                 href={app.href}
-                target="_blank"
+                target="_self"
                 rel="noopener noreferrer"
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
