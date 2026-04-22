@@ -1381,10 +1381,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
     flex-wrap: wrap;
 }
 
-.chat-btn,
-.chat-box {
-    display: none !important;
-}
 
 @media (max-width: 1200px) {
     .task-toolbar-filters {
