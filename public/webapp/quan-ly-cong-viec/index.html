@@ -405,7 +405,17 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Người thực hiện</label>
-                        <input type="text" class="form-control" style="background:var(--bg-body)" id="editTaskAssignee" readonly>
+                        <div class="dropdown">
+                            <button class="btn w-100 d-flex justify-content-between align-items-center dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                style="background:var(--bg-body);border:1px solid var(--border-color);color:var(--text-main);border-radius:10px;font-weight:500;">
+                                <span><i class="bi bi-people me-2" style="color:var(--primary);"></i><span id="editSelectedText">-- Chọn nhân sự --</span></span>
+                                <span class="badge rounded-pill ms-2" id="editSelectedCount" style="background:var(--primary);">0</span>
+                            </button>
+                            <div class="dropdown-menu w-100 p-0 shadow border-0 mt-1" style="max-height:220px;overflow-y:auto;border-radius:12px;background:var(--surface);">
+                                <div id="editCheckboxContainer"></div>
+                            </div>
+                        </div>
+                        <select id="editHiddenAssigneeSelect" multiple class="d-none"></select>
                     </div>
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
@@ -415,10 +425,10 @@
                         <div class="col-md-6">
                             <label class="form-label fw-bold small">Độ khó</label>
                             <select class="form-select" id="editTaskDifficulty">
-                                <option value="1">⭐ Dễ</option>
-                                <option value="2">⭐⭐ Trung bình</option>
-                                <option value="3">⭐⭐⭐ Khó</option>
-                                <option value="4">⭐⭐⭐⭐ Phức tạp</option>
+                                <option value="1">🟢 Thấp</option>
+                                <option value="2">🔵 Trung bình</option>
+                                <option value="3">🟠 Cao</option>
+                                <option value="4">🔴 Khẩn cấp</option>
                             </select>
                         </div>
                     </div>
@@ -615,7 +625,7 @@
 </div>
 
 <!-- Toast Container -->
-<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:1100"></div>
+<div class="toast-container position-fixed top-0 start-50 translate-middle-x p-3 mt-3" style="z-index:1100"></div>
 
 <!-- ═══ MODAL: Tạo Việc Mới ═══ -->
 <div class="modal fade" id="taskModal" tabindex="-1" aria-labelledby="taskModalLabel" aria-hidden="true">

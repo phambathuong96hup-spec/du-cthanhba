@@ -512,7 +512,18 @@ function openEditTask(id) {
     if (!task) return;
     document.getElementById('editTaskId').value = id;
     document.getElementById('editTaskName').value = task[1];
-    document.getElementById('editTaskAssignee').value = task[7];
+    
+    // Set up edit checkboxes
+    const assignees = task[7] ? String(task[7]).split(',').map(s => s.trim()) : [];
+    const hidden = document.getElementById('editHiddenAssigneeSelect');
+    Array.from(hidden.options).forEach((o, i) => {
+        const isSelected = assignees.includes(o.value);
+        o.selected = isSelected;
+        const chk = document.getElementById(`editChk${i}`);
+        if (chk) chk.checked = isSelected;
+    });
+    updateEditAssigneeDisplay();
+
     document.getElementById('editTaskNotes').value = task[5] || '';
 
     const deadline = task[9] || task[4];
@@ -528,9 +539,12 @@ function openEditTask(id) {
 }
 
 async function submitEditTask() {
+    const assignee = Array.from(document.getElementById('editHiddenAssigneeSelect').selectedOptions).map(o => o.value).join(', ');
+
     const payload = {
         id: document.getElementById('editTaskId').value,
         taskName: document.getElementById('editTaskName').value,
+        assignee: assignee,
         deadline: document.getElementById('editTaskDeadline').value,
         difficulty: document.getElementById('editTaskDifficulty').value,
         notes: document.getElementById('editTaskNotes').value,

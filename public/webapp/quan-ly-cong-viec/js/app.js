@@ -88,6 +88,7 @@ function toggleDeadline() {
 // ── Init UI Elements ──
 function initUI() {
     initCheckboxes();
+    initEditCheckboxes();
     initSingleSelect('compliancePerson');
     initGroupSelect();
     toggleDeadline();
@@ -163,6 +164,58 @@ function initSingleSelect(elId) {
         people.forEach(n => optgroup.innerHTML += `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`);
         s.appendChild(optgroup);
     }
+}
+
+function initEditCheckboxes() {
+    const container = document.getElementById('editCheckboxContainer');
+    const hidden = document.getElementById('editHiddenAssigneeSelect');
+
+    container.innerHTML = '';
+    hidden.innerHTML = '';
+
+    ALL_STAFF.forEach((name, i) => {
+        hidden.add(new Option(name, name));
+
+        const div = document.createElement('div');
+        div.className = 'person-item';
+        div.style.cssText = 'padding:9px 12px;border-bottom:1px solid var(--border-color);cursor:pointer;transition:background 0.15s;';
+        div.onmouseover = function () { this.style.background = 'var(--bg-body)'; };
+        div.onmouseout = function () { this.style.background = 'transparent'; };
+        div.onclick = function (e) { e.stopPropagation(); };
+        div.innerHTML = `<div class="form-check">
+            <input class="form-check-input" type="checkbox" value="${escapeHtml(name)}" id="editChk${i}">
+            <label class="form-check-label w-100 fw-medium" style="color:var(--text-main);cursor:pointer;font-size:0.88rem" for="editChk${i}">${escapeHtml(name)}</label>
+        </div>`;
+
+        container.appendChild(div);
+        div.querySelector('input').addEventListener('change', (e) => {
+            hidden.options[i].selected = e.target.checked;
+            updateEditAssigneeDisplay();
+        });
+    });
+}
+
+function updateEditAssigneeDisplay() {
+    const s = document.getElementById('editHiddenAssigneeSelect');
+    const t = document.getElementById('editSelectedText');
+    const c = document.getElementById('editSelectedCount');
+
+    let cnt = 0, names = [];
+    Array.from(s.options).forEach(o => {
+        if (o.selected) { cnt++; names.push(o.value); }
+    });
+
+    if (cnt === 0) {
+        t.innerText = '-- Chọn nhân sự --';
+        t.style.color = '';
+    } else if (cnt <= 2) {
+        t.innerText = names.join(', ');
+        t.style.color = 'var(--text-main)';
+    } else {
+        t.innerText = names.slice(0, 2).join(', ') + ` (+${cnt - 2})`;
+        t.style.color = 'var(--text-main)';
+    }
+    c.innerText = cnt;
 }
 
 // ── DOMContentLoaded ──
