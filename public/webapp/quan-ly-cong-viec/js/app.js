@@ -72,8 +72,7 @@ function showComplianceModal() {
     new bootstrap.Modal(document.getElementById('complianceModal')).show();
 }
 
-// Alias for backward compatibility
-function toggleInlineTaskForm() { /* no-op: legacy inline form removed */ }
+
 
 // ── Deadline Toggle ──
 function toggleDeadline() {

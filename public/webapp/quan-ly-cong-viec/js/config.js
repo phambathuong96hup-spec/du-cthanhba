@@ -2,7 +2,7 @@
    Config — Constants & Data
    ═══════════════════════════════════════════ */
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzld-eM5BejAXC0HztQHeEBT6HQPBDmI0RuxRkqUwldTACGzyzFPia9VLMTF5D5-Mr0/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwOV10X5VXnLTxVEBlguVzR2Zr5lN3H2XXxkc41P-LXRklHu2GH1wgtSdpo6bRaYiWb7Q/exec";
 
 const STAFF_GROUPS = {
     "Ban Lãnh Đạo": [

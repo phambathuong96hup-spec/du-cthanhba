@@ -979,9 +979,11 @@ input[type="range"]::-webkit-slider-thumb:hover {
 #sidebar.collapsed { min-width: 72px; max-width: 72px; }
 #sidebar.collapsed .brand-logo h5,
 #sidebar.collapsed .brand-logo small,
-#sidebar.collapsed .sidebar-collapse-btn,
 #sidebar.collapsed ul li a span,
 #sidebar.collapsed .user-card { display: none !important; }
+#sidebar.collapsed .sidebar-collapse-btn {
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+}
 #sidebar.collapsed ul li a { justify-content: center; padding: 12px; }
 #sidebar.collapsed ul li a i { font-size: 1.2rem; margin: 0; }
 #sidebar.collapsed + .overlay + #content,
@@ -1069,10 +1071,11 @@ input[type="range"]::-webkit-slider-thumb:hover {
    PAGINATION
    ═══════════════════════════════════════════ */
 .pagination-bar {
-    padding: 12px 20px; display: flex; justify-content: space-between;
+    padding: 12px 20px; display: flex; justify-content: center;
     align-items: center; border-top: 1px solid var(--border-light);
+    position: relative;
 }
-.pagination-info { font-size: 0.78rem; color: var(--text-light); font-weight: 600; }
+.pagination-info { font-size: 0.78rem; color: var(--text-light); font-weight: 600; position: absolute; left: 20px; }
 .pagination-controls { display: flex; align-items: center; gap: 8px; }
 .pagination-btn {
     width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border-color);
@@ -1334,55 +1337,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
     font-weight: 700;
 }
 
-.inline-task-form-wrap {
-    border-radius: 18px;
-    border: 1px solid rgba(45, 212, 191, 0.14);
-    background: linear-gradient(180deg, rgba(10, 22, 40, 0.98) 0%, rgba(8, 19, 34, 0.98) 100%);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
-    padding: 18px;
-}
 
-.inline-task-form-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
-}
 
-.inline-task-form-head h3 {
-    margin: 0;
-    font-size: 1.1rem;
-    color: #eef5ff;
-}
-
-.inline-task-eyebrow {
-    margin-bottom: 4px;
-    color: #67e8f9;
-    text-transform: uppercase;
-    letter-spacing: 0.10em;
-    font-size: 0.68rem;
-    font-weight: 800;
-}
-
-#inlineTaskFormMount .card-modern {
-    margin-bottom: 0;
-    background: transparent !important;
-    box-shadow: none !important;
-    border: 0 !important;
-}
-
-#inlineTaskFormMount .card-header-modern {
-    display: none;
-}
-
-#inlineTaskFormMount .col-lg-4 {
-    display: none;
-}
-
-#inlineTaskFormMount .col-lg-8 {
-    width: 100%;
-}
 
 [data-theme="dark"] .status-tabs {
     gap: 10px;
