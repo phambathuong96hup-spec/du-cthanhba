@@ -11,8 +11,10 @@ const STAFF_GROUPS = {
     ],
     "Dược sĩ": [
         "Phạm Bá Thương", "Lê Thị Thanh Nhàn", "Chu Đài Trang",
-        "Nguyễn Duy Tiến", "Nguyễn Thị Hằng", "Kiều Mạnh Toàn",
-        "Đỗ Thị Nhật Lệ", "Nguyễn Thị Thu Hà", "Hà Thị Thảo",
+        "Nguyễn Duy Tiến - Tổ trưởng 5S", "Nguyễn Thị Hằng",
+        "Kiều Mạnh Toàn - Tổ trưởng TTB",
+        "Đỗ Thị Nhật Lệ - Tổ trưởng Tổ kho",
+        "Nguyễn Thị Thu Hà", "Hà Thị Thảo",
         "Nguyễn Ngọc Vân - CBHĐ", "Vũ Thị Hồng Hạnh",
         "Hà Thu Trang", "Đỗ Thị Mai - CBHĐ", "Triệu Thị Vỵ"
     ]
