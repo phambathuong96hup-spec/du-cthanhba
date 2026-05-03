@@ -1,0 +1,22 @@
+{
+  "name": "projects/2679055784842238794",
+  "projectId": "2679055784842238794",
+  "title": "Khoa Dược - TTYT Thanh Ba",
+  "visibility": "PRIVATE",
+  "createTime": "2026-04-04T17:15:59.928196Z",
+  "updateTime": "2026-04-04T17:15:59.928196Z",
+  "projectType": "PROJECT_DESIGN",
+  "origin": "STITCH",
+  "deviceType": "DESKTOP",
+  "designTheme": {
+    "colorMode": "LIGHT",
+    "font": "PLUS_JAKARTA_SANS",
+    "roundness": "ROUND_EIGHT",
+    "customColor": "#0E7490",
+    "saturation": 2
+  },
+  "screens": {},
+  "metadata": {
+    "userRole": "OWNER"
+  }
+}
