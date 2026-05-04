@@ -1,0 +1,122 @@
+/* ═══════════════════════════════════════════
+   App — Main Orchestrator
+   ═══════════════════════════════════════════ */
+
+// ── Theme ──
+(function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+})();
+
+function toggleTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const newTheme = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    document.getElementById('themeIcon').className = newTheme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+    showToast(newTheme === 'dark' ? 'Đã bật chế độ tối 🌙' : 'Đã bật chế độ sáng ☀️', 'primary');
+}
+
+// ── Sidebar Navigation ──
+function showSection(section, clickedEl) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById(section)?.classList.add('active');
+
+    document.querySelectorAll('#sidebar ul li a').forEach(a => a.classList.remove('active'));
+    if (clickedEl) clickedEl.classList.add('active');
+
+    // Close mobile sidebar
+    document.getElementById('sidebar')?.classList.remove('active');
+    document.querySelector('.overlay')?.classList.remove('active');
+
+    // Load data on demand
+    if (section === 'sectionDashboard') loadDashboard();
+    if (section === 'sectionCompliance') loadCompliance();
+}
+
+function toggleSidebar() {
+    document.getElementById('sidebar')?.classList.toggle('active');
+    document.querySelector('.overlay')?.classList.toggle('active');
+}
+
+// ── Populate Filter Dropdowns ──
+function populateFilters() {
+    // Assignee filter
+    const assigneeSelect = document.getElementById('filterAssignee');
+    if (assigneeSelect) {
+        ALL_STAFF.forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            assigneeSelect.appendChild(opt);
+        });
+    }
+
+    // Group filter
+    const groupSelect = document.getElementById('filterGroup');
+    if (groupSelect) {
+        GROUP_LIST.forEach(g => {
+            const opt = document.createElement('option');
+            opt.value = g;
+            opt.textContent = g;
+            groupSelect.appendChild(opt);
+        });
+    }
+
+    // Compliance name dropdown
+    const compName = document.getElementById('compName');
+    if (compName) {
+        ALL_STAFF.forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            compName.appendChild(opt);
+        });
+    }
+
+    // Report month selector default
+    const monthSelect = document.getElementById('reportMonthSelect');
+    if (monthSelect) {
+        const now = new Date();
+        monthSelect.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+}
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', () => {
+    // Theme icon
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    const icon = document.getElementById('themeIcon');
+    if (icon) icon.className = savedTheme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+
+    // Session
+    checkSession();
+
+    // Filters
+    populateFilters();
+
+    // Search debounce
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        let debounce;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(debounce);
+            debounce = setTimeout(() => { currentPage = 1; renderTasks(); }, 300);
+        });
+    }
+
+    // Filter change listeners
+    ['filterGroup', 'filterAssignee', 'filterType', 'filterDifficulty'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', applyFilters);
+    });
+
+    // Notifications
+    updateNotificationUI();
+
+    // Load initial data
+    loadTaskList();
+
+    // Start polling
+    startPolling(60000);
+});
