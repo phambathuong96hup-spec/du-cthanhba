@@ -8,7 +8,7 @@ const apps = [
     title: 'Quản lý công việc',
     desc: 'Theo dõi, phân công, báo cáo và đánh giá tiến độ công việc trong khoa Dược. Hỗ trợ biểu đồ, lịch và chat AI.',
     icon: <ClipboardList className="w-7 h-7" />,
-    href: `${import.meta.env.BASE_URL}webapp/quan-ly-cong-viec.html`,
+    href: `${import.meta.env.BASE_URL}webapp/quan-ly-cong-viec/index.html`,
     color: 'from-blue-600 to-cyan-500',
     shadow: '0 20px 48px -10px rgba(29,78,216,0.4)',
     features: ['Kanban Board', 'Giao việc & nhắc nhở', 'Báo cáo tự động'],

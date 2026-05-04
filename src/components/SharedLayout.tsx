@@ -54,7 +54,7 @@ export const NAV_MENU: NavMenuItem[] = [
   {
     label: 'WEBAPP DƯỢC KHOA', href: '/webapp-duoc-khoa', id: 'webapp',
     children: [
-      { label: 'Quản lý công việc', href: `${import.meta.env.BASE_URL}webapp/quan-ly-cong-viec.html`, external: true },
+      { label: 'Quản lý công việc', href: `${import.meta.env.BASE_URL}webapp/quan-ly-cong-viec/index.html`, external: true },
       { label: 'Quản lý trang thiết bị', href: `${import.meta.env.BASE_URL}webapp/quan-ly-thiet-bi/index.html`, external: true },
     ]
   },
