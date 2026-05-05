@@ -39,6 +39,29 @@ function toggleSidebar() {
     document.querySelector('.overlay')?.classList.toggle('active');
 }
 
+// ── Desktop Sidebar Collapse ──
+function toggleSidebarDesktop() {
+    document.getElementById('sidebar')?.classList.toggle('collapsed');
+}
+
+// ── Deadline Toggle ──
+function toggleDeadline() {
+    const type = document.getElementById('taskTypeSelect');
+    const dl = document.getElementById('deadlineInput');
+    const req = document.getElementById('deadlineRequired');
+    if (!type || !dl) return;
+    if (type.value === 'Thường quy') {
+        dl.value = '';
+        dl.disabled = true;
+        dl.required = false;
+        if (req) req.style.display = 'none';
+    } else {
+        dl.disabled = false;
+        dl.required = true;
+        if (req) req.style.display = 'inline';
+    }
+}
+
 // ── Populate Filter Dropdowns ──
 function populateFilters() {
     // Assignee filter

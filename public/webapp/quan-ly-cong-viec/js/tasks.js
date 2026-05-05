@@ -428,3 +428,34 @@ function resetFilters() {
     currentPage = 1;
     renderTasks();
 }
+
+/**
+ * Quick Filter: 7 days / 30 days / overdue
+ */
+function applyQuickFilter(mode, btn) {
+    // Highlight active button
+    document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+
+    const monthInput = document.getElementById('filterMonth');
+    if (monthInput) monthInput.value = '';
+
+    // Clear other filters
+    document.getElementById('filterStatus').value = '';
+    currentStatusFilter = 'all';
+
+    if (mode === 'overdue') {
+        // Show overdue tasks only
+        document.getElementById('filterStatus').value = 'Overdue';
+    } else if (mode === '7days') {
+        // Set month filter to current month
+        const now = new Date();
+        monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        document.getElementById('quickFilterMode').value = '7days';
+    } else if (mode === '30days') {
+        document.getElementById('quickFilterMode').value = '30days';
+    }
+
+    currentPage = 1;
+    renderTasks();
+}
