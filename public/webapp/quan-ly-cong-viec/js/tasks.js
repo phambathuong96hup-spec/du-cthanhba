@@ -387,9 +387,11 @@ async function submitTask(btn) {
             id: editId || undefined,
             name, deadline, note, assignee: assignees,
             group, type, difficulty,
+            user_fullname: currentUser.name,
             role: currentUser.role
         };
         const res = await apiFetch(action, payload);
+        if (res.status === 'error') throw new Error(res.message || 'Lỗi không xác định từ server');
         showToast(res.message || (editId ? 'Đã cập nhật!' : 'Đã tạo công việc!'), 'success');
         bootstrap.Modal.getInstance(document.getElementById('taskModal'))?.hide();
         loadTaskList();
