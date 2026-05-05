@@ -44,6 +44,7 @@ function populateFilters() {
     // Assignee filter
     const assigneeSelect = document.getElementById('filterAssignee');
     if (assigneeSelect) {
+        assigneeSelect.innerHTML = '<option value="">Tất cả</option>';
         ALL_STAFF.forEach(name => {
             const opt = document.createElement('option');
             opt.value = name;
@@ -55,6 +56,7 @@ function populateFilters() {
     // Group filter
     const groupSelect = document.getElementById('filterGroup');
     if (groupSelect) {
+        groupSelect.innerHTML = '<option value="">Tất cả</option>';
         GROUP_LIST.forEach(g => {
             const opt = document.createElement('option');
             opt.value = g;
@@ -120,3 +122,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // Start polling
     startPolling(60000);
 });
+
+// ── UI Navigation ──
+window.switchTab = function(tabId, element) {
+    document.querySelectorAll('.tab-pane-custom').forEach(tab => {
+        tab.classList.add('d-none');
+    });
+    const targetTab = document.getElementById(tabId);
+    if (targetTab) {
+        targetTab.classList.remove('d-none');
+    }
+
+    if (element) {
+        document.querySelectorAll('.nav-link-custom').forEach(link => {
+            link.classList.remove('active');
+        });
+        element.classList.add('active');
+    }
+
+    if (window.innerWidth < 992) {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar && sidebar.classList.contains('active')) {
+            toggleSidebar();
+        }
+    }
+};
