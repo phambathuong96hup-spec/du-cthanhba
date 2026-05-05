@@ -168,7 +168,8 @@ function renderTasks() {
             <td class="text-center">
                 <div class="d-flex justify-content-center gap-1">
                     ${status !== 'Done' && currentUser ? `<button class="btn btn-sm btn-outline-success rounded-pill px-2" onclick="event.stopPropagation();updateProgress('${escapeHtml(id)}')" title="Cập nhật tiến độ"><i class="bi bi-arrow-up-circle"></i></button>` : ''}
-                    ${status === 'Waiting' && isAdminUser(currentUser) ? `<button class="btn btn-sm btn-outline-primary rounded-pill px-2" onclick="event.stopPropagation();approveDone('${escapeHtml(id)}')" title="Duyệt"><i class="bi bi-check2-all"></i></button>` : ''}
+                    ${isAdminUser(currentUser) ? `<button class="btn btn-sm btn-outline-info rounded-pill px-2" onclick="event.stopPropagation();triggerTaskEmail('${escapeHtml(id)}')" title="Gửi mail nhắc nhở"><i class="bi bi-envelope"></i></button>` : ''}
+                    ${status === 'Waiting' && isAdminUser(currentUser) ? `<button class="btn btn-sm btn-outline-primary rounded-pill px-2" onclick="event.stopPropagation();openReviewModal('${escapeHtml(id)}')" title="Duyệt / Trả báo cáo"><i class="bi bi-file-earmark-text"></i></button>` : ''}
                 </div>
             </td>
         </tr>`;
