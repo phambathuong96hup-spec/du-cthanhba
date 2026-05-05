@@ -153,10 +153,7 @@ function renderTasks() {
             <td class="fw-bold text-center" style="color:var(--text-light);font-size:0.75rem">${start + i + 1}</td>
             <td><div class="fw-bold" style="font-size:0.85rem;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(name)}</div>
                 ${group ? `<span style="font-size:0.68rem;color:var(--text-light)">${escapeHtml(group)}</span>` : ''}</td>
-            <td>${statusBadge}</td>
             <td><span class="priority-badge priority-${escapeHtml(difficulty)}">${escapeHtml(priorityLabel)}</span></td>
-            <td><div class="d-flex align-items-center">${avatarHtml}</div></td>
-            <td>${dlDisplay}</td>
             <td style="min-width:100px">
                 <div class="d-flex align-items-center gap-2">
                     <div class="progress" style="height:5px;flex:1;border-radius:4px;background:var(--border-color)">
@@ -165,6 +162,9 @@ function renderTasks() {
                     <span style="font-size:0.72rem;font-weight:700;min-width:28px;text-align:right">${prog}%</span>
                 </div>
             </td>
+            <td><div class="d-flex align-items-center">${avatarHtml}</div></td>
+            <td>${dlDisplay}</td>
+            <td>${statusBadge}</td>
             <td>
                 <div class="d-flex gap-1">
                     ${status !== 'Done' && currentUser ? `<button class="btn btn-sm btn-outline-success rounded-pill px-2" onclick="event.stopPropagation();updateProgress('${escapeHtml(id)}')" title="Cập nhật tiến độ"><i class="bi bi-arrow-up-circle"></i></button>` : ''}
