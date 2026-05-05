@@ -12,8 +12,11 @@ async function loadTaskList(silent = false) {
         const res = await apiFetch(null);
         globalData = res.data || [];
         if (!silent) checkTaskNotifications(globalData);
+        populateFilter();
         renderTasks();
-        if (currentView === 'kanban') renderKanban();
+        if (typeof currentView !== 'undefined' && currentView === 'kanban') {
+            if(typeof renderKanban === 'function') renderKanban();
+        }
     } catch (err) {
         if (!silent) showToast("Lỗi tải công việc: " + err.message, 'danger');
     }
@@ -70,6 +73,37 @@ function getFilteredData() {
     });
 }
 
+function populateFilter() {
+    const sGrp = document.getElementById('filterGroup');
+    const sAsgn = document.getElementById('filterAssignee');
+    
+    if (sGrp) sGrp.innerHTML = '<option value="">Tất cả</option>';
+    if (sAsgn) sAsgn.innerHTML = '<option value="">Tất cả</option>';
+    
+    let g = [], a = [];
+    globalData.forEach(r => {
+        if (r[11]) g.push(String(r[11]).trim());
+        if (r[7]) a.push(...String(r[7]).split(',').map(v => v.trim()).filter(v => v));
+    });
+    
+    if (sGrp) [...new Set(g)].sort().forEach(n => { if (n) sGrp.innerHTML += `<option value="${n}">${n}</option>`; });
+    if (sAsgn) [...new Set(a)].sort().forEach(n => { if (n) sAsgn.innerHTML += `<option value="${n}">${n}</option>`; });
+}
+
+function applyFilters() {
+    currentPage = 1;
+    renderTasks();
+    if (typeof currentView !== 'undefined' && currentView === 'kanban' && typeof renderKanban === 'function') {
+        renderKanban();
+    }
+}
+
+function syncSearch(val) {
+    const searchInput = document.getElementById('searchInput');
+    if(searchInput) searchInput.value = val;
+    applyFilters();
+}
+
 function filterByStatus(status, btn) {
     currentStatusFilter = status;
     currentPage = 1;
@@ -86,6 +120,7 @@ function renderTasks() {
     const filtered = getFilteredData();
     const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
 
     const start = (currentPage - 1) * PAGE_SIZE;
     const pageData = filtered.slice(start, start + PAGE_SIZE);
@@ -149,6 +184,38 @@ function renderTasks() {
         // Priority
         const priorityLabel = { '1': 'Thấp', '2': 'TB', '3': 'Cao', '4': 'Khẩn' }[difficulty] || 'TB';
 
+        // Action Buttons Logic
+        let isOwner = currentUser && (isAdminUser(currentUser) || assignees.includes(currentUser.name));
+        let disableControl = isOwner ? "" : "pointer-events: none; opacity: 0.6;";
+        let fileUrl = r[13] || "";
+
+        let actionBtns = '';
+        let attachLink = (fileUrl && currentUser && isAdminUser(currentUser)) 
+            ? `<button onclick="event.stopPropagation();openReviewModal('${escapeHtml(id)}')" class="btn btn-sm btn-white border shadow-sm text-primary" title="Xem báo cáo"><i class="bi bi-file-earmark-text-fill"></i></button>` 
+            : '';
+
+        if (status === 'Done') {
+            actionBtns = '<span class="text-success"><i class="bi bi-check-circle-fill fs-5"></i></span>';
+        } else if (status === 'Waiting') {
+            actionBtns = attachLink;
+            if (currentUser && isAdminUser(currentUser)) {
+                actionBtns += `
+                <button class="btn btn-sm btn-success ms-1" onclick="event.stopPropagation();approveTask('${escapeHtml(id)}')" title="Duyệt"><i class="bi bi-check-lg"></i></button>
+                <button class="btn btn-sm btn-danger ms-1" onclick="event.stopPropagation();rejectTask('${escapeHtml(id)}')" title="Từ chối"><i class="bi bi-x-lg"></i></button>`;
+            } else {
+                actionBtns += `<span class="text-muted small fst-italic">Đợi duyệt...</span>`;
+            }
+        } else {
+            if (currentUser && isAdminUser(currentUser)) {
+                actionBtns = `<button class="btn btn-sm btn-outline-success rounded-pill px-3" onclick="event.stopPropagation();approveTask('${escapeHtml(id)}')">Duyệt ngay</button>`;
+            } else {
+                actionBtns = `<div style="${disableControl}">
+                    <button class="btn btn-sm btn-primary-custom py-1 px-2" style="font-size:0.8rem" onclick="event.stopPropagation();openReportModal('${escapeHtml(id)}')" title="Báo cáo"><i class="bi bi-send-fill"></i></button>
+                    <button class="btn btn-sm btn-white border text-warning ms-1 py-1 px-2" style="font-size:0.8rem" onclick="event.stopPropagation();triggerTaskEmail('${escapeHtml(id)}')" title="Nhắc"><i class="bi bi-envelope-fill"></i></button>
+                </div>`;
+            }
+        }
+
         return `<tr class="fade-in cursor-pointer" style="animation-delay:${i * 25}ms" onclick="openTaskDetail('${escapeHtml(id)}')">
             <td class="fw-bold text-center" style="color:var(--text-light);font-size:0.75rem">${start + i + 1}</td>
             <td><div class="fw-bold" style="font-size:0.85rem;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(name)}</div>
@@ -166,10 +233,8 @@ function renderTasks() {
             <td>${dlDisplay}</td>
             <td>${statusBadge}</td>
             <td class="text-center">
-                <div class="d-flex justify-content-center gap-1">
-                    ${status !== 'Done' && currentUser ? `<button class="btn btn-sm btn-outline-success rounded-pill px-2" onclick="event.stopPropagation();updateProgress('${escapeHtml(id)}')" title="Cập nhật tiến độ"><i class="bi bi-arrow-up-circle"></i></button>` : ''}
-                    ${isAdminUser(currentUser) ? `<button class="btn btn-sm btn-outline-info rounded-pill px-2" onclick="event.stopPropagation();triggerTaskEmail('${escapeHtml(id)}')" title="Gửi mail nhắc nhở"><i class="bi bi-envelope"></i></button>` : ''}
-                    ${status === 'Waiting' && isAdminUser(currentUser) ? `<button class="btn btn-sm btn-outline-primary rounded-pill px-2" onclick="event.stopPropagation();openReviewModal('${escapeHtml(id)}')" title="Duyệt / Trả báo cáo"><i class="bi bi-file-earmark-text"></i></button>` : ''}
+                <div class="d-flex justify-content-center align-items-center gap-1">
+                    ${actionBtns}
                 </div>
             </td>
         </tr>`;
@@ -215,7 +280,12 @@ function updatePagination(total, totalPages) {
 }
 
 function changePage(dir) {
-    currentPage += dir;
+    const filtered = getFilteredData();
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    let newPage = currentPage + dir;
+    if (newPage < 1) newPage = 1;
+    if (newPage > totalPages) newPage = totalPages;
+    currentPage = newPage;
     renderTasks();
 }
 
