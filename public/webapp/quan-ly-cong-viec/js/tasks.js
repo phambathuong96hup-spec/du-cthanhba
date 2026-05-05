@@ -382,10 +382,11 @@ async function submitTask(btn) {
 
     setBtnLoading(btn, true);
     try {
-        const action = editId ? 'edit_task' : 'add_task';
+        const action = editId ? 'edit_task' : 'add';
         const payload = {
             id: editId || undefined,
-            name, deadline, note, assignee: assignees,
+            taskName: name,
+            deadline, notes: note, assignee: assignees,
             group, type, difficulty,
             user_fullname: currentUser.name,
             role: currentUser.role
