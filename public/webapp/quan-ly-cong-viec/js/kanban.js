@@ -200,12 +200,17 @@ function openTaskDetail(id) {
     }
 
     const progColor = prog >= 100 ? '#10b981' : prog >= 50 ? '#f59e0b' : '#ef4444';
+    const canEdit = currentUser && (isAdminUser(currentUser) || assignees.includes(currentUser.name));
     document.getElementById('detailProgress').innerHTML = `
         <div class="d-flex align-items-center gap-2">
-            <div class="progress" style="height:6px;flex:1;border-radius:6px;background:var(--border-color)">
-                <div class="progress-bar" style="width:${prog}%;background:${progColor};border-radius:6px"></div>
-            </div>
-            <span class="fw-bold small" style="color:var(--text-main)">${prog}%</span>
+            <input type="range" min="0" max="100" value="${prog}" step="5"
+                id="progressSlider"
+                ${canEdit ? '' : 'disabled'}
+                style="flex:1;accent-color:${progColor};cursor:${canEdit ? 'pointer' : 'default'}"
+                oninput="document.getElementById('progressSliderVal').innerText=this.value+'%'"
+            >
+            <span class="fw-bold small" id="progressSliderVal" style="color:var(--text-main);min-width:36px">${prog}%</span>
+            ${canEdit ? `<button class="btn btn-sm btn-primary-custom btn-rounded px-2 py-0" onclick="saveProgressFromSlider('${escapeHtml(id)}')"><i class="bi bi-check2"></i></button>` : ''}
         </div>`;
 
     const assignees = String(task[7]).split(',').map(s => s.trim()).filter(Boolean);
@@ -248,6 +253,20 @@ function renderChecklist(taskId) {
             <i class="bi bi-x delete-btn" onclick="deleteChecklistItem(${i})"></i>
         </div>
     `).join('');
+}
+
+async function saveProgressFromSlider(id) {
+    const slider = document.getElementById('progressSlider');
+    if (!slider) return;
+    const prog = parseInt(slider.value);
+    try {
+        await apiFetch('update_progress', { id, progress: prog, user_fullname: currentUser.name, role: currentUser.role });
+        showToast('Đã lưu tiến độ ' + prog + '%!', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('taskDetailModal'))?.hide();
+        loadTaskList();
+    } catch (err) {
+        showToast('Lỗi: ' + err.message, 'danger');
+    }
 }
 
 function addChecklistItem() {

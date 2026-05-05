@@ -153,7 +153,7 @@ function renderTasks() {
         if (status === 'Done') statusBadge = '<span class="status-badge bg-done">Hoàn thành</span>';
         else if (status === 'Waiting') statusBadge = '<span class="status-badge bg-waiting">Chờ duyệt</span>';
         else if (isOverdue) statusBadge = '<span class="status-badge bg-overdue">Quá hạn</span>';
-        else if (status === 'Todo') statusBadge = '<span class="status-badge bg-todo">Mới tạo</span>';
+        else if (status === 'Todo') statusBadge = `<span class="status-badge bg-todo" style="cursor:pointer" title="Bấm để bắt đầu làm" onclick="event.stopPropagation();startTask('${escapeHtml(id)}')">Mới tạo ▶</span>`;
         else statusBadge = '<span class="status-badge bg-doing">Đang làm</span>';
 
         // Deadline display
@@ -395,6 +395,14 @@ async function submitTask(btn) {
         if (res.status === 'error') throw new Error(res.message || 'Lỗi không xác định từ server');
         showToast(res.message || (editId ? 'Đã cập nhật!' : 'Đã tạo công việc!'), 'success');
         bootstrap.Modal.getInstance(document.getElementById('taskModal'))?.hide();
+        // Reset form và assignee checkboxes
+        form.reset();
+        document.getElementById('editTaskId').value = '';
+        const container = document.getElementById('checkboxContainer');
+        if (container) container.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = false);
+        const hidden = document.getElementById('hiddenAssigneeSelect');
+        if (hidden) Array.from(hidden.options).forEach(o => o.selected = false);
+        updateAssigneeDisplay();
         loadTaskList();
     } catch (err) {
         showToast("Lỗi: " + err.message, 'danger');
@@ -437,6 +445,21 @@ function openEditTask(id) {
     }
 
     new bootstrap.Modal(document.getElementById('taskModal')).show();
+}
+
+async function startTask(id) {
+    const task = globalData.find(r => r[0] == id);
+    if (!task) return;
+    if (currentUser && !isAdminUser(currentUser) && !String(task[7]).includes(currentUser.name)) {
+        return showToast('⛔ Không phải việc của bạn!', 'warning');
+    }
+    try {
+        await apiFetch('update_progress', { id, progress: 1, user_fullname: currentUser.name, role: currentUser.role });
+        showToast('Đã chuyển sang Đang làm!', 'success');
+        loadTaskList();
+    } catch (err) {
+        showToast('Lỗi: ' + err.message, 'danger');
+    }
 }
 
 async function updateProgress(id) {
