@@ -165,8 +165,8 @@ function renderTasks() {
             <td><div class="d-flex align-items-center">${avatarHtml}</div></td>
             <td>${dlDisplay}</td>
             <td>${statusBadge}</td>
-            <td>
-                <div class="d-flex gap-1">
+            <td class="text-center">
+                <div class="d-flex justify-content-center gap-1">
                     ${status !== 'Done' && currentUser ? `<button class="btn btn-sm btn-outline-success rounded-pill px-2" onclick="event.stopPropagation();updateProgress('${escapeHtml(id)}')" title="Cập nhật tiến độ"><i class="bi bi-arrow-up-circle"></i></button>` : ''}
                     ${status === 'Waiting' && isAdminUser(currentUser) ? `<button class="btn btn-sm btn-outline-primary rounded-pill px-2" onclick="event.stopPropagation();approveDone('${escapeHtml(id)}')" title="Duyệt"><i class="bi bi-check2-all"></i></button>` : ''}
                 </div>
