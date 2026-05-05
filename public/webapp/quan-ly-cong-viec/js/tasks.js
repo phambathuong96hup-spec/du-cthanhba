@@ -204,8 +204,8 @@ function updateStatusCounts() {
 function updatePagination(total, totalPages) {
     const info = document.getElementById('paginationInfo');
     const current = document.getElementById('paginationCurrent');
-    const prevBtn = document.getElementById('btnPrev');
-    const nextBtn = document.getElementById('btnNext');
+    const prevBtn = document.getElementById('btnPrevPage');
+    const nextBtn = document.getElementById('btnNextPage');
 
     if (info) info.innerText = `${total} kết quả`;
     if (current) current.innerText = `${currentPage} / ${totalPages}`;
