@@ -55,11 +55,12 @@ function showComplianceModal() {
 }
 
 async function submitCompliance(btn) {
-    const date = document.getElementById('compDate').value;
-    const name = document.getElementById('compName').value;
-    const type = document.getElementById('compType').value;
-    const content = document.getElementById('compContent').value;
-    const note = document.getElementById('compNote').value;
+    const form = document.getElementById('complianceForm');
+    const date = form.elements['date'].value;
+    const name = form.elements['person'].value;
+    const type = form.elements['type'].value;
+    const content = form.elements['content'].value;
+    const note = form.elements['note'].value;
 
     if (!date || !name || !content) return showToast("Vui lòng điền đầy đủ!", 'warning');
 

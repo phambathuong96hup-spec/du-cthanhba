@@ -64,7 +64,7 @@ function populateFilters() {
     }
 
     // Compliance name dropdown
-    const compName = document.getElementById('compName');
+    const compName = document.getElementById('compliancePerson');
     if (compName) {
         ALL_STAFF.forEach(name => {
             const opt = document.createElement('option');
@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Filter change listeners
-    ['filterGroup', 'filterAssignee', 'filterType', 'filterDifficulty'].forEach(id => {
+    ['filterGroup', 'filterAssignee', 'filterStatus', 'filterDifficulty', 'filterMonth'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', applyFilters);
     });

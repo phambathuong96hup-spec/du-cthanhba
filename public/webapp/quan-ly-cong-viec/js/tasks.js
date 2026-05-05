@@ -24,8 +24,9 @@ function getFilteredData() {
     const searchVal = (document.getElementById('searchInput')?.value || '').toLowerCase();
     const groupVal = document.getElementById('filterGroup')?.value || '';
     const assigneeVal = document.getElementById('filterAssignee')?.value || '';
-    const typeVal = document.getElementById('filterType')?.value || '';
+    const statusVal = document.getElementById('filterStatus')?.value || '';
     const diffVal = document.getElementById('filterDifficulty')?.value || '';
+    const monthVal = document.getElementById('filterMonth')?.value || '';
 
     return globalData.filter(r => {
         const rawSt = String(r[2]).trim();
@@ -33,12 +34,26 @@ function getFilteredData() {
         const dlRaw = r[9] || r[4];
         const isOverdue = dlRaw && new Date(dlRaw) < today && status !== 'Done' && status !== 'Waiting';
 
-        // Status filter
+        // Month filter
+        if (monthVal && dlRaw) {
+            const dl = new Date(dlRaw);
+            const dlMonth = `${dl.getFullYear()}-${String(dl.getMonth() + 1).padStart(2, '0')}`;
+            if (dlMonth !== monthVal) return false;
+        }
+
+        // Status tab filter
         if (currentStatusFilter === 'doing' && status !== 'Doing' && !isOverdue) return false;
         if (currentStatusFilter === 'done' && status !== 'Done') return false;
         if (currentStatusFilter === 'waiting' && status !== 'Waiting') return false;
         if (currentStatusFilter === 'overdue' && !isOverdue) return false;
         if (currentStatusFilter === 'todo' && status !== 'Todo') return false;
+
+        // Dropdown status filter
+        if (statusVal === 'Pending' && (status === 'Done' || status === 'Waiting')) return false;
+        if (statusVal === 'Done' && status !== 'Done') return false;
+        if (statusVal === 'Waiting' && status !== 'Waiting') return false;
+        if (statusVal === 'Overdue' && !isOverdue) return false;
+        if (statusVal === 'NoRoutine' && String(r[10]) !== 'Thực hiện C.Đạo') return false;
 
         // Text search
         if (searchVal) {
@@ -49,7 +64,6 @@ function getFilteredData() {
         // Dropdown filters
         if (groupVal && String(r[11]) !== groupVal) return false;
         if (assigneeVal && !String(r[7]).includes(assigneeVal)) return false;
-        if (typeVal && String(r[10]) !== typeVal) return false;
         if (diffVal && String(r[12]) !== diffVal) return false;
 
         return true;
@@ -237,13 +251,14 @@ function populateAssigneeCheckboxes() {
 }
 
 async function submitTask(btn) {
-    const editId = document.getElementById('editTaskId').value;
-    const name = document.getElementById('taskName').value.trim();
-    const deadline = document.getElementById('taskDeadline').value;
-    const note = document.getElementById('taskNote').value;
-    const group = document.getElementById('taskGroup')?.value || '';
-    const type = document.getElementById('taskType')?.value || 'Thường quy';
-    const difficulty = document.getElementById('taskDifficulty')?.value || '2';
+    const form = document.getElementById('taskForm');
+    const editId = form.elements['editTaskId'].value;
+    const name = form.elements['taskName'].value.trim();
+    const deadline = form.elements['deadline'].value;
+    const note = form.elements['notes'].value;
+    const group = form.elements['group']?.value || '';
+    const type = form.elements['type']?.value || 'Thường quy';
+    const difficulty = form.elements['difficulty']?.value || '2';
 
     const checked = document.querySelectorAll('input[name="assignees"]:checked');
     const assignees = Array.from(checked).map(c => c.value).join(', ');
@@ -275,13 +290,14 @@ function openEditTask(id) {
     if (!task) return;
 
     document.getElementById('taskModalLabel').innerText = 'Chỉnh sửa công việc';
-    document.getElementById('editTaskId').value = id;
-    document.getElementById('taskName').value = task[1] || '';
-    document.getElementById('taskDeadline').value = task[9] || task[4] || '';
-    document.getElementById('taskNote').value = task[5] || '';
-    if (document.getElementById('taskGroup')) document.getElementById('taskGroup').value = task[11] || '';
-    if (document.getElementById('taskType')) document.getElementById('taskType').value = task[10] || 'Thường quy';
-    if (document.getElementById('taskDifficulty')) document.getElementById('taskDifficulty').value = task[12] || '2';
+    const form = document.getElementById('taskForm');
+    form.elements['editTaskId'].value = id;
+    form.elements['taskName'].value = task[1] || '';
+    form.elements['deadline'].value = task[9] || task[4] || '';
+    form.elements['notes'].value = task[5] || '';
+    if (form.elements['group']) form.elements['group'].value = task[11] || '';
+    if (form.elements['type']) form.elements['type'].value = task[10] || 'Thường quy';
+    if (form.elements['difficulty']) form.elements['difficulty'].value = task[12] || '2';
 
     populateAssigneeCheckboxes();
     const assignees = String(task[7]).split(',').map(s => s.trim());
@@ -332,8 +348,9 @@ function resetFilters() {
     document.getElementById('searchInput').value = '';
     document.getElementById('filterGroup').value = '';
     document.getElementById('filterAssignee').value = '';
-    document.getElementById('filterType').value = '';
+    document.getElementById('filterStatus').value = '';
     document.getElementById('filterDifficulty').value = '';
+    document.getElementById('filterMonth').value = '';
     currentStatusFilter = 'all';
     document.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
     document.querySelector('.status-tab[data-status="all"]')?.classList.add('active');

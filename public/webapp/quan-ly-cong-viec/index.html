@@ -135,19 +135,19 @@
                     <div class="task-toolbar-filters">
                         <div class="toolbar-filter">
                             <label class="form-label-custom">Tháng</label>
-                            <input type="month" class="form-control-custom" id="filterMonth" onchange="renderTable()">
+                            <input type="month" class="form-control-custom" id="filterMonth" onchange="applyFilters()">
                         </div>
                         <div class="toolbar-filter">
                             <label class="form-label-custom">Tổ phụ trách</label>
-                            <select class="form-select-custom" id="filterGroup" onchange="renderTable()"></select>
+                            <select class="form-select-custom" id="filterGroup" onchange="applyFilters()"></select>
                         </div>
                         <div class="toolbar-filter">
                             <label class="form-label-custom">Nhân sự</label>
-                            <select class="form-select-custom" id="filterAssignee" onchange="renderTable()"></select>
+                            <select class="form-select-custom" id="filterAssignee" onchange="applyFilters()"></select>
                         </div>
                         <div class="toolbar-filter">
                             <label class="form-label-custom">Trạng thái</label>
-                            <select class="form-select-custom" id="filterStatus" onchange="renderTable()">
+                            <select class="form-select-custom" id="filterStatus" onchange="applyFilters()">
                                 <option value="">Tất cả</option>
                                 <option value="Pending">Chưa xong</option>
                                 <option value="Done">Đã xong</option>
@@ -158,7 +158,7 @@
                         </div>
                         <div class="toolbar-filter">
                             <label class="form-label-custom">Mức ưu tiên</label>
-                            <select class="form-select-custom" id="filterDifficulty" onchange="renderTable()">
+                            <select class="form-select-custom" id="filterDifficulty" onchange="applyFilters()">
                                 <option value="">Tất cả</option>
                                 <option value="1">Thấp</option>
                                 <option value="2">Trung bình</option>
@@ -644,7 +644,8 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body p-4">
-        <form id="taskForm">
+        <form id="taskForm" onsubmit="event.preventDefault(); submitTask(document.getElementById('submitBtn'))">
+          <input type="hidden" id="editTaskId" name="editTaskId">
           <div class="row g-3">
             <!-- Tên công việc -->
             <div class="col-12">
@@ -749,7 +750,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body p-4">
-        <form id="complianceForm">
+        <form id="complianceForm" onsubmit="event.preventDefault(); submitCompliance(document.getElementById('btnCompliance'))">
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label form-label-custom">Nhân viên</label>
