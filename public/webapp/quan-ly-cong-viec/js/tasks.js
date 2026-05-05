@@ -387,7 +387,7 @@ async function submitTask(btn) {
             id: editId || undefined,
             taskName: name,
             deadline, notes: note, assignee: assignees,
-            group, type, difficulty,
+            group, type, taskType: type, difficulty,
             user_fullname: currentUser.name,
             role: currentUser.role
         };
