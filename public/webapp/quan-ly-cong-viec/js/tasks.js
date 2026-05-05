@@ -298,41 +298,85 @@ function showTaskModal() {
     document.getElementById('taskModalLabel').innerText = 'Tạo công việc mới';
     document.getElementById('editTaskId').value = '';
 
-    // Populate assignee checkboxes
+    // Populate group select & assignee checkboxes
+    populateGroupSelect();
     populateAssigneeCheckboxes();
 
     new bootstrap.Modal(document.getElementById('taskModal')).show();
 }
 
-function populateAssigneeCheckboxes() {
-    const container = document.getElementById('assigneeCheckboxes');
-    if (!container) return;
+function populateGroupSelect() {
+    const groupSelect = document.getElementById('groupSelect');
+    if (!groupSelect) return;
+    groupSelect.innerHTML = '<option value="">-- Chọn tổ --</option>';
+    GROUP_LIST.forEach(group => {
+        const opt = document.createElement('option');
+        opt.value = group;
+        opt.textContent = group;
+        groupSelect.appendChild(opt);
+    });
+}
 
-    container.innerHTML = Object.entries(STAFF_GROUPS).map(([group, members]) => `
-        <div class="mb-2">
-            <div class="fw-bold small text-muted mb-1">${escapeHtml(group)}</div>
-            ${members.map(m => `
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="checkbox" name="assignees" value="${escapeHtml(m)}" id="chk_${escapeHtml(m.replace(/\s/g,'_'))}">
-                    <label class="form-check-label small" for="chk_${escapeHtml(m.replace(/\s/g,'_'))}">${escapeHtml(m)}</label>
-                </div>
-            `).join('')}
-        </div>
-    `).join('');
+function populateAssigneeCheckboxes() {
+    const container = document.getElementById('checkboxContainer');
+    const hidden = document.getElementById('hiddenAssigneeSelect');
+    if (!container || !hidden) return;
+
+    container.innerHTML = '';
+    hidden.innerHTML = '';
+
+    const allStaff = ALL_STAFF || [];
+    allStaff.forEach((name, i) => {
+        hidden.add(new Option(name, name));
+
+        const div = document.createElement('div');
+        div.className = 'person-item';
+        div.style.cssText = 'padding:9px 12px;border-bottom:1px solid var(--border-color);cursor:pointer;transition:background 0.15s;';
+        div.onmouseover = function () { this.style.background = 'var(--bg-body)'; };
+        div.onmouseout = function () { this.style.background = 'transparent'; };
+        div.onclick = function (e) { e.stopPropagation(); };
+        div.innerHTML = `<div class="form-check">
+            <input class="form-check-input" type="checkbox" value="${escapeHtml(name)}" id="chkModal${i}">
+            <label class="form-check-label w-100 fw-medium" style="color:var(--text-main);cursor:pointer;font-size:0.88rem" for="chkModal${i}">${escapeHtml(name)}</label>
+        </div>`;
+
+        container.appendChild(div);
+        div.querySelector('input').addEventListener('change', (e) => {
+            hidden.options[i].selected = e.target.checked;
+            updateAssigneeDisplay();
+        });
+    });
+}
+
+function updateAssigneeDisplay() {
+    const s = document.getElementById('hiddenAssigneeSelect');
+    const t = document.getElementById('selectedText');
+    const c = document.getElementById('selectedCount');
+    if (!s || !t || !c) return;
+
+    let cnt = 0, names = [];
+    Array.from(s.options).forEach(o => {
+        if (o.selected) { cnt++; names.push(o.value); }
+    });
+    c.innerText = cnt;
+    t.innerText = cnt === 0 ? '-- Chọn nhân sự --' : (cnt <= 2 ? names.join(', ') : `Đã chọn ${cnt} người`);
 }
 
 async function submitTask(btn) {
     const form = document.getElementById('taskForm');
-    const editId = form.elements['editTaskId'].value;
-    const name = form.elements['taskName'].value.trim();
-    const deadline = form.elements['deadline'].value;
-    const note = form.elements['notes'].value;
+    const editId = form.elements['editTaskId']?.value || '';
+    const name = form.elements['taskName']?.value?.trim() || '';
+    const deadline = form.elements['deadline']?.value || '';
+    const note = form.elements['notes']?.value || '';
     const group = form.elements['group']?.value || '';
     const type = form.elements['type']?.value || 'Thường quy';
     const difficulty = form.elements['difficulty']?.value || '2';
 
-    const checked = document.querySelectorAll('input[name="assignees"]:checked');
-    const assignees = Array.from(checked).map(c => c.value).join(', ');
+    // Get selected assignees from hidden select
+    const hiddenSelect = document.getElementById('hiddenAssigneeSelect');
+    const assignees = hiddenSelect 
+        ? Array.from(hiddenSelect.selectedOptions).map(o => o.value).join(', ')
+        : '';
 
     if (!name) return showToast("Vui lòng nhập tên công việc!", 'warning');
 
@@ -366,16 +410,28 @@ function openEditTask(id) {
     form.elements['taskName'].value = task[1] || '';
     form.elements['deadline'].value = task[9] || task[4] || '';
     form.elements['notes'].value = task[5] || '';
-    if (form.elements['group']) form.elements['group'].value = task[11] || '';
     if (form.elements['type']) form.elements['type'].value = task[10] || 'Thường quy';
     if (form.elements['difficulty']) form.elements['difficulty'].value = task[12] || '2';
 
+    populateGroupSelect();
+    if (form.elements['group']) form.elements['group'].value = task[11] || '';
+
     populateAssigneeCheckboxes();
-    const assignees = String(task[7]).split(',').map(s => s.trim());
-    assignees.forEach(name => {
-        const chk = document.querySelector(`input[name="assignees"][value="${name}"]`);
-        if (chk) chk.checked = true;
-    });
+    const assigneeNames = String(task[7]).split(',').map(s => s.trim()).filter(Boolean);
+    const hiddenSelect = document.getElementById('hiddenAssigneeSelect');
+    if (hiddenSelect) {
+        Array.from(hiddenSelect.options).forEach(opt => {
+            opt.selected = assigneeNames.includes(opt.value);
+        });
+        // Check corresponding checkboxes
+        const container = document.getElementById('checkboxContainer');
+        if (container) {
+            container.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+                chk.checked = assigneeNames.includes(chk.value);
+            });
+        }
+        updateAssigneeDisplay();
+    }
 
     new bootstrap.Modal(document.getElementById('taskModal')).show();
 }
