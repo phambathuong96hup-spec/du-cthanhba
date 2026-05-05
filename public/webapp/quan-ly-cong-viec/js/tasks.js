@@ -52,11 +52,11 @@ function getFilteredData() {
         if (currentStatusFilter === 'todo' && status !== 'Todo') return false;
 
         // Dropdown status filter
-        if (statusVal === 'Pending' && (status === 'Done' || status === 'Waiting')) return false;
+        if (statusVal === 'Doing' && status !== 'Doing') return false;
         if (statusVal === 'Done' && status !== 'Done') return false;
         if (statusVal === 'Waiting' && status !== 'Waiting') return false;
         if (statusVal === 'Overdue' && !isOverdue) return false;
-        if (statusVal === 'NoRoutine' && String(r[10]) !== 'Thực hiện C.Đạo') return false;
+        if (statusVal === 'NewTask' && status !== 'Todo') return false;
 
         // Text search
         if (searchVal) {
