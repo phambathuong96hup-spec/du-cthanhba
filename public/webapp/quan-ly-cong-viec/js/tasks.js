@@ -52,7 +52,7 @@ function getFilteredData() {
         if (currentStatusFilter === 'todo' && status !== 'Todo') return false;
 
         // Dropdown status filter
-        if (statusVal === 'Doing' && status !== 'Doing') return false;
+        if (statusVal === 'Doing' && (status !== 'Doing' || isOverdue)) return false;
         if (statusVal === 'Done' && status !== 'Done') return false;
         if (statusVal === 'Waiting' && status !== 'Waiting') return false;
         if (statusVal === 'Overdue' && !isOverdue) return false;
