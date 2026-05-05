@@ -139,3 +139,165 @@ async function triggerBulkEmail(btn) {
         btn.disabled = false;
     }
 }
+
+/**
+ * Report Modal Logic
+ */
+function openReportModal(id) {
+    if (!currentUser) return showToast("Vui lòng đăng nhập!", 'warning');
+    document.getElementById('reportTaskId').value = id;
+    document.getElementById('reportFile').value = '';
+    document.getElementById('fileListDisplay').innerHTML = '';
+    document.getElementById('fileError').style.display = 'none';
+    document.getElementById('compressStatus').innerText = '';
+    document.getElementById('uploadProgress').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('reportModal')).show();
+}
+
+function displaySelectedFiles() {
+    const input = document.getElementById('reportFile');
+    const display = document.getElementById('fileListDisplay');
+    if (input.files.length > 0) {
+        let names = Array.from(input.files).map(f => "📎 " + f.name).join("<br>");
+        display.innerHTML = names;
+    } else {
+        display.innerHTML = "";
+    }
+}
+
+function getMimeType(fileName) {
+    const ext = fileName.split('.').pop().toLowerCase();
+    const map = {
+        'pdf': 'application/pdf',
+        'doc': 'application/msword',
+        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xls': 'application/vnd.ms-excel',
+        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'ppt': 'application/vnd.ms-powerpoint',
+        'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png'
+    };
+    return map[ext] || 'application/octet-stream';
+}
+
+async function submitReport() {
+    const id = document.getElementById('reportTaskId').value;
+    const fileInput = document.getElementById('reportFile');
+    const files = fileInput.files;
+    const btn = document.getElementById('btnSubmitReport');
+    const errDiv = document.getElementById('fileError');
+    const statusDiv = document.getElementById('compressStatus');
+    const progressDiv = document.getElementById('uploadProgress');
+
+    if (files.length === 0) { 
+        errDiv.innerText = "Vui lòng chọn ít nhất 1 file!"; 
+        errDiv.style.display = 'block'; return; 
+    }
+    
+    let totalSize = 0;
+    for (let i = 0; i < files.length; i++) totalSize += files[i].size;
+    
+    if (totalSize > 10 * 1024 * 1024) {
+        errDiv.innerText = "Tổng dung lượng >10MB. Vui lòng gửi ít file hơn."; 
+        errDiv.style.display = 'block'; return;
+    }
+
+    btn.disabled = true; btn.innerText = "Đang xử lý...";
+    errDiv.style.display = 'none'; progressDiv.style.display = 'block';
+    statusDiv.innerText = `Đang đọc ${files.length} file...`;
+
+    let filePayloads = [];
+    try {
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsDataURL(file);
+            });
+            
+            filePayloads.push({
+                fileName: file.name,
+                mimeType: file.type || getMimeType(file.name),
+                fileData: base64
+            });
+        }
+    } catch (e) {
+        console.error(e);
+        errDiv.innerText = "Lỗi đọc file."; errDiv.style.display = 'block';
+        btn.disabled = false; btn.innerText = "Gửi báo cáo";
+        return;
+    }
+
+    statusDiv.innerText = "Đang gửi...";
+
+    const payload = {
+        id: id,
+        user_fullname: currentUser.name,
+        files: filePayloads
+    };
+
+    fetch(SCRIPT_URL + "?action=report_done", {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    })
+    .then(async r => {
+        const text = await r.text();
+        try {
+            const res = JSON.parse(text);
+            if(res.status === 'success') {
+                showToast("✅ " + res.message, 'success');
+                const modal = bootstrap.Modal.getInstance(document.getElementById('reportModal'));
+                if (modal) modal.hide();
+                loadTaskList();
+            } else {
+                showToast("⚠️ Lỗi từ Server: " + res.message, 'danger');
+            }
+        } catch(e) {
+            showToast("Lỗi phản hồi Server.", 'danger');
+        }
+    })
+    .catch(err => { showToast("Lỗi kết nối mạng: " + err, 'danger'); })
+    .finally(() => {
+        btn.disabled = false; btn.innerText = "Gửi báo cáo";
+        progressDiv.style.display = 'none'; statusDiv.innerText = "";
+        document.getElementById('fileListDisplay').innerHTML = "";
+    });
+}
+
+function approveTask(id) {
+    if(!currentUser || currentUser.role !== 'Admin') return showToast("⛔ Chỉ Admin mới được duyệt!", 'warning');
+    if(!confirm('Duyệt hoàn thành công việc này?')) return;
+
+    fetch(SCRIPT_URL + "?action=approve_done", {
+        method: 'POST',
+        body: JSON.stringify({id: id, role: currentUser.role})
+    }).then(r=>r.json()).then(res=>{
+        if(res.status==='success'){
+            showToast("Đã duyệt báo cáo thành công!", 'success');
+            loadTaskList();
+        } else {
+            showToast(res.message, 'danger');
+        }
+    });
+}
+
+function rejectTask(id) {
+    if(!currentUser || currentUser.role !== 'Admin') return showToast("⛔ Chỉ Admin mới được duyệt!", 'warning');
+    if(!confirm('Trả lại báo cáo này (chuyển về tiến độ 50%)?')) return;
+
+    fetch(SCRIPT_URL + "?action=update_progress", {
+        method: 'POST',
+        body: JSON.stringify({id: id, progress: 50, user_fullname: currentUser.name, role: currentUser.role})
+    }).then(r=>r.json()).then(res=>{
+        if(res.status==='success'){
+            showToast("Đã trả lại báo cáo!", 'warning');
+            loadTaskList();
+        } else {
+            showToast(res.message, 'danger');
+        }
+    });
+}
