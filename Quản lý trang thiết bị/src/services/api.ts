@@ -1,4 +1,4 @@
-export const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbytg_XLMT1BvXbaxstNEB5_-q14RumZyKmVYM5T9ShNUw4Jnkq3WpL4HaK-FnnXchJThg/exec';
+export const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbzEIHH0voF5ONV59AYrkMo-mlgUBNpksmkWOnLOVt-0F4csmNaIUgTgMZ71M6vzUVCHWg/exec';
 
 
 export interface DeviceDocument {
