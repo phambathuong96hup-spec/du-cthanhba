@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCircle, Download, FileText, Loader2, RefreshCw, Repeat2, Send, XCircle, QrCode } from 'lucide-react';
+import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { CheckCircle, Download, FileText, Loader2, RefreshCw, Repeat2, Send, XCircle, QrCode, X, Camera } from 'lucide-react';
 import { Card, CardBody, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge } from '../components/ui';
 import {
   createTransfer,
@@ -11,6 +11,7 @@ import {
   type DeviceData,
   type TransferData,
 } from '../services/api';
+import { Html5Qrcode } from 'html5-qrcode';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -40,6 +41,10 @@ const Transfers: React.FC = () => {
   const [toDepartment, setToDepartment] = useState('');
   const [reason, setReason] = useState('');
   const [message, setMessage] = useState('');
+  const [showScanner, setShowScanner] = useState(false);
+  const [scanResult, setScanResult] = useState('');
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const scannerContainerId = 'qr-scanner-region';
 
   const username = localStorage.getItem('username') || '';
   const userDepartment = localStorage.getItem('userDepartment') || '';
@@ -65,6 +70,70 @@ const Transfers: React.FC = () => {
   const departments = useMemo(() => {
     return Array.from(new Set(devices.map(d => d.department).filter(Boolean))).sort();
   }, [devices]);
+
+  // ===== QR Scanner Logic =====
+  const stopScanner = useCallback(async () => {
+    try {
+      if (scannerRef.current) {
+        const state = scannerRef.current.getState();
+        if (state === 2 /* SCANNING */) {
+          await scannerRef.current.stop();
+        }
+        scannerRef.current.clear();
+        scannerRef.current = null;
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  const startScanner = useCallback(async () => {
+    setScanResult('');
+    setShowScanner(true);
+    // Wait for DOM element to render
+    await new Promise(r => setTimeout(r, 350));
+    try {
+      const html5QrCode = new Html5Qrcode(scannerContainerId);
+      scannerRef.current = html5QrCode;
+      await html5QrCode.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          // Found a code — match to device
+          const cleanCode = decodedText.trim().toLowerCase();
+          const found = transferableDevices.find(d =>
+            d.id.toLowerCase() === cleanCode ||
+            d.id.toLowerCase().includes(cleanCode) ||
+            (d.serial && d.serial.toLowerCase().includes(cleanCode))
+          );
+          if (found) {
+            setDeviceId(found.id);
+            setScanResult(`✅ Đã tìm thấy: ${found.id} - ${found.name}`);
+          } else {
+            setScanResult(`⚠️ Không tìm thấy thiết bị với mã: ${decodedText}`);
+          }
+          // Stop after first successful read
+          html5QrCode.stop().then(() => html5QrCode.clear()).catch(() => {});
+          scannerRef.current = null;
+          setTimeout(() => setShowScanner(false), 1500);
+        },
+        () => { /* ignore scan failures (no code in frame) */ }
+      );
+    } catch (err: any) {
+      setScanResult(`❌ Không thể mở camera: ${err?.message || err}`);
+      setTimeout(() => setShowScanner(false), 2500);
+    }
+  }, [transferableDevices]);
+
+  const closeScanner = useCallback(async () => {
+    await stopScanner();
+    setShowScanner(false);
+    setScanResult('');
+  }, [stopScanner]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => { stopScanner(); };
+  }, [stopScanner]);
+  // ===== End QR Scanner =====
 
   const transferableDevices = useMemo(() => {
     if (transferType === 'Mượn') return devices; // Can borrow from any department
@@ -208,25 +277,44 @@ const Transfers: React.FC = () => {
               <div>
                 <label className="input-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   Thiết bị
-                  <Button variant="secondary" size="sm" type="button" style={{ padding: '2px 8px', fontSize: '0.8rem' }} onClick={() => {
-                    const code = window.prompt("Quét mã QR/Barcode hoặc nhập mã thiết bị (Serial):");
-                    if (code && code.trim() !== '') {
-                      const cleanCode = code.trim().toLowerCase();
-                      const found = transferableDevices.find(d => 
-                        d.id.toLowerCase() === cleanCode || 
-                        d.id.toLowerCase().includes(cleanCode) || 
-                        (d.serial && d.serial.toLowerCase().includes(cleanCode))
-                      );
-                      if (found) {
-                        setDeviceId(found.id);
-                      } else {
-                        alert("Không tìm thấy thiết bị phù hợp với mã: " + code);
-                      }
-                    }
-                  }}>
-                    <QrCode size={14} style={{ marginRight: '4px' }} /> Quét QR
+                  <Button variant="secondary" size="sm" type="button" style={{ padding: '2px 8px', fontSize: '0.8rem' }} onClick={startScanner}>
+                    <Camera size={14} style={{ marginRight: '4px' }} /> Quét QR/Barcode
                   </Button>
                 </label>
+
+                {/* ===== QR Scanner Modal ===== */}
+                {showScanner && (
+                  <div style={{
+                    position: 'fixed', inset: 0, zIndex: 9999,
+                    background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }} onClick={closeScanner}>
+                    <div style={{
+                      background: 'var(--surface, #fff)', borderRadius: '16px', padding: '20px',
+                      width: '90%', maxWidth: '420px', position: 'relative',
+                    }} onClick={e => e.stopPropagation()}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <strong style={{ fontSize: '1.05rem' }}>📷 Quét mã QR / Barcode</strong>
+                        <button onClick={closeScanner} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                          <X size={20} />
+                        </button>
+                      </div>
+                      <div id={scannerContainerId} style={{ width: '100%', minHeight: '280px', borderRadius: '8px', overflow: 'hidden' }} />
+                      {scanResult && (
+                        <div style={{
+                          marginTop: '12px', padding: '10px', borderRadius: '8px',
+                          background: scanResult.startsWith('✅') ? '#d1fae5' : scanResult.startsWith('⚠') ? '#fef3c7' : '#fee2e2',
+                          fontWeight: 600, textAlign: 'center', fontSize: '0.9rem',
+                        }}>
+                          {scanResult}
+                        </div>
+                      )}
+                      <p style={{ textAlign: 'center', marginTop: '10px', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                        Hướng camera vào mã QR hoặc Barcode trên thiết bị
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {/* ===== End Scanner Modal ===== */}
                 <select className="filter-select" style={{ width: '100%' }} value={deviceId} onChange={e => setDeviceId(e.target.value)} required>
                   <option value="" disabled>-- Chọn thiết bị --</option>
                   {transferableDevices.map(device => (
