@@ -66,9 +66,12 @@ function openReviewModal(id) {
     
     const fileContainer = document.getElementById('reviewFileContainer');
     fileContainer.innerHTML = '';
-    const fileUrl = task[10]; // Assuming index 10 is 'Tài liệu' / file upload
+    const fileUrl = task[13]; // Column 14 = File evidence URLs
     if (fileUrl && String(fileUrl).trim() !== '') {
-        fileContainer.innerHTML = `<a href="${escapeHtml(fileUrl)}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-link-45deg"></i> Xem tài liệu đính kèm</a>`;
+        const links = String(fileUrl).split('\n').filter(u => u.trim());
+        fileContainer.innerHTML = links.map((url, idx) =>
+            `<a href="${escapeHtml(url.trim())}" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-link-45deg"></i> Tài liệu ${links.length > 1 ? (idx + 1) : ''}</a>`
+        ).join('');
     } else {
         fileContainer.innerHTML = `<span class="text-muted small">Không có tài liệu đính kèm.</span>`;
     }

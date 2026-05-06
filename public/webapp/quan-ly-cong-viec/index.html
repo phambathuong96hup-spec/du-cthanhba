@@ -119,7 +119,7 @@
                     <div class="task-command-main">
                         <div class="task-search-shell">
                             <i class="bi bi-search"></i>
-                            <input type="text" placeholder="Tìm kiếm công việc..." oninput="syncSearch(this.value)">
+                            <input type="text" id="searchInput" placeholder="Tìm kiếm công việc..." oninput="syncSearch(this.value)">
                         </div>
                         <div class="task-command-actions">
                             <button class="toolbar-icon-btn" type="button" onclick="switchTab('pills-report',document.querySelector('[onclick*=pills-report]'));loadDashboard()" title="Thống kê">

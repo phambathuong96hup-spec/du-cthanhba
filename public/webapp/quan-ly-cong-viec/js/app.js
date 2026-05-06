@@ -39,10 +39,7 @@ function toggleSidebar() {
     document.querySelector('.overlay')?.classList.toggle('active');
 }
 
-// ── Desktop Sidebar Collapse ──
-function toggleSidebarDesktop() {
-    document.getElementById('sidebar')?.classList.toggle('collapsed');
-}
+
 
 // ── Deadline Toggle ──
 function toggleDeadline() {

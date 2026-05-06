@@ -66,7 +66,7 @@ async function submitCompliance(btn) {
 
     setBtnLoading(btn, true);
     try {
-        const res = await apiFetch('add_compliance', { date, name, type, content, note });
+        const res = await apiFetch('add_compliance', { date, person: name, type, fault: content, note, role: currentUser.role });
         showToast(res.message || "Đã ghi nhận!", 'success');
         bootstrap.Modal.getInstance(document.getElementById('complianceModal'))?.hide();
         loadCompliance();

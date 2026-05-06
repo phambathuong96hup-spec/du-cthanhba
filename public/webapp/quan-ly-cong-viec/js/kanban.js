@@ -199,6 +199,8 @@ function openTaskDetail(id) {
         document.getElementById('detailDeadline').innerHTML = '<span class="text-muted"><i class="bi bi-infinity"></i> Thường quy</span>';
     }
 
+    const assignees = String(task[7]).split(',').map(s => s.trim()).filter(Boolean);
+
     const progColor = prog >= 100 ? '#10b981' : prog >= 50 ? '#f59e0b' : '#ef4444';
     const canEdit = currentUser && (isAdminUser(currentUser) || assignees.includes(currentUser.name));
     document.getElementById('detailProgress').innerHTML = `
@@ -212,8 +214,6 @@ function openTaskDetail(id) {
             <span class="fw-bold small" id="progressSliderVal" style="color:var(--text-main);min-width:36px">${prog}%</span>
             ${canEdit ? `<button class="btn btn-sm btn-primary-custom btn-rounded px-2 py-0" onclick="saveProgressFromSlider('${escapeHtml(id)}')"><i class="bi bi-check2"></i></button>` : ''}
         </div>`;
-
-    const assignees = String(task[7]).split(',').map(s => s.trim()).filter(Boolean);
     document.getElementById('detailAssignee').innerHTML = assignees.map(n => {
         const color = getRandomColor(n);
         return `<div class="d-flex align-items-center gap-2 px-2 py-1 rounded-pill" style="background:var(--bg-body)">

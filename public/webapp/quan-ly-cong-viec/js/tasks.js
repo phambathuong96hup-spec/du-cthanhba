@@ -492,10 +492,7 @@ async function approveDone(id) {
     }
 }
 
-function applyFilters() {
-    currentPage = 1;
-    renderTasks();
-}
+
 
 function resetFilters() {
     document.getElementById('searchInput').value = '';
