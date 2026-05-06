@@ -136,20 +136,25 @@ function login_(payload) {
   const username = String(payload.username || '').trim();
   const pin = String(payload.pin || payload.password || '').trim();
   
+  if (!username || !pin) {
+    return { success: false, message: 'Vui lòng nhập tên đăng nhập và mã PIN.' };
+  }
+  
   const user = users.find(u => {
-    const account = getUserField_(u, ['Tên đăng nhập', 'Ten dang nhap', 'Username', 'Tài khoản', 'Tai khoan']);
-    const email = getUserField_(u, ['Email']);
-    const userPin = getUserField_(u, ['Mã PIN', 'Ma PIN', 'PIN', 'Mật khẩu', 'Mat khau']);
+    const account = getUserField_(u, ['Tên đăng nhập', 'Ten dang nhap', 'Username', 'Tài khoản', 'Tai khoan', 'username']);
+    const email = getUserField_(u, ['Email', 'email']);
+    const userPin = getUserField_(u, ['Mã PIN', 'Ma PIN', 'PIN', 'pin', 'Mật khẩu', 'Mat khau', 'Password', 'password', 'Mã pin', 'MÃ PIN']);
     return (normalize_(account) === normalize_(username) || normalize_(email) === normalize_(username)) && String(userPin).trim() === pin;
   });
   
   if (user) {
-    if (String(user['Trạng thái']).toLowerCase() === 'inactive') {
+    const status = getUserField_(user, ['Trạng thái', 'Trang thai', 'Status', 'status']) || 'active';
+    if (String(status).toLowerCase() === 'inactive') {
       return { success: false, message: 'Tài khoản đã bị khóa.' };
     }
     const safeUser = { ...user };
-    delete safeUser['Mã PIN'];
-    delete safeUser['Mật khẩu'];
+    // Xóa các trường nhạy cảm trước khi trả về
+    ['Mã PIN', 'Ma PIN', 'PIN', 'pin', 'Mật khẩu', 'Mat khau', 'Password', 'password', 'Mã pin', 'MÃ PIN'].forEach(k => delete safeUser[k]);
     return { success: true, user: safeUser };
   }
   return { success: false, message: 'Tên đăng nhập hoặc mã PIN không chính xác.' };

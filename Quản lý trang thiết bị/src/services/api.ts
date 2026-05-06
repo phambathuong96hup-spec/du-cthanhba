@@ -1,4 +1,4 @@
-export const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbzEIHH0voF5ONV59AYrkMo-mlgUBNpksmkWOnLOVt-0F4csmNaIUgTgMZ71M6vzUVCHWg/exec';
+export const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbznJoCVhOyzoGQmqIMXxB3stCBQYCd_OQ76k6hR75VDYsCs0V9dhtzrFmJMZO11di0K_w/exec';
 
 
 export interface DeviceDocument {
@@ -70,8 +70,22 @@ export interface TransferData {
 const safeFetch = async (input: RequestInfo, init?: RequestInit) => {
   try {
     const response = await fetch(input, init);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return await response.json();
+    if (!response.ok) {
+      const text = await response.text();
+      console.error(`HTTP Error ${response.status}:`, text);
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const text = await response.text();
+    try {
+      const data = JSON.parse(text);
+      if (data && typeof data === 'object' && data.success === false) {
+        console.warn('API returned success=false:', data);
+      }
+      return data;
+    } catch (e) {
+      console.error('Failed to parse JSON response. Response text was:', text);
+      return null;
+    }
   } catch (error) {
     console.error('Fetch error:', error);
     return null;
@@ -101,32 +115,42 @@ export const fetchUsers = async (): Promise<UserData[]> => {
   const data = await safeFetch(`${GOOGLE_SHEETS_API_URL}?action=getUsers`);
   if (!data || !Array.isArray(data)) return [];
 
-  const validData = data.filter((item: any) => item['Tên đăng nhập'] && item['Tên đăng nhập'].trim() !== '');
+  const validData = data.filter((item: any) => {
+    const uname = item['Tên đăng nhập'] || item['Username'] || item['username'] || '';
+    return uname && String(uname).trim() !== '';
+  });
 
   return validData.map((item: any) => ({
-    username: item['Tên đăng nhập'] ? item['Tên đăng nhập'].trim() : '',
-    role: item['Quyền hạn'] ? item['Quyền hạn'].trim() : 'User',
-    name: item['Họ và Tên'] ? item['Họ và Tên'].trim() : 'Người dùng',
-    email: item['Email'] ? item['Email'].trim() : '',
-    department: item['Khoa/Phòng'] ? item['Khoa/Phòng'].trim() : '',
+    username: (item['Tên đăng nhập'] || item['Username'] || item['username'] || '').toString().trim(),
+    role: (item['Quyền hạn'] || item['Quyền'] || item['Role'] || 'User').toString().trim(),
+    name: (item['Họ và Tên'] || item['Họ và tên'] || item['Name'] || 'Người dùng').toString().trim(),
+    email: (item['Email'] || item['email'] || '').toString().trim(),
+    department: (item['Khoa/Phòng'] || item['Khoa/Phong'] || '').toString().trim(),
   }));
 };
 
 export const loginUser = async (payload: { username: string; pin: string }) => {
-  const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
-    method: 'POST',
-    body: JSON.stringify({ action: 'login', payload }),
-  });
+  // Use GET to avoid CORS redirect issues with Google Apps Script
+  // GAS 302-redirects POST, browsers convert POST→GET on redirect, losing body
+  const queryParams = new URLSearchParams({
+    action: 'login',
+    username: payload.username,
+    pin: payload.pin,
+    password: payload.pin
+  }).toString();
+  
+  const data = await safeFetch(`${GOOGLE_SHEETS_API_URL}?${queryParams}`);
+  
   if (!data?.success) return data || { success: false, message: 'Lỗi kết nối mạng.' };
   const item = data.user || {};
   return {
     success: true,
     user: {
-      username: item['Tên đăng nhập'] ? item['Tên đăng nhập'].trim() : '',
-      role: item['Quyền hạn'] ? item['Quyền hạn'].trim() : 'User',
-      name: item['Họ và Tên'] ? item['Họ và Tên'].trim() : 'Người dùng',
-      email: item['Email'] ? item['Email'].trim() : '',
-      department: item['Khoa/Phòng'] ? item['Khoa/Phòng'].trim() : '',
+      username: (item['Tên đăng nhập'] || item['Username'] || item['username'] || '').toString().trim(),
+      role: (item['Quyền hạn'] || item['Quyền'] || item['Role'] || 'User').toString().trim(),
+      name: (item['Họ và Tên'] || item['Họ và tên'] || item['Name'] || 'Người dùng').toString().trim(),
+      email: (item['Email'] || item['email'] || '').toString().trim(),
+      department: (item['Khoa/Phòng'] || item['Khoa/Phong'] || '').toString().trim(),
     } as UserData,
   };
 };

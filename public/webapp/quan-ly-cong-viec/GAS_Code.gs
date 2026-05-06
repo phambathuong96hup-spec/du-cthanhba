@@ -128,19 +128,36 @@ function doPost(e) {
           }
         });
 
-        // Tạo sự kiện Calendar tại thời điểm deadline để nhắc nhở
-        if (guestsList.length > 0 && deadlineVal) {
-          var eventStart = new Date(deadlineVal);
-          eventStart.setHours(8, 0, 0, 0); // 8:00 sáng ngày deadline
-          var eventEnd = new Date(eventStart.getTime() + 60 * 60000); // +1 giờ
+
+        // === SỰ KIỆN 1: Thông báo NGAY LẬP TỨC trên điện thoại ===
+        if (guestsList.length > 0) {
           var calendar = CalendarApp.getDefaultCalendar();
-          var event = calendar.createEvent(emailSubject, eventStart, eventEnd, {
-            description: "Công việc: " + postData.taskName + "\nDeadline: " + deadlineText + "\nGhi chú: " + (postData.notes || '') + "\n\n" + appUrl,
+          var now = new Date();
+          var nowEnd = new Date(now.getTime() + 15 * 60000); // 15 phút
+          var calDesc = "Công việc: " + postData.taskName + "\nDeadline: " + deadlineText + "\nGhi chú: " + (postData.notes || '') + "\n\n" + appUrl;
+
+          var immediateEvent = calendar.createEvent(
+            "🚨 [VIỆC MỚI] " + postData.taskName, now, nowEnd, {
+            description: calDesc,
             guests: guestsList.join(','),
             sendInvites: true
           });
-          event.addEmailReminder(1440); // nhắc email 1 ngày trước
-          event.addPopupReminder(60);   // popup 1 giờ trước
+          immediateEvent.addPopupReminder(0); // Popup NGAY trên điện thoại
+
+          // === SỰ KIỆN 2: Nhắc deadline (nếu có) ===
+          if (deadlineVal) {
+            var eventStart = new Date(deadlineVal);
+            eventStart.setHours(8, 0, 0, 0); // 8:00 sáng ngày deadline
+            var eventEnd = new Date(eventStart.getTime() + 60 * 60000);
+            var dlEvent = calendar.createEvent(
+              "⏰ [DEADLINE] " + postData.taskName, eventStart, eventEnd, {
+              description: calDesc,
+              guests: guestsList.join(','),
+              sendInvites: false  // Đã gửi invite ở event 1 rồi
+            });
+            dlEvent.addEmailReminder(1440); // Email nhắc 1 ngày trước
+            dlEvent.addPopupReminder(60);   // Popup 1 giờ trước deadline
+          }
         }
       } catch (calErr) {
         logSystem("WARN", "Notify failed: " + calErr.toString());
