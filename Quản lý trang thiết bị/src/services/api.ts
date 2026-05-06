@@ -150,7 +150,7 @@ export const loginUser = async (payload: { username: string; pin: string }) => {
       role: (item['Quyền hạn'] || item['Quyền'] || item['Role'] || 'User').toString().trim(),
       name: (item['Họ và Tên'] || item['Họ và tên'] || item['Name'] || 'Người dùng').toString().trim(),
       email: (item['Email'] || item['email'] || '').toString().trim(),
-      department: (item['Khoa/Phòng'] || item['Khoa/Phong'] || '').toString().trim(),
+      department: (item['Khoa/Phòng'] || item['Khoa/Phong'] || item['Khoa/ Phòng'] || item['Khoa'] || item['Department'] || item['department'] || item['Nơi công tác'] || item['Noi cong tac'] || '').toString().trim(),
     } as UserData,
   };
 };

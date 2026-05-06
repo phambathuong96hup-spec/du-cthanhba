@@ -86,9 +86,9 @@ const Transfers: React.FC = () => {
   }, []);
 
   const transferableDevices = useMemo(() => {
-    if (transferType === 'Mượn') return devices; // Can borrow from any department
-    return devices.filter(device => isAdmin || device.department === userDepartment);
-  }, [devices, isAdmin, userDepartment, transferType]);
+    // Show all devices — backend validates ownership/permission on submit
+    return devices;
+  }, [devices]);
 
   const startScanner = useCallback(async () => {
     setScanResult('');
