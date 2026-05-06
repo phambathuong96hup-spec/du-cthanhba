@@ -26,7 +26,6 @@ export interface DeviceData {
 
 export interface UserData {
   username: string;
-  password?: string;
   role: string;
   name: string;
   email?: string;
@@ -113,7 +112,7 @@ export const fetchUsers = async (): Promise<UserData[]> => {
   }));
 };
 
-export const loginUser = async (payload: { username: string; password: string }) => {
+export const loginUser = async (payload: { username: string; pin: string }) => {
   const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
     method: 'POST',
     body: JSON.stringify({ action: 'login', payload }),

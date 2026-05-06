@@ -10,14 +10,14 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !password) {
-      setError('Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.');
+    if (!username || !pin) {
+      setError('Vui lòng nhập đầy đủ tên đăng nhập và mã PIN.');
       return;
     }
 
@@ -25,13 +25,13 @@ const Login: React.FC = () => {
     setError('');
 
     try {
-      const result = await loginUser({ username, password });
+      const result = await loginUser({ username, pin });
 
       if (result.success && result.user) {
         login(result.user);
         navigate('/dashboard');
       } else {
-        setError(result.message || 'Tên đăng nhập hoặc mật khẩu không chính xác.');
+        setError(result.message || 'Tên đăng nhập hoặc mã PIN không chính xác.');
       }
     } catch (err) {
       console.error(err);
@@ -67,19 +67,19 @@ const Login: React.FC = () => {
           />
           <Input 
             type="password" 
-            placeholder="Mật khẩu" 
+            placeholder="Mã PIN" 
             icon={<Lock size={18} />}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
             required
           />
 
           <div className="login-options">
             <label className="remember-me">
               <input type="checkbox" />
-              Nhớ mật khẩu
+              Nhớ mã PIN
             </label>
-            <a href="#" className="forgot-password">Quên mật khẩu?</a>
+            <a href="#" className="forgot-password">Quên mã PIN?</a>
           </div>
 
           <Button type="submit" variant="primary" className="login-btn" disabled={isLoading}>

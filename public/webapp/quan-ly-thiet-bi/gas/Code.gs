@@ -37,7 +37,7 @@ const DEVICE_HEADERS = [
   'Ngày cập nhật'
 ];
 
-const USER_HEADERS = ['Tên đăng nhập', 'Mật khẩu', 'Quyền hạn', 'Họ và Tên', 'Email', 'Khoa/Phòng', 'Trạng thái'];
+const USER_HEADERS = ['Tên đăng nhập', 'Mã PIN', 'Quyền hạn', 'Họ và Tên', 'Email', 'Khoa/Phòng', 'Trạng thái'];
 const REPAIR_HEADERS = ['Thời gian', 'Mã Máy/Thiết bị', 'Người báo lỗi', 'Email người báo', 'Mô tả lỗi', 'Trạng Thái', 'Người duyệt', 'Ghi chú xử lý'];
 const TRANSFER_HEADERS = [
   'TransferId',
@@ -88,7 +88,8 @@ function route_(action, payload) {
         .filter(row => String(row['Trạng thái'] || 'active').toLowerCase() !== 'inactive')
         .map(row => {
            const safeRow = { ...row };
-           delete safeRow['Mật khẩu']; // BẢO MẬT: Không trả về mật khẩu
+           delete safeRow['Mã PIN']; // BẢO MẬT: Không trả về mã PIN
+           delete safeRow['Mật khẩu']; // Tương thích dữ liệu cũ, nếu còn
            return safeRow;
         });
     case 'login':
@@ -133,19 +134,20 @@ function route_(action, payload) {
 function login_(payload) {
   const users = getUserRows_();
   const username = String(payload.username || '').trim();
-  const password = String(payload.password || '').trim();
+  const pin = String(payload.pin || payload.password || '').trim();
   
-  const user = users.find(u => u['Tên đăng nhập'] === username && String(u['Mật khẩu']) === password);
+  const user = users.find(u => u['Tên đăng nhập'] === username && String(u['Mã PIN'] || u['Mật khẩu']) === pin);
   
   if (user) {
     if (String(user['Trạng thái']).toLowerCase() === 'inactive') {
       return { success: false, message: 'Tài khoản đã bị khóa.' };
     }
     const safeUser = { ...user };
+    delete safeUser['Mã PIN'];
     delete safeUser['Mật khẩu'];
     return { success: true, user: safeUser };
   }
-  return { success: false, message: 'Tên đăng nhập hoặc mật khẩu không chính xác.' };
+  return { success: false, message: 'Tên đăng nhập hoặc mã PIN không chính xác.' };
 }
 
 function setupSheets() {
