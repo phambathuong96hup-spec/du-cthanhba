@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, AlertTriangle, RefreshCw, FileText, X, Save } from 'lucide-react';
 import { Card, CardBody, Button, Badge, Tabs, Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/ui';
-import { fetchDevices, type DeviceData } from '../services/api';
+import { createTransfer, fetchDevices, fetchTransfers, type DeviceData, type TransferData } from '../services/api';
 import './Devices.css';
 
 const DeviceProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [device, setDevice] = useState<DeviceData | null>(null);
+  const [transfers, setTransfers] = useState<TransferData[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Modal điều chuyển khoa
@@ -19,10 +21,12 @@ const DeviceProfile: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
-      const data = await fetchDevices();
+      const [data, transferData] = await Promise.all([fetchDevices(), fetchTransfers()]);
       const decodedId = decodeURIComponent(id || '');
       const found = data.find(d => d.id === decodedId);
       if (found) setDevice(found);
+      setDepartments(Array.from(new Set(data.map(d => d.department).filter(Boolean))).sort());
+      setTransfers(transferData.filter(t => t.deviceId === decodedId).reverse());
       setIsLoading(false);
     };
     if (id) loadData();
@@ -34,12 +38,23 @@ const DeviceProfile: React.FC = () => {
     navigate('/repairs');
   };
 
-  const handleTransfer = () => {
+  const handleTransfer = async () => {
     if (!newDept.trim()) { alert('Vui lòng nhập Khoa/Phòng đích.'); return; }
-    alert(`✅ Đã ghi nhận yêu cầu điều chuyển thiết bị "${device?.name}" đến "${newDept}".\n\nGhi chú: ${transferNote || 'Không có'}\n\nVui lòng cập nhật cột "Nơi đặt thiết bị" trên Google Sheet để đồng bộ dữ liệu.`);
-    setShowTransferModal(false);
-    setNewDept('');
-    setTransferNote('');
+    if (!device) return;
+    const res = await createTransfer({
+      deviceId: device.id,
+      toDepartment: newDept,
+      reason: transferNote,
+      actorUsername: localStorage.getItem('username') || '',
+    });
+    alert((res.success ? '✅ ' : '❌ ') + (res.message || 'Có lỗi xảy ra.'));
+    if (res.success) {
+      const transferData = await fetchTransfers();
+      setTransfers(transferData.filter(t => t.deviceId === device.id).reverse());
+      setShowTransferModal(false);
+      setNewDept('');
+      setTransferNote('');
+    }
   };
 
   const generalInfoTab = (
@@ -65,12 +80,20 @@ const DeviceProfile: React.FC = () => {
         </TableRow>
       </TableHead>
       <TableBody>
-        <TableRow>
-          <TableCell>{device?.department || '—'}</TableCell>
-          <TableCell>{device?.dateAdded || '—'}</TableCell>
-          <TableCell>Hiện tại</TableCell>
-          <TableCell>—</TableCell>
-        </TableRow>
+        {transfers.length === 0 ? (
+          <TableRow>
+            <TableCell colSpan={4} style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
+              Chưa có lịch sử luân chuyển.
+            </TableCell>
+          </TableRow>
+        ) : transfers.map(transfer => (
+          <TableRow key={transfer.transferId}>
+            <TableCell>{transfer.fromDepartment} → <strong>{transfer.toDepartment}</strong></TableCell>
+            <TableCell>{transfer.requestedAt || transfer.createdAt}</TableCell>
+            <TableCell>{transfer.receivedAt || transfer.status}</TableCell>
+            <TableCell>{transfer.requestedByName || transfer.requestedBy}</TableCell>
+          </TableRow>
+        ))}
       </TableBody>
     </Table>
   );
@@ -172,7 +195,11 @@ const DeviceProfile: React.FC = () => {
               <div>
                 <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.9rem' }}>Khoa/Phòng đích *</label>
                 <input value={newDept} onChange={e => setNewDept(e.target.value)} placeholder="VD: Khoa Phẫu thuật"
+                  list="profile-transfer-depts"
                   style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '0.95rem', boxSizing: 'border-box' }} />
+                <datalist id="profile-transfer-depts">
+                  {departments.filter(dept => dept !== device?.department).map(dept => <option key={dept} value={dept} />)}
+                </datalist>
               </div>
               <div>
                 <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.9rem' }}>Ghi chú</label>

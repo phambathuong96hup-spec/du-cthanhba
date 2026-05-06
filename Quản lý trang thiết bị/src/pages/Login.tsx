@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HeartPulse, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { Input, Button } from '../components/ui';
-import { fetchUsers } from '../services/api';
+import { loginUser } from '../services/api';
 import { useAuth } from '../App';
 import './Login.css';
 
@@ -25,19 +25,13 @@ const Login: React.FC = () => {
     setError('');
 
     try {
-      const users = await fetchUsers();
-      const userMatch = users.find(u => u.username === username && u.password === password);
+      const result = await loginUser({ username, password });
 
-      if (userMatch) {
-        // Lưu email riêng (không nằm trong context)
-        if (userMatch.email) localStorage.setItem('userEmail', userMatch.email);
-        else localStorage.removeItem('userEmail');
-
-        // login() cập nhật Context → toàn app re-render ngay lập tức
-        login(userMatch.name, userMatch.role);
+      if (result.success && result.user) {
+        login(result.user);
         navigate('/dashboard');
       } else {
-        setError('Tên đăng nhập hoặc mật khẩu không chính xác.');
+        setError(result.message || 'Tên đăng nhập hoặc mật khẩu không chính xác.');
       }
     } catch (err) {
       console.error(err);

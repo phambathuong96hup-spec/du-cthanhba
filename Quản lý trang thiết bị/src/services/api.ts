@@ -1,4 +1,4 @@
-export const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbz6HCpXjtEJHKGFfNk4gp3fLDr2Xycv0EBc61UeeB23uwlOoaH_N9SLHP5Z9er29NmW5w/exec';
+export const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbytg_XLMT1BvXbaxstNEB5_-q14RumZyKmVYM5T9ShNUw4Jnkq3WpL4HaK-FnnXchJThg/exec';
 
 
 export interface DeviceDocument {
@@ -30,6 +30,7 @@ export interface UserData {
   role: string;
   name: string;
   email?: string;
+  department?: string;
 }
 
 export interface RepairData {
@@ -39,6 +40,31 @@ export interface RepairData {
   userEmail: string;
   description: string;
   status: string;
+}
+
+export interface TransferData {
+  transferId: string;
+  createdAt: string;
+  deviceId: string;
+  deviceName: string;
+  fromDepartment: string;
+  toDepartment: string;
+  quantity: string;
+  status: 'PENDING_RECEIVE' | 'COMPLETED' | 'REJECTED' | 'CANCELLED' | string;
+  requestedBy: string;
+  requestedByName: string;
+  requestedByEmail: string;
+  requestedNote: string;
+  requestedAt: string;
+  receivedBy: string;
+  receivedByName: string;
+  receivedByEmail: string;
+  receivedNote: string;
+  receivedAt: string;
+  rejectedBy: string;
+  rejectedAt: string;
+  rejectReason: string;
+  updatedAt: string;
 }
 
 // Hàm helper xử lý lỗi fetch chung
@@ -80,11 +106,30 @@ export const fetchUsers = async (): Promise<UserData[]> => {
 
   return validData.map((item: any) => ({
     username: item['Tên đăng nhập'] ? item['Tên đăng nhập'].trim() : '',
-    password: item['Mật khẩu'] ? String(item['Mật khẩu']).trim() : '',
     role: item['Quyền hạn'] ? item['Quyền hạn'].trim() : 'User',
     name: item['Họ và Tên'] ? item['Họ và Tên'].trim() : 'Người dùng',
     email: item['Email'] ? item['Email'].trim() : '',
+    department: item['Khoa/Phòng'] ? item['Khoa/Phòng'].trim() : '',
   }));
+};
+
+export const loginUser = async (payload: { username: string; password: string }) => {
+  const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'login', payload }),
+  });
+  if (!data?.success) return data || { success: false, message: 'Lỗi kết nối mạng.' };
+  const item = data.user || {};
+  return {
+    success: true,
+    user: {
+      username: item['Tên đăng nhập'] ? item['Tên đăng nhập'].trim() : '',
+      role: item['Quyền hạn'] ? item['Quyền hạn'].trim() : 'User',
+      name: item['Họ và Tên'] ? item['Họ và Tên'].trim() : 'Người dùng',
+      email: item['Email'] ? item['Email'].trim() : '',
+      department: item['Khoa/Phòng'] ? item['Khoa/Phòng'].trim() : '',
+    } as UserData,
+  };
 };
 
 export const fetchRepairs = async (): Promise<RepairData[]> => {
@@ -149,6 +194,75 @@ export const updateDocumentStatus = async (serial: string, status: string) => {
   const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
     method: 'POST',
     body: JSON.stringify({ action: 'updateDocStatus', payload: { serial, status } }),
+  });
+  return data || { success: false, message: 'Lỗi kết nối mạng.' };
+};
+
+const mapTransfer = (item: any): TransferData => ({
+  transferId: item.TransferId || item['TransferId'] || item['Thời gian'] || '',
+  createdAt: item.CreatedAt || item['CreatedAt'] || item['Thời gian'] || '',
+  deviceId: item.DeviceId || item['Mã Máy/Thiết bị'] || '',
+  deviceName: item.DeviceName || item['Tên Thiết bị'] || '',
+  fromDepartment: item.FromDepartment || item['Từ khoa/phòng'] || '',
+  toDepartment: item.ToDepartment || item['Đến khoa/phòng'] || '',
+  quantity: item.Quantity || item['Số lượng'] || '',
+  status: item.Status || item['Trạng thái'] || '',
+  requestedBy: item.RequestedBy || '',
+  requestedByName: item.RequestedByName || item['Người thực hiện'] || '',
+  requestedByEmail: item.RequestedByEmail || '',
+  requestedNote: item.RequestedNote || item['Lý do'] || item['Ghi chú'] || '',
+  requestedAt: item.RequestedAt || '',
+  receivedBy: item.ReceivedBy || '',
+  receivedByName: item.ReceivedByName || item['Người nhận'] || '',
+  receivedByEmail: item.ReceivedByEmail || '',
+  receivedNote: item.ReceivedNote || '',
+  receivedAt: item.ReceivedAt || '',
+  rejectedBy: item.RejectedBy || '',
+  rejectedAt: item.RejectedAt || '',
+  rejectReason: item.RejectReason || '',
+  updatedAt: item.UpdatedAt || '',
+});
+
+export const fetchTransfers = async (): Promise<TransferData[]> => {
+  const data = await safeFetch(`${GOOGLE_SHEETS_API_URL}?action=getTransfers`);
+  if (!Array.isArray(data)) return [];
+  return data.map(mapTransfer);
+};
+
+export const createTransfer = async (payload: {
+  deviceId: string;
+  toDepartment: string;
+  quantity?: string;
+  reason?: string;
+  actorUsername: string;
+}) => {
+  const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'createTransfer', payload }),
+  });
+  return data || { success: false, message: 'Lỗi kết nối mạng.' };
+};
+
+export const receiveTransfer = async (payload: { transferId: string; actorUsername: string; note?: string }) => {
+  const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'receiveTransfer', payload }),
+  });
+  return data || { success: false, message: 'Lỗi kết nối mạng.' };
+};
+
+export const rejectTransfer = async (payload: { transferId: string; actorUsername: string; reason?: string }) => {
+  const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'rejectTransfer', payload }),
+  });
+  return data || { success: false, message: 'Lỗi kết nối mạng.' };
+};
+
+export const cancelTransfer = async (payload: { transferId: string; actorUsername: string; reason?: string }) => {
+  const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'cancelTransfer', payload }),
   });
   return data || { success: false, message: 'Lỗi kết nối mạng.' };
 };

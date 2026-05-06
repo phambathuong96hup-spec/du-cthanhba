@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
+    "build:thiet-bi": "npm --prefix \"Quản lý trang thiết bị\" run build",
+    "deploy:thiet-bi": "npm run build:thiet-bi && node scripts/deploy-thiet-bi.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"

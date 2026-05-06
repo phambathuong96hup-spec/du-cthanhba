@@ -9,6 +9,7 @@ import RepairRequest from './pages/RepairRequest';
 import AdminRepairs from './pages/AdminRepairs';
 import Reports from './pages/Reports';
 import GspLog from './pages/GspLog';
+import Transfers from './pages/Transfers';
 
 // ========== AUTH CONTEXT ==========
 
@@ -16,15 +17,18 @@ interface AuthState {
   isAuthenticated: boolean;
   role: string;
   name: string;
+  username: string;
+  email: string;
+  department: string;
 }
 
 interface AuthContextType extends AuthState {
-  login: (name: string, role: string) => void;
+  login: (user: { username: string; name: string; role: string; email?: string; department?: string }) => void;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  isAuthenticated: false, role: '', name: '',
+  isAuthenticated: false, role: '', name: '', username: '', email: '', department: '',
   login: () => {}, logout: () => {},
 });
 
@@ -37,21 +41,29 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: localStorage.getItem('isAuthenticated') === 'true',
     role: localStorage.getItem('userRole') || '',
     name: localStorage.getItem('userName') || '',
+    username: localStorage.getItem('username') || '',
+    email: localStorage.getItem('userEmail') || '',
+    department: localStorage.getItem('userDepartment') || '',
   }));
 
-  const login = useCallback((name: string, role: string) => {
+  const login = useCallback((user: { username: string; name: string; role: string; email?: string; department?: string }) => {
     localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('userRole', role);
-    localStorage.setItem('userName', name);
-    setAuth({ isAuthenticated: true, role, name });
+    localStorage.setItem('username', user.username);
+    localStorage.setItem('userRole', user.role);
+    localStorage.setItem('userName', user.name);
+    localStorage.setItem('userEmail', user.email || '');
+    localStorage.setItem('userDepartment', user.department || '');
+    setAuth({ isAuthenticated: true, ...user, email: user.email || '', department: user.department || '' });
   }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('username');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userName');
     localStorage.removeItem('userEmail');
-    setAuth({ isAuthenticated: false, role: '', name: '' });
+    localStorage.removeItem('userDepartment');
+    setAuth({ isAuthenticated: false, role: '', name: '', username: '', email: '', department: '' });
   }, []);
 
   return (
@@ -83,7 +95,7 @@ function LoginRedirect() {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <Routes>
           <Route path="/login" element={<LoginRedirect />} />
 
@@ -98,6 +110,7 @@ function App() {
             {/* 🔒 PRIVATE */}
             <Route path="repairs" element={<PrivateRoute><RepairRequest /></PrivateRoute>} />
             <Route path="admin-repairs" element={<PrivateRoute><AdminRepairs /></PrivateRoute>} />
+            <Route path="transfers" element={<PrivateRoute><Transfers /></PrivateRoute>} />
             <Route path="reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
             <Route path="gsp" element={<PrivateRoute><GspLog /></PrivateRoute>} />
           </Route>
