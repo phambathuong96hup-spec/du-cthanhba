@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCircle, Download, FileText, Loader2, RefreshCw, Repeat2, Send, XCircle } from 'lucide-react';
+import { CheckCircle, Download, FileText, Loader2, RefreshCw, Repeat2, Send, XCircle, QrCode } from 'lucide-react';
 import { Card, CardBody, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge } from '../components/ui';
 import {
   createTransfer,
@@ -34,7 +34,8 @@ const Transfers: React.FC = () => {
   const [transfers, setTransfers] = useState<TransferData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'create' | 'incoming' | 'outgoing' | 'history'>('incoming');
+  const [activeTab, setActiveTab] = useState<'create' | 'requests' | 'history'>('requests');
+  const [transferType, setTransferType] = useState<'Cho mượn' | 'Mượn'>('Cho mượn');
   const [deviceId, setDeviceId] = useState('');
   const [toDepartment, setToDepartment] = useState('');
   const [reason, setReason] = useState('');
@@ -66,35 +67,34 @@ const Transfers: React.FC = () => {
   }, [devices]);
 
   const transferableDevices = useMemo(() => {
+    if (transferType === 'Mượn') return devices; // Can borrow from any department
     return devices.filter(device => isAdmin || device.department === userDepartment);
-  }, [devices, isAdmin, userDepartment]);
+  }, [devices, isAdmin, userDepartment, transferType]);
 
-  const incoming = transfers.filter(t => t.status === 'PENDING_RECEIVE' && (isAdmin || t.toDepartment === userDepartment));
-  const outgoing = transfers.filter(t => t.status === 'PENDING_RECEIVE' && (isAdmin || t.requestedBy === username || t.fromDepartment === userDepartment));
+  const pendingRequests = transfers.filter(t => t.status === 'PENDING_RECEIVE' && (isAdmin || t.toDepartment === userDepartment || t.requestedBy === username || t.fromDepartment === userDepartment));
 
-  const visibleTransfers = activeTab === 'incoming'
-    ? incoming
-    : activeTab === 'outgoing'
-      ? outgoing
-      : transfers;
+  const visibleTransfers = activeTab === 'requests' ? pendingRequests : transfers;
 
   const selectedDevice = devices.find(device => device.id === deviceId);
 
   const submitTransfer = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!deviceId || !toDepartment) {
-      setMessage('Vui lòng chọn thiết bị và khoa/phòng nhận.');
+    const actualToDepartment = transferType === 'Mượn' ? userDepartment : toDepartment;
+    
+    if (!deviceId || !actualToDepartment) {
+      setMessage('Vui lòng điền đầy đủ thông tin thiết bị và khoa nhận.');
       return;
     }
     setIsSaving(true);
-    const response = await createTransfer({ deviceId, toDepartment, reason, actorUsername: username });
+    const finalReason = `[${transferType}] ${reason}`;
+    const response = await createTransfer({ deviceId, toDepartment: actualToDepartment, reason: finalReason, actorUsername: username });
     setIsSaving(false);
     setMessage(response.message || '');
     if (response.success) {
       setReason('');
-      setToDepartment('');
+      if (transferType === 'Cho mượn') setToDepartment('');
       await loadData();
-      setActiveTab('outgoing');
+      setActiveTab('requests');
     }
   };
 
@@ -187,8 +187,7 @@ const Transfers: React.FC = () => {
 
       <div className="reports-tabs-container">
         <button className={`report-main-tab ${activeTab === 'create' ? 'active' : ''}`} onClick={() => setActiveTab('create')}>Tạo yêu cầu</button>
-        <button className={`report-main-tab ${activeTab === 'incoming' ? 'active' : ''}`} onClick={() => setActiveTab('incoming')}>Chờ khoa tôi nhận ({incoming.length})</button>
-        <button className={`report-main-tab ${activeTab === 'outgoing' ? 'active' : ''}`} onClick={() => setActiveTab('outgoing')}>Tôi đã chuyển ({outgoing.length})</button>
+        <button className={`report-main-tab ${activeTab === 'requests' ? 'active' : ''}`} onClick={() => setActiveTab('requests')}>Tiếp nhận yêu cầu ({pendingRequests.length})</button>
         <button className={`report-main-tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>Lịch sử</button>
       </div>
 
@@ -197,26 +196,61 @@ const Transfers: React.FC = () => {
           <CardBody style={{ maxWidth: '760px' }}>
             <form onSubmit={submitTransfer} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label className="input-label">Thiết bị chuyển</label>
+                <label className="input-label">Loại yêu cầu</label>
+                <select className="filter-select" style={{ width: '100%', marginBottom: '8px' }} value={transferType} onChange={e => {
+                  setTransferType(e.target.value as any);
+                  setToDepartment('');
+                }}>
+                  <option value="Cho mượn">Cho mượn / Luân chuyển đi</option>
+                  <option value="Mượn">Mượn thiết bị từ khoa khác</option>
+                </select>
+              </div>
+              <div>
+                <label className="input-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  Thiết bị
+                  <Button variant="secondary" size="sm" type="button" style={{ padding: '2px 8px', fontSize: '0.8rem' }} onClick={() => {
+                    const code = window.prompt("Quét mã QR/Barcode hoặc nhập mã thiết bị (Serial):");
+                    if (code && code.trim() !== '') {
+                      const cleanCode = code.trim().toLowerCase();
+                      const found = transferableDevices.find(d => 
+                        d.id.toLowerCase() === cleanCode || 
+                        d.id.toLowerCase().includes(cleanCode) || 
+                        (d.serial && d.serial.toLowerCase().includes(cleanCode))
+                      );
+                      if (found) {
+                        setDeviceId(found.id);
+                      } else {
+                        alert("Không tìm thấy thiết bị phù hợp với mã: " + code);
+                      }
+                    }
+                  }}>
+                    <QrCode size={14} style={{ marginRight: '4px' }} /> Quét QR
+                  </Button>
+                </label>
                 <select className="filter-select" style={{ width: '100%' }} value={deviceId} onChange={e => setDeviceId(e.target.value)} required>
+                  <option value="" disabled>-- Chọn thiết bị --</option>
                   {transferableDevices.map(device => (
-                    <option key={device.id} value={device.id}>{device.id} - {device.name} ({device.department})</option>
+                    <option key={device.id} value={device.id}>{device.id} - {device.name}</option>
                   ))}
                 </select>
               </div>
               <div className="info-grid">
-                <div className="info-item"><span className="info-label">Khoa/phòng hiện tại</span><span className="info-value">{selectedDevice?.department || userDepartment || '—'}</span></div>
-                <div className="info-item"><span className="info-label">Người tạo yêu cầu</span><span className="info-value">{localStorage.getItem('userName') || username}</span></div>
+                <div className="info-item"><span className="info-label">Vị trí thiết bị (các khoa chứa thiết bị)</span><span className="info-value">{selectedDevice?.department || '—'}</span></div>
+                <div className="info-item"><span className="info-label">Người tạo yêu cầu</span><span className="info-value">{localStorage.getItem('userName') || username} ({userDepartment})</span></div>
               </div>
               <div>
-                <label className="input-label">Khoa/phòng nhận</label>
-                <Input value={toDepartment} onChange={e => setToDepartment(e.target.value)} list="transfer-depts" placeholder="Nhập hoặc chọn khoa/phòng nhận" required />
+                <label className="input-label">{transferType === 'Cho mượn' ? 'Khoa/phòng nhận' : 'Chuyển về khoa (Khoa của bạn)'}</label>
+                {transferType === 'Cho mượn' ? (
+                  <Input value={toDepartment} onChange={e => setToDepartment(e.target.value)} list="transfer-depts" placeholder="Nhập hoặc chọn khoa/phòng nhận" required />
+                ) : (
+                  <Input value={userDepartment} readOnly disabled required style={{ backgroundColor: 'var(--background)' }} />
+                )}
                 <datalist id="transfer-depts">
                   {departments.filter(dept => dept !== selectedDevice?.department).map(dept => <option key={dept} value={dept} />)}
                 </datalist>
               </div>
               <div>
-                <label className="input-label">Lý do luân chuyển</label>
+                <label className="input-label">Lý do</label>
                 <textarea className="input-field" rows={4} value={reason} onChange={e => setReason(e.target.value)} placeholder="Lý do, tình trạng bàn giao, phụ kiện đi kèm..." />
               </div>
               {message && <div style={{ color: message.startsWith('Đã') ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>{message}</div>}
@@ -253,13 +287,18 @@ const Transfers: React.FC = () => {
                     <TableCell>{transfer.requestedByName || transfer.requestedBy}<br /><small>{transfer.requestedNote}</small></TableCell>
                     <TableCell><Badge variant={statusVariant(transfer.status) as any}>{statusText[transfer.status] || transfer.status}</Badge></TableCell>
                     <TableCell>
-                      {transfer.status === 'PENDING_RECEIVE' && (activeTab === 'incoming' || isAdmin) ? (
+                      {transfer.status === 'PENDING_RECEIVE' && (activeTab === 'requests' || isAdmin) ? (
                         <div style={{ display: 'flex', gap: '8px' }}>
-                          <Button size="sm" variant="success" icon={<CheckCircle size={14} />} onClick={() => handleReceive(transfer)}>Nhận</Button>
-                          <Button size="sm" variant="danger" icon={<XCircle size={14} />} onClick={() => handleReject(transfer)}>Từ chối</Button>
+                          {(isAdmin || transfer.toDepartment === userDepartment) && (
+                            <Button size="sm" variant="success" icon={<CheckCircle size={14} />} onClick={() => handleReceive(transfer)}>Nhận</Button>
+                          )}
+                          {(isAdmin || transfer.toDepartment === userDepartment) && (
+                            <Button size="sm" variant="danger" icon={<XCircle size={14} />} onClick={() => handleReject(transfer)}>Từ chối</Button>
+                          )}
+                          {(isAdmin || transfer.requestedBy === username || transfer.fromDepartment === userDepartment) && (
+                             <Button size="sm" variant="secondary" onClick={() => handleCancel(transfer)}>Hủy</Button>
+                          )}
                         </div>
-                      ) : transfer.status === 'PENDING_RECEIVE' && (transfer.requestedBy === username || isAdmin) ? (
-                        <Button size="sm" variant="secondary" onClick={() => handleCancel(transfer)}>Hủy</Button>
                       ) : (
                         <span style={{ color: 'var(--text-secondary)' }}>{transfer.receivedByName || transfer.rejectReason || '—'}</span>
                       )}
