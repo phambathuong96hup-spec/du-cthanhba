@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
-import { CheckCircle, Download, FileText, Loader2, RefreshCw, Repeat2, Send, XCircle, QrCode, X, Camera } from 'lucide-react';
+import { CheckCircle, Download, FileText, Loader2, RefreshCw, Repeat2, Send, XCircle, X, Camera } from 'lucide-react';
 import { Card, CardBody, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge } from '../components/ui';
 import {
   createTransfer,
@@ -85,6 +85,11 @@ const Transfers: React.FC = () => {
     } catch { /* ignore */ }
   }, []);
 
+  const transferableDevices = useMemo(() => {
+    if (transferType === 'Mượn') return devices; // Can borrow from any department
+    return devices.filter(device => isAdmin || device.department === userDepartment);
+  }, [devices, isAdmin, userDepartment, transferType]);
+
   const startScanner = useCallback(async () => {
     setScanResult('');
     setShowScanner(true);
@@ -134,11 +139,6 @@ const Transfers: React.FC = () => {
     return () => { stopScanner(); };
   }, [stopScanner]);
   // ===== End QR Scanner =====
-
-  const transferableDevices = useMemo(() => {
-    if (transferType === 'Mượn') return devices; // Can borrow from any department
-    return devices.filter(device => isAdmin || device.department === userDepartment);
-  }, [devices, isAdmin, userDepartment, transferType]);
 
   const pendingRequests = transfers.filter(t => t.status === 'PENDING_RECEIVE' && (isAdmin || t.toDepartment === userDepartment || t.requestedBy === username || t.fromDepartment === userDepartment));
 
