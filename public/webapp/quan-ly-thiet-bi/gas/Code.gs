@@ -136,7 +136,12 @@ function login_(payload) {
   const username = String(payload.username || '').trim();
   const pin = String(payload.pin || payload.password || '').trim();
   
-  const user = users.find(u => u['Tên đăng nhập'] === username && String(u['Mã PIN'] || u['Mật khẩu']) === pin);
+  const user = users.find(u => {
+    const account = getUserField_(u, ['Tên đăng nhập', 'Ten dang nhap', 'Username', 'Tài khoản', 'Tai khoan']);
+    const email = getUserField_(u, ['Email']);
+    const userPin = getUserField_(u, ['Mã PIN', 'Ma PIN', 'PIN', 'Mật khẩu', 'Mat khau']);
+    return (normalize_(account) === normalize_(username) || normalize_(email) === normalize_(username)) && String(userPin).trim() === pin;
+  });
   
   if (user) {
     if (String(user['Trạng thái']).toLowerCase() === 'inactive') {
@@ -474,6 +479,23 @@ function getUserRows_() {
     .map(row => Object.fromEntries(headers.map((header, index) => [header, row[index] || ''])));
 }
 
+function getUserField_(user, keys) {
+  for (let i = 0; i < keys.length; i += 1) {
+    const direct = user[keys[i]];
+    if (direct !== undefined && String(direct).trim() !== '') return direct;
+  }
+
+  const wanted = keys.map(normalizeHeader_);
+  const actualKeys = Object.keys(user);
+  for (let i = 0; i < actualKeys.length; i += 1) {
+    if (wanted.indexOf(normalizeHeader_(actualKeys[i])) > -1) {
+      const value = user[actualKeys[i]];
+      if (value !== undefined && String(value).trim() !== '') return value;
+    }
+  }
+  return '';
+}
+
 function appendObject_(sheetName, object) {
   const sheet = deviceSpreadsheet_().getSheetByName(sheetName);
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -537,6 +559,14 @@ function isAdmin_(user) {
 
 function normalize_(value) {
   return String(value || '').trim().toLowerCase();
+}
+
+function normalizeHeader_(value) {
+  return normalize_(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9]+/g, '');
 }
 
 function nextTransferId_() {
