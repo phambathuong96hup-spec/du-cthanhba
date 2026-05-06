@@ -196,10 +196,15 @@ function doPost(e) {
           sheet.getRange(i + 1, 9).setValue("'" + postData.progress + "%");
           var currentStatus = data[i][2];
           if (currentStatus !== 'Waiting') {
-            var newStatus = postData.progress == 100 ? "Done" : (postData.progress > 0 ? "Doing" : "Todo");
-            if (!(postData.role !== 'Admin' && postData.progress == 100)) {
+            if (postData.role === 'Admin') {
+              // Admin: set trạng thái trực tiếp
+              var newStatus = postData.progress == 100 ? "Done" : (postData.progress > 0 ? "Doing" : "Todo");
               sheet.getRange(i + 1, 3).setValue(newStatus);
+            } else if (postData.progress < 100) {
+              // User: chỉ đổi Todo/Doing. Progress 100% phải qua report_done
+              sheet.getRange(i + 1, 3).setValue(postData.progress > 0 ? "Doing" : "Todo");
             }
+            // User set 100% -> chỉ cập nhật số %, không đổi status (phải submit report)
           }
           return responseJSON({ status: 'success', message: 'Đã cập nhật tiến độ!' });
         }
@@ -298,6 +303,7 @@ function doPost(e) {
     }
 
     if (action == 'send_email_manual') {
+      if (postData.role !== 'Admin') return responseJSON({ status: 'error', message: 'Không có quyền!' });
       var emails = getEmailMap(ss);
       var people = postData.assignee.split(',');
       var count = 0;
@@ -318,13 +324,14 @@ function doPost(e) {
     }
 
     if (action == 'send_bulk_email') {
+      if (postData.role !== 'Admin') return responseJSON({ status: 'error', message: 'Không có quyền!' });
       var sheet = ss.getSheetByName(SHEET_DATA);
       var data = sheet.getDataRange().getValues();
       var emails = getEmailMap(ss);
       var userTasksMap = {};
 
       data.forEach(function (row) {
-        if (row[2] !== 'Done' && row[0]) {
+        if (row[2] !== 'Done' && row[2] !== 'Waiting' && row[0]) {
           var assignees = String(row[7]).split(',');
           assignees.forEach(function (p) {
             p = p.trim();
@@ -447,14 +454,14 @@ function autoCheckDeadlines() {
 
     for (var i = 1; i < data.length; i++) {
       var row = data[i];
-      if (row[2] !== 'Done') {
+      if (row[2] !== 'Done' && row[2] !== 'Waiting') {
         var assignees = String(row[7]).split(',');
         assignees.forEach(function (person) {
           var name = person.trim();
           if (!name) return;
           if (!userTasksMap[name]) userTasksMap[name] = [];
 
-          var deadlineDate = row[4] ? new Date(row[4]) : null;
+          var deadlineDate = row[9] ? new Date(row[9]) : (row[4] ? new Date(row[4]) : null);
           var daysLeft = 999;
           var category = 1;
 

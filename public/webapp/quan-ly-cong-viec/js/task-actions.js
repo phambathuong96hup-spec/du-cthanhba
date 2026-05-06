@@ -91,8 +91,7 @@ async function submitReviewDecision(decision) {
             await apiFetch('approve_done', { id, role: currentUser.role });
             showToast("Đã duyệt báo cáo thành công!", 'success');
         } else if (decision === 'reject') {
-            // Revert progress back to Doing (e.g. 50%)
-            await apiFetch('update_progress', { id, progress: 50, user_fullname: currentUser.name, role: currentUser.role });
+            await apiFetch('reject_done', { id, role: currentUser.role });
             showToast("Đã trả lại báo cáo!", 'warning');
         }
         bootstrap.Modal.getInstance(document.getElementById('reviewModal'))?.hide();
@@ -109,10 +108,18 @@ async function triggerTaskEmail(id) {
     if (!currentUser || !isAdminUser(currentUser)) {
         return showToast('⛔ Chỉ Admin mới có quyền gửi mail!', 'warning');
     }
+    const task = globalData.find(t => t[0] == id);
+    if (!task) return showToast('Không tìm thấy công việc!', 'warning');
     if (!confirm("Bạn muốn gửi mail nhắc nhở công việc này?")) return;
     
     try {
-        await apiFetch('send_task_email', { id, role: currentUser.role });
+        await apiFetch('send_email_manual', {
+            id,
+            taskName: task[1] || '',
+            assignee: task[7] || '',
+            deadline: task[9] || task[4] || '',
+            role: currentUser.role
+        });
         showToast("Đã gửi mail nhắc nhở!", 'success');
     } catch (err) {
         showToast("Lỗi: " + err.message, 'danger');
@@ -275,32 +282,18 @@ function approveTask(id) {
     if(!currentUser || currentUser.role !== 'Admin') return showToast("⛔ Chỉ Admin mới được duyệt!", 'warning');
     if(!confirm('Duyệt hoàn thành công việc này?')) return;
 
-    fetch(SCRIPT_URL + "?action=approve_done", {
-        method: 'POST',
-        body: JSON.stringify({id: id, role: currentUser.role})
-    }).then(r=>r.json()).then(res=>{
-        if(res.status==='success'){
-            showToast("Đã duyệt báo cáo thành công!", 'success');
-            loadTaskList();
-        } else {
-            showToast(res.message, 'danger');
-        }
-    });
+    // Reuse centralized logic via apiFetch
+    apiFetch('approve_done', { id, role: currentUser.role })
+        .then(() => { showToast("Đã duyệt báo cáo thành công!", 'success'); loadTaskList(); })
+        .catch(err => showToast(err.message || "Lỗi duyệt", 'danger'));
 }
 
 function rejectTask(id) {
     if(!currentUser || currentUser.role !== 'Admin') return showToast("⛔ Chỉ Admin mới được duyệt!", 'warning');
-    if(!confirm('Trả lại báo cáo này (chuyển về tiến độ 50%)?')) return;
+    if(!confirm('Trả lại báo cáo này?')) return;
 
-    fetch(SCRIPT_URL + "?action=update_progress", {
-        method: 'POST',
-        body: JSON.stringify({id: id, progress: 50, user_fullname: currentUser.name, role: currentUser.role})
-    }).then(r=>r.json()).then(res=>{
-        if(res.status==='success'){
-            showToast("Đã trả lại báo cáo!", 'warning');
-            loadTaskList();
-        } else {
-            showToast(res.message, 'danger');
-        }
-    });
+    // Reuse centralized logic via apiFetch — calls reject_done (NOT update_progress)
+    apiFetch('reject_done', { id, role: currentUser.role })
+        .then(() => { showToast("Đã trả lại báo cáo!", 'warning'); loadTaskList(); })
+        .catch(err => showToast(err.message || "Lỗi reject", 'danger'));
 }
