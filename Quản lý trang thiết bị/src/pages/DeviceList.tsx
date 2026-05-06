@@ -31,7 +31,7 @@ const DeviceList: React.FC = () => {
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 50;
 
   const [printingDevices, setPrintingDevices] = useState<DeviceData[]>([]);
 
