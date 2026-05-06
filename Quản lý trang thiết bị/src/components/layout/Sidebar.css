@@ -21,7 +21,6 @@
   padding: 0 16px;
   border-bottom: 1px solid var(--border);
   overflow: hidden;
-  white-space: nowrap;
 }
 
 .sidebar-logo-icon {
@@ -34,6 +33,8 @@
   font-weight: 700;
   font-size: 1.1rem;
   color: var(--primary-dark);
+  white-space: normal;
+  line-height: 1.2;
 }
 
 .sidebar-nav {
