@@ -277,8 +277,18 @@ function createTransfer_(payload) {
   const device = rowObject_(SHEETS.devices, rowIndex);
   const fromDepartment = device['Nơi đặt thiết bị'] || '';
   if (normalize_(fromDepartment) === normalize_(toDepartment)) return { success: false, message: 'Khoa nhận đang trùng với khoa hiện tại.' };
-  if (!isAdmin_(actor) && normalize_(actor['Khoa/Phòng']) !== normalize_(fromDepartment)) {
-    return { success: false, message: 'Chỉ tài khoản thuộc khoa đang giữ thiết bị mới được tạo yêu cầu chuyển.' };
+  
+  const isBorrow = String(payload.reason || '').indexOf('[Mượn]') === 0;
+  if (!isAdmin_(actor)) {
+    if (isBorrow) {
+      if (normalize_(actor['Khoa/Phòng']) !== normalize_(toDepartment)) {
+        return { success: false, message: 'Chỉ tài khoản thuộc khoa nhận mới được tạo yêu cầu mượn.' };
+      }
+    } else {
+      if (normalize_(actor['Khoa/Phòng']) !== normalize_(fromDepartment)) {
+        return { success: false, message: 'Chỉ tài khoản thuộc khoa đang giữ thiết bị mới được tạo yêu cầu chuyển.' };
+      }
+    }
   }
 
   const transferId = nextTransferId_();
