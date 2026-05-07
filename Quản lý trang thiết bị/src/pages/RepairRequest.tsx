@@ -51,7 +51,6 @@ const RepairRequest: React.FC = () => {
   // ===== Auth =====
   const savedEmail = localStorage.getItem('userEmail') || '';
   const userName = localStorage.getItem('userName') || 'Nhân viên vô danh';
-  const username = localStorage.getItem('username') || '';
   const userDepartment = localStorage.getItem('userDepartment') || '';
   const role = localStorage.getItem('userRole') || '';
   const isAdmin = role.toLowerCase() === 'admin';
