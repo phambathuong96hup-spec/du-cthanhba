@@ -1,6 +1,9 @@
+/* ===== Repair Request Page — Full-width layout matching Transfers ===== */
+
 .repair-request-page {
-  max-width: 600px;
-  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .mobile-friendly-card {
@@ -10,11 +13,10 @@
 
 .device-summary {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
-  padding: 16px;
-  background-color: var(--primary-light);
-  background-color: rgba(0, 86, 179, 0.05);
+  padding: 20px;
+  background-color: rgba(239, 68, 68, 0.05);
   border-radius: var(--radius-md);
   margin-bottom: 24px;
 }
@@ -27,14 +29,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--primary);
+  color: var(--danger);
   border: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .device-summary-info h3 {
   font-size: 1.1rem;
   color: var(--text-primary);
-  margin: 0 0 4px 0;
+  margin: 0 0 8px 0;
 }
 
 .device-summary-info p {
@@ -82,7 +85,7 @@
 
 .radio-card input:checked + .radio-label {
   border-color: var(--primary);
-  background-color: rgba(0, 86, 179, 0.05);
+  background-color: rgba(13, 148, 136, 0.05);
   color: var(--primary-dark);
 }
 
@@ -127,11 +130,55 @@ textarea.input-field {
   margin-top: 16px;
 }
 
+/* Info grid - 2 columns */
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.info-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.info-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Spin animation for loader */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* Mobile specific styling */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .page-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
+  }
+
+  .priority-options {
+    flex-direction: column;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reports-tabs-container {
+    flex-wrap: wrap;
   }
 }

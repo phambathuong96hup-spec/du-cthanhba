@@ -262,7 +262,7 @@ const Transfers: React.FC = () => {
 
       {activeTab === 'create' ? (
         <Card>
-          <CardBody style={{ maxWidth: '760px' }}>
+          <CardBody>
             <form onSubmit={submitTransfer} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label className="input-label">Loại yêu cầu</label>

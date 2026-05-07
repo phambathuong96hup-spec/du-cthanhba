@@ -177,7 +177,7 @@ export const reportRepair = async (payload: any) => {
   return data || { success: false, message: 'Lỗi kết nối mạng.' };
 };
 
-export const approveRepair = async (payload: { rowId: string; deviceId: string; newStatus: string }) => {
+export const approveRepair = async (payload: { rowId: string; deviceId: string; newStatus: string; approver?: string; note?: string }) => {
   const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
     method: 'POST',
     body: JSON.stringify({ action: 'approveRepair', payload }),

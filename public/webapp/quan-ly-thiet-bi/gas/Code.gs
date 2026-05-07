@@ -431,7 +431,7 @@ function approveRepair_(payload) {
   const idx = rows.findIndex(row => String(row['Thời gian']) === String(payload.rowId));
   if (idx < 0) return { success: false, message: 'Không tìm thấy phiếu sửa chữa.' };
   updateRowByObject_(SHEETS.repairs, idx + 2, {
-    'Trạng Thái': payload.status || 'Đã duyệt',
+    'Trạng Thái': payload.newStatus || payload.status || 'Đã duyệt',
     'Người duyệt': payload.approver || '',
     'Ghi chú xử lý': payload.note || ''
   });

@@ -6,7 +6,6 @@ import {
   Microscope,
   Wrench,
   PieChart,
-  ClipboardCheck,
   Thermometer,
   Repeat2,
   Lock,
@@ -29,7 +28,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
 
   const privateItems = [
     { path: '/repairs', name: 'Báo Hỏng / Sửa Chữa', icon: Wrench, private: true },
-    { path: '/admin-repairs', name: 'Cập nhật Tiến độ', icon: ClipboardCheck, private: true },
     { path: '/transfers', name: 'Luân chuyển Thiết bị', icon: Repeat2, private: true },
     { path: '/reports', name: 'Thống kê & Báo cáo', icon: PieChart, private: true },
     { path: '/gsp', name: 'Nhật ký Nhiệt độ (GSP)', icon: Thermometer, private: true },
