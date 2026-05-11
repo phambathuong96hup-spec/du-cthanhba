@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Download, Printer, Search, Eye, Edit2, X, Save, Loader2, CheckCircle, AlertTriangle, XCircle, Settings, Monitor, Activity } from 'lucide-react';
+import { Plus, Download, Printer, Search, Eye, Edit2, X, Save, Loader2, CheckCircle, AlertTriangle, Monitor } from 'lucide-react';
 import { Card, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge } from '../components/ui';
 import { fetchDevices, addDevice, editDevice, type DeviceData } from '../services/api';
 import { useNavigate } from 'react-router-dom';
