@@ -36,7 +36,7 @@ const Transfers: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'create' | 'requests' | 'history'>('requests');
-  const [transferType, setTransferType] = useState<'Cho mượn' | 'Mượn'>('Cho mượn');
+  const [transferType, setTransferType] = useState<'Cho mượn' | 'Mượn' | 'Trả'>('Cho mượn');
   const [deviceId, setDeviceId] = useState('');
   const [toDepartment, setToDepartment] = useState('');
   const [reason, setReason] = useState('');
@@ -161,7 +161,7 @@ const Transfers: React.FC = () => {
     setMessage(response.message || '');
     if (response.success) {
       setReason('');
-      if (transferType === 'Cho mượn') setToDepartment('');
+      if (transferType === 'Cho mượn' || transferType === 'Trả') setToDepartment('');
       await loadData();
       setActiveTab('requests');
     }
@@ -272,6 +272,7 @@ const Transfers: React.FC = () => {
                 }}>
                   <option value="Cho mượn">Cho mượn / Luân chuyển đi</option>
                   <option value="Mượn">Mượn thiết bị từ khoa khác</option>
+                  <option value="Trả">Trả thiết bị về khoa cũ</option>
                 </select>
               </div>
               <div>
@@ -327,8 +328,8 @@ const Transfers: React.FC = () => {
                 <div className="info-item"><span className="info-label">Người tạo yêu cầu</span><span className="info-value">{localStorage.getItem('userName') || username} ({userDepartment})</span></div>
               </div>
               <div>
-                <label className="input-label">{transferType === 'Cho mượn' ? 'Khoa/phòng nhận' : 'Chuyển về khoa (Khoa của bạn)'}</label>
-                {transferType === 'Cho mượn' ? (
+                <label className="input-label">{transferType === 'Cho mượn' || transferType === 'Trả' ? 'Khoa/phòng nhận' : 'Chuyển về khoa (Khoa của bạn)'}</label>
+                {transferType === 'Cho mượn' || transferType === 'Trả' ? (
                   <Input value={toDepartment} onChange={e => setToDepartment(e.target.value)} list="transfer-depts" placeholder="Nhập hoặc chọn khoa/phòng nhận" required />
                 ) : (
                   <Input value={userDepartment} readOnly disabled required style={{ backgroundColor: 'var(--background)' }} />
