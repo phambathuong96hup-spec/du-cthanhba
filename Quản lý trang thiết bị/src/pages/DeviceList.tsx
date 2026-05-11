@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Download, Printer, Search, Eye, Edit2, X, Save, Loader2 } from 'lucide-react';
+import { Plus, Download, Printer, Search, Eye, Edit2, X, Save, Loader2, CheckCircle, AlertTriangle, XCircle, Settings, Monitor, Activity } from 'lucide-react';
 import { Card, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge } from '../components/ui';
 import { fetchDevices, addDevice, editDevice, type DeviceData } from '../services/api';
 import { useNavigate } from 'react-router-dom';
@@ -77,7 +77,10 @@ const DeviceList: React.FC = () => {
     
     const searchMatch = idStr.includes(sTerm) || nameStr.includes(sTerm);
     const deptMatch = departmentFilter === 'all' || device.department === departmentFilter;
-    const statusMatch = statusFilter === 'all' || (statusFilter === 'good' ? device.status === 'O' : device.status !== 'O');
+    
+    const isBroken = String(device['Hiện trạng thực tế'] || '').toLowerCase().includes('hỏng') || String(device['Hiện trạng thực tế'] || '').toLowerCase().includes('sửa chữa');
+    const statusMatch = statusFilter === 'all' || (statusFilter === 'good' ? !isBroken : isBroken);
+    
     return searchMatch && deptMatch && statusMatch;
   });
 
@@ -96,7 +99,7 @@ const DeviceList: React.FC = () => {
       'Mã thiết bị': d.id,
       'Tên thiết bị': d.name,
       'Khoa/Phòng': d.department,
-      'Trạng thái': d.status === 'O' ? 'Hoạt động tốt' : 'Báo hỏng/Khác',
+      'Trạng thái': (d['Hiện trạng thực tế'] || d.status) === 'O' ? 'Hoạt động tốt' : 'Báo hỏng/Khác',
       'Ngày nhập / Đăng kiểm': d.dateAdded,
     }));
     const ws = XLSX.utils.json_to_sheet(exportData);
@@ -161,18 +164,29 @@ const DeviceList: React.FC = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-        <Card style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px', borderLeft: '4px solid #10b981' }}>
-          <div style={{ background: '#ecfdf5', padding: '12px', borderRadius: '50%', color: '#10b981' }}><Eye size={24} /></div>
-          <div><h3 style={{ margin: 0, fontSize: '1.5rem', color: '#1f2937' }}>{devices.filter(d => d.alertLevel === 'ok' || !d.alertLevel).length}</h3><p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Đang hiệu lực (OK)</p></div>
+      <div className="stats-grid">
+        <Card className="stat-card primary-gradient">
+          <div className="stat-icon-wrapper"><Monitor size={28} /></div>
+          <div className="stat-content">
+            <h3>{devices.length}</h3>
+            <p>Tổng thiết bị</p>
+          </div>
         </Card>
-        <Card style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px', borderLeft: '4px solid #f59e0b' }}>
-          <div style={{ background: '#fffbeb', padding: '12px', borderRadius: '50%', color: '#f59e0b' }}><Search size={24} /></div>
-          <div><h3 style={{ margin: 0, fontSize: '1.5rem', color: '#1f2937' }}>{devices.filter(d => d.alertLevel === 'warning').length}</h3><p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Cần chuẩn bị hồ sơ (&le; 45 ngày)</p></div>
+        
+        <Card className="stat-card success-gradient">
+          <div className="stat-icon-wrapper"><CheckCircle size={28} /></div>
+          <div className="stat-content">
+            <h3>{devices.filter(d => !d['Hiện trạng thực tế'] || String(d['Hiện trạng thực tế']).includes('Hoạt động') || d.status === 'O').length}</h3>
+            <p>Đang hoạt động</p>
+          </div>
         </Card>
-        <Card style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px', borderLeft: '4px solid #ef4444' }}>
-          <div style={{ background: '#fef2f2', padding: '12px', borderRadius: '50%', color: '#ef4444' }}><Edit2 size={24} /></div>
-          <div><h3 style={{ margin: 0, fontSize: '1.5rem', color: '#1f2937' }}>{devices.filter(d => d.alertLevel === 'danger').length}</h3><p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Sắp / đã hết hạn (&le; 15 ngày)</p></div>
+        
+        <Card className="stat-card warning-gradient">
+          <div className="stat-icon-wrapper"><AlertTriangle size={28} /></div>
+          <div className="stat-content">
+            <h3>{devices.filter(d => String(d['Hiện trạng thực tế']).toLowerCase().includes('sửa chữa') || String(d['Hiện trạng thực tế']).toLowerCase().includes('hỏng')).length}</h3>
+            <p>Đang sửa chữa / Báo hỏng</p>
+          </div>
         </Card>
       </div>
 
@@ -214,26 +228,29 @@ const DeviceList: React.FC = () => {
               <TableRow><TableCell colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
                 Không tìm thấy thiết bị nào phù hợp.
               </TableCell></TableRow>
-            ) : paginatedDevices.map(device => (
-              <TableRow key={device.id}>
-                <TableCell><strong>{device.id}</strong></TableCell>
-                <TableCell>{device.name}</TableCell>
-                <TableCell>{device.department}</TableCell>
-                <TableCell>
-                  <Badge variant={device.status === 'O' ? 'success' : 'warning'}>
-                    {device.status === 'O' ? 'Hoạt động' : 'Báo hỏng'}
-                  </Badge>
-                </TableCell>
-                <TableCell>{device.dateAdded}</TableCell>
-                <TableCell>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <Button variant="secondary" size="sm" icon={<Eye size={14} />} title="Xem chi tiết" onClick={() => navigate(`/devices/${encodeURIComponent(device.id)}`)} />
-                    <Button variant="secondary" size="sm" icon={<Edit2 size={14} />} title="Sửa" onClick={() => openEditModal(device)} />
-                    <Button variant="secondary" size="sm" icon={<Printer size={14} />} title="In QR" onClick={() => handlePrintSingleQR(device)} />
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+            ) : paginatedDevices.map(device => {
+              const isBroken = String(device['Hiện trạng thực tế']).toLowerCase().includes('hỏng') || String(device['Hiện trạng thực tế']).toLowerCase().includes('sửa chữa');
+              return (
+                <TableRow key={device.id} className="device-table-row">
+                  <TableCell><strong className="device-id-cell">{device.id}</strong></TableCell>
+                  <TableCell><span className="device-name-cell">{device.name}</span></TableCell>
+                  <TableCell><span className="department-badge">{device.department}</span></TableCell>
+                  <TableCell>
+                    <Badge variant={!isBroken ? 'success' : 'warning'} className="status-badge-large">
+                      {!isBroken ? 'Hoạt động tốt' : 'Sửa chữa/Hỏng'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{device.dateAdded}</TableCell>
+                  <TableCell>
+                    <div className="action-buttons-cell">
+                      <Button variant="secondary" size="sm" icon={<Eye size={16} />} title="Xem chi tiết" onClick={() => navigate(`/devices/${encodeURIComponent(device.id)}`)} className="btn-icon-only" />
+                      <Button variant="secondary" size="sm" icon={<Edit2 size={16} />} title="Sửa" onClick={() => openEditModal(device)} className="btn-icon-only" />
+                      <Button variant="secondary" size="sm" icon={<Printer size={16} />} title="In QR" onClick={() => handlePrintSingleQR(device)} className="btn-icon-only" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
 
