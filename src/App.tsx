@@ -1,19 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 
-import GioiThieu from './pages/GioiThieu';
-import DuocLamSang from './pages/DuocLamSang';
-import LienHe from './pages/LienHe';
-import TraCuuTiemTruyen from './pages/TraCuuTiemTruyen';
-import TraCuuTuongHop from './pages/TraCuuTuongHop';
-import TraCuuThuoc from './pages/TraCuuThuoc';
-import TuongTacThuoc from './pages/TuongTacThuoc';
-import TraCuuNhanh from './pages/TraCuuNhanh';
-import { CapNhatChuyenMon } from './pages/CapNhatChuyenMon';
-import { CapNhatChuyenMonDetail } from './pages/CapNhatChuyenMonDetail';
-import DeepMedAI from './pages/DeepMedAI';
-import WebAppDuocKhoa from './pages/WebAppDuocKhoa';
 import { Header, Footer } from './components/SharedLayout';
 import ScrollToHash from './components/ScrollToHash';
 import {
@@ -21,6 +9,19 @@ import {
   ShieldCheck, FlaskConical, Truck, Microscope, BookOpen, ArrowRight,
   Zap, Brain, LayoutDashboard, Star, Award, Users, Clock, CheckCircle, Play
 } from 'lucide-react';
+
+const GioiThieu = lazy(() => import('./pages/GioiThieu'));
+const DuocLamSang = lazy(() => import('./pages/DuocLamSang'));
+const LienHe = lazy(() => import('./pages/LienHe'));
+const TraCuuTiemTruyen = lazy(() => import('./pages/TraCuuTiemTruyen'));
+const TraCuuTuongHop = lazy(() => import('./pages/TraCuuTuongHop'));
+const TraCuuThuoc = lazy(() => import('./pages/TraCuuThuoc'));
+const TuongTacThuoc = lazy(() => import('./pages/TuongTacThuoc'));
+const TraCuuNhanh = lazy(() => import('./pages/TraCuuNhanh'));
+const CapNhatChuyenMon = lazy(() => import('./pages/CapNhatChuyenMon').then(module => ({ default: module.CapNhatChuyenMon })));
+const CapNhatChuyenMonDetail = lazy(() => import('./pages/CapNhatChuyenMonDetail').then(module => ({ default: module.CapNhatChuyenMonDetail })));
+const DeepMedAI = lazy(() => import('./pages/DeepMedAI'));
+const WebAppDuocKhoa = lazy(() => import('./pages/WebAppDuocKhoa'));
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 const features = [
@@ -70,7 +71,7 @@ const Hero = () => {
     <section className="relative min-h-screen overflow-hidden flex items-center" style={{ paddingTop: '120px' }}>
       {/* Parallax background */}
       <motion.div style={{ y }} className="absolute inset-0 scale-110">
-        <img src={`${import.meta.env.BASE_URL}images/hero_pharmacy.png`} alt="TTYT Thanh Ba" className="w-full h-full object-cover" />
+        <img src={`${import.meta.env.BASE_URL}images/hero_pharmacy.webp`} alt="TTYT Thanh Ba" className="w-full h-full object-cover" />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(5,10,25,0.75) 0%, rgba(10,30,60,0.55) 50%, rgba(5,40,20,0.45) 100%)' }} />
         {/* Mesh overlay for depth */}
         <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(ellipse at 20% 50%, rgba(16,185,129,0.12) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(59,130,246,0.15) 0%, transparent 50%)' }} />
@@ -209,12 +210,12 @@ const About = () => {
             className="relative">
             {/* Main image */}
             <div className="rounded-3xl overflow-hidden shadow-2xl aspect-[4/3]">
-              <img src={`${import.meta.env.BASE_URL}images/about_team.png`} alt="Đội ngũ Dược sĩ" className="w-full h-full object-cover" />
+              <img src={`${import.meta.env.BASE_URL}images/about_team.webp`} alt="Đội ngũ Dược sĩ" className="w-full h-full object-cover" />
             </div>
             {/* Overlay card: clinical image */}
             <motion.div initial={{ opacity: 0, scale: 0.8 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: 0.4 }}
               className="absolute -bottom-10 -right-6 w-52 h-40 rounded-2xl overflow-hidden shadow-xl border-4 border-white hidden md:block">
-              <img src={`${import.meta.env.BASE_URL}images/about_clinical.png`} alt="Dược lâm sàng" className="w-full h-full object-cover" />
+              <img src={`${import.meta.env.BASE_URL}images/about_clinical.webp`} alt="Dược lâm sàng" className="w-full h-full object-cover" />
             </motion.div>
             {/* GSP badge */}
             <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 0.6 }}
@@ -335,7 +336,7 @@ const Functions = () => (
 const GspBanner = () => (
   <section className="relative py-0 overflow-hidden h-[480px] md:h-[520px]">
     <div className="absolute inset-0">
-      <img src={`${import.meta.env.BASE_URL}images/banner_warehouse.png`} alt="Kho GSP" className="w-full h-full object-cover" />
+      <img src={`${import.meta.env.BASE_URL}images/banner_warehouse.webp`} alt="Kho GSP" className="w-full h-full object-cover" />
       <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg,rgba(5,10,30,0.88) 0%, rgba(5,80,40,0.75) 60%, rgba(5,10,60,0.80) 100%)' }} />
     </div>
     <div className="relative h-full flex items-center">
@@ -525,28 +526,36 @@ const Home = () => (
   </div>
 );
 
+const PageLoader = () => (
+  <div className="min-h-screen bg-white flex items-center justify-center">
+    <div className="h-10 w-10 rounded-full border-4 border-slate-200 border-t-emerald-600 animate-spin" />
+  </div>
+);
+
 // ─── APP ROUTER ───────────────────────────────────────────────────────────────
 export default function App() {
   return (
     <Router basename={import.meta.env.BASE_URL}>
       <ScrollToHash />
-      <Routes>
-        <Route path="/" element={<Home />} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<Home />} />
 
-        <Route path="/gioi-thieu" element={<GioiThieu />} />
-        <Route path="/duoc-lam-sang" element={<DuocLamSang />} />
+          <Route path="/gioi-thieu" element={<GioiThieu />} />
+          <Route path="/duoc-lam-sang" element={<DuocLamSang />} />
 
-        <Route path="/tra-cuu-nhanh" element={<TraCuuNhanh />} />
-        <Route path="/tra-cuu-tiem-truyen" element={<TraCuuTiemTruyen />} />
-        <Route path="/tra-cuu-tuong-hop" element={<TraCuuTuongHop />} />
-        <Route path="/tra-cuu-thuoc" element={<TraCuuThuoc />} />
-        <Route path="/tuong-tac-thuoc" element={<TuongTacThuoc />} />
-        <Route path="/cap-nhat-chuyen-mon" element={<CapNhatChuyenMon />} />
-        <Route path="/cap-nhat-chuyen-mon/:id" element={<CapNhatChuyenMonDetail />} />
-        <Route path="/webapp-duoc-khoa" element={<WebAppDuocKhoa />} />
-        <Route path="/deepmed-ai" element={<DeepMedAI />} />
-        <Route path="/lien-he" element={<LienHe />} />
-      </Routes>
+          <Route path="/tra-cuu-nhanh" element={<TraCuuNhanh />} />
+          <Route path="/tra-cuu-tiem-truyen" element={<TraCuuTiemTruyen />} />
+          <Route path="/tra-cuu-tuong-hop" element={<TraCuuTuongHop />} />
+          <Route path="/tra-cuu-thuoc" element={<TraCuuThuoc />} />
+          <Route path="/tuong-tac-thuoc" element={<TuongTacThuoc />} />
+          <Route path="/cap-nhat-chuyen-mon" element={<CapNhatChuyenMon />} />
+          <Route path="/cap-nhat-chuyen-mon/:id" element={<CapNhatChuyenMonDetail />} />
+          <Route path="/webapp-duoc-khoa/*" element={<WebAppDuocKhoa />} />
+          <Route path="/deepmed-ai" element={<DeepMedAI />} />
+          <Route path="/lien-he" element={<LienHe />} />
+        </Routes>
+      </Suspense>
     </Router>
   );
 }

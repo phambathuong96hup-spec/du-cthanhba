@@ -3,10 +3,11 @@ import {
   Camera, AlertCircle, Clock, Send, X, ShieldAlert, ChevronDown, ScanLine,
   CheckCircle, XCircle, Download, FileText, Loader2, RefreshCw, Wrench, Search
 } from 'lucide-react';
-import { Card, CardBody, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge } from '../components/ui';
+import { Card, CardBody, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge, type BadgeVariant } from '../components/ui';
 import { reportRepair, fetchDevices, fetchRepairs, approveRepair, type DeviceData, type RepairData } from '../services/api';
+import { useAuth } from '../authContext';
+import { exportCsv } from '../utils/exportCsv';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import './RepairRequest.css';
@@ -20,7 +21,7 @@ const repairStatusText: Record<string, string> = {
   'Đã hoàn thành': 'Đã hoàn thành',
 };
 
-const repairStatusVariant = (status: string) => {
+const repairStatusVariant = (status: string): BadgeVariant => {
   const s = status.toLowerCase();
   if (s.includes('hoàn thành') || s.includes('đã duyệt')) return 'success';
   if (s.includes('từ chối')) return 'danger';
@@ -29,9 +30,13 @@ const repairStatusVariant = (status: string) => {
   return 'neutral';
 };
 
-const RepairRequest: React.FC = () => {
+interface RepairRequestProps {
+  defaultTab?: 'create' | 'requests' | 'history';
+}
+
+const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }) => {
   // ===== Tab state =====
-  const [activeTab, setActiveTab] = useState<'create' | 'requests' | 'history'>('requests');
+  const [activeTab, setActiveTab] = useState<'create' | 'requests' | 'history'>(defaultTab);
 
   // ===== Create form state =====
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -49,12 +54,10 @@ const RepairRequest: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   // ===== Auth =====
-  const savedEmail = localStorage.getItem('userEmail') || '';
-  const userName = localStorage.getItem('userName') || 'Nhân viên vô danh';
-  const userDepartment = localStorage.getItem('userDepartment') || '';
-  const role = localStorage.getItem('userRole') || '';
-  const isAdmin = role.toLowerCase() === 'admin';
-  const [userEmail, setUserEmail] = useState(savedEmail);
+  const { name, email, department, isAdmin } = useAuth();
+  const userName = name || 'Nhân viên vô danh';
+  const userDepartment = department || '';
+  const [userEmail, setUserEmail] = useState(email);
 
   // ===== Load data =====
   const loadData = useCallback(async () => {
@@ -66,17 +69,20 @@ const RepairRequest: React.FC = () => {
 
     // Pre-fill device from sessionStorage if redirected from DeviceProfile
     const prefilledId = sessionStorage.getItem('repairDeviceId');
-    if (prefilledId) {
-      setDeviceId(prefilledId);
-      sessionStorage.removeItem('repairDeviceId');
-    } else if (!deviceId && deviceData.length > 0) {
-      setDeviceId(deviceData[0].id);
-    }
+    setDeviceId(current => {
+      if (prefilledId) return prefilledId;
+      return current || deviceData[0]?.id || '';
+    });
+    if (prefilledId) sessionStorage.removeItem('repairDeviceId');
   }, []);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
+
+  useEffect(() => {
+    if (email) setUserEmail(email);
+  }, [email]);
 
   // ===== Pending repairs (chờ duyệt) =====
   const pendingRepairs = useMemo(() =>
@@ -111,13 +117,13 @@ const RepairRequest: React.FC = () => {
             try {
               const parsed = JSON.parse(decodedText);
               if (parsed.id) newId = parsed.id;
-            } catch(e) {
+            } catch {
               const match = decodedText.match(/MÃ THIẾT BỊ:\s*([^\n]+)/i);
               if (match) newId = match[1].trim();
               else newId = decodedText.trim();
             }
           }
-        } catch (e) {
+        } catch {
           newId = decodedText.trim();
         }
 
@@ -127,7 +133,7 @@ const RepairRequest: React.FC = () => {
           scanner.clear();
           alert(`Đã nhận diện thiết bị: ${newId}`);
         }
-      }, (_err) => { /* ignore */ });
+      }, () => { /* ignore */ });
 
       return () => {
         scanner.clear().catch(e => console.error("Scanner clear fail", e));
@@ -184,6 +190,7 @@ const RepairRequest: React.FC = () => {
 
   // ===== Approve/Reject repair =====
   const handleApproveRepair = async (repair: RepairData) => {
+    if (!isAdmin) return alert('Bạn không có quyền duyệt yêu cầu sửa chữa.');
     const note = window.prompt('Ghi chú duyệt (nếu có):') || '';
     const res = await approveRepair({
       rowId: repair.rowId,
@@ -197,6 +204,7 @@ const RepairRequest: React.FC = () => {
   };
 
   const handleRejectRepair = async (repair: RepairData) => {
+    if (!isAdmin) return alert('Bạn không có quyền từ chối yêu cầu sửa chữa.');
     const reasonText = window.prompt('Lý do từ chối báo hỏng/sửa chữa:') || '';
     if (!reasonText.trim()) return;
     const res = await approveRepair({
@@ -211,6 +219,7 @@ const RepairRequest: React.FC = () => {
   };
 
   const handleStatusChange = async (repair: RepairData, newStatus: string) => {
+    if (!isAdmin) return alert('Bạn không có quyền cập nhật tiến độ sửa chữa.');
     if (!newStatus) return;
     if (!window.confirm(`Xác nhận cập nhật trạng thái "${repair.deviceId}" thành "${newStatus}"?`)) return;
 
@@ -244,12 +253,9 @@ const RepairRequest: React.FC = () => {
     'Trạng thái': r.status,
   }));
 
-  const exportExcel = () => {
+  const exportCsvFile = () => {
     if (exportRows.length === 0) return alert('Không có dữ liệu để xuất.');
-    const ws = XLSX.utils.json_to_sheet(exportRows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'BaoHong');
-    XLSX.writeFile(wb, `BaoHong_SuaChua_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
+    exportCsv(exportRows, `BaoHong_SuaChua_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.csv`);
   };
 
   const exportPdf = () => {
@@ -287,7 +293,7 @@ const RepairRequest: React.FC = () => {
         <div className="action-buttons">
           <Button variant="secondary" icon={<RefreshCw size={16} />} onClick={loadData}>Làm mới</Button>
           <Button variant="secondary" icon={<FileText size={16} />} onClick={exportPdf}>PDF</Button>
-          <Button variant="primary" icon={<Download size={16} />} onClick={exportExcel}>Excel</Button>
+          <Button variant="primary" icon={<Download size={16} />} onClick={exportCsvFile}>CSV</Button>
         </div>
       </div>
 
@@ -407,11 +413,11 @@ const RepairRequest: React.FC = () => {
                   placeholder="VD: nhanvien@benhvien.vn"
                   value={userEmail}
                   onChange={e => setUserEmail(e.target.value)}
-                  readOnly={savedEmail !== ''}
-                  style={{ backgroundColor: savedEmail !== '' ? 'var(--surface-50)' : 'white' }}
+                  readOnly={email !== ''}
+                  style={{ backgroundColor: email !== '' ? 'var(--surface-50)' : 'white' }}
                   required
                 />
-                {savedEmail !== ''
+                {email !== ''
                   ? <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>* Email được đồng bộ từ tài khoản của bạn.</p>
                   : <p style={{ fontSize: '0.8rem', color: 'var(--warning)', marginTop: '4px' }}>* Nhờ Admin cập nhật Email trong Sheet Users để tự động điền.</p>
                 }
@@ -510,7 +516,7 @@ const RepairRequest: React.FC = () => {
                         </span>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={repairStatusVariant(repair.status) as any}>
+                        <Badge variant={repairStatusVariant(repair.status)}>
                           {isCompleted ? <CheckCircle size={12} /> :
                             isRejected ? <XCircle size={12} /> :
                             repair.status.toLowerCase().includes('sửa') ? <Wrench size={12} /> :
@@ -524,7 +530,7 @@ const RepairRequest: React.FC = () => {
                         {activeTab === 'requests' && !isDone ? (
                           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                             {/* Approve / Reject buttons for pending */}
-                            {isPending && (isAdmin || true) && (
+                            {isPending && isAdmin && (
                               <>
                                 <Button size="sm" variant="success" icon={<CheckCircle size={14} />} onClick={() => handleApproveRepair(repair)}>
                                   Đồng ý
@@ -535,7 +541,7 @@ const RepairRequest: React.FC = () => {
                               </>
                             )}
                             {/* Status change dropdown for in-progress items */}
-                            {!isPending && (
+                            {isAdmin && !isPending && (
                               <select
                                 value={statusOptions.includes(repair.status) ? repair.status : ''}
                                 onChange={(e) => handleStatusChange(repair, e.target.value)}

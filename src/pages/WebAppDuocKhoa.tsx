@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Header, Footer, Breadcrumb } from '../components/SharedLayout';
-import { LayoutDashboard, ClipboardList, Wrench, ExternalLink, Shield, Sparkles } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Wrench, ArrowRight, Shield, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
 
 const apps = [
@@ -8,7 +8,8 @@ const apps = [
     title: 'Quản lý công việc',
     desc: 'Theo dõi, phân công, báo cáo và đánh giá tiến độ công việc trong khoa Dược. Hỗ trợ biểu đồ, lịch và chat AI.',
     icon: <ClipboardList className="w-7 h-7" />,
-    href: `${import.meta.env.BASE_URL}webapp/quan-ly-cong-viec/index.html`,
+    href: `${import.meta.env.BASE_URL}webapp/quan-ly-cong-viec/`,
+    pathLabel: '/webapp/quan-ly-cong-viec/',
     color: 'from-blue-600 to-cyan-500',
     shadow: '0 20px 48px -10px rgba(29,78,216,0.4)',
     features: ['Kanban Board', 'Giao việc & nhắc nhở', 'Báo cáo tự động'],
@@ -17,7 +18,8 @@ const apps = [
     title: 'Quản lý trang thiết bị',
     desc: 'Quản lý hồ sơ trang thiết bị, theo dõi bảo trì, kiểm định GSP, yêu cầu sửa chữa và báo cáo thống kê.',
     icon: <Wrench className="w-7 h-7" />,
-    href: `${import.meta.env.BASE_URL}webapp/quan-ly-thiet-bi/index.html`,
+    href: `${import.meta.env.BASE_URL}webapp/quan-ly-thiet-bi/`,
+    pathLabel: '/webapp/quan-ly-thiet-bi/',
     color: 'from-emerald-600 to-teal-500',
     shadow: '0 20px 48px -10px rgba(5,150,105,0.4)',
     features: ['Hồ sơ thiết bị', 'Lịch bảo trì GSP', 'Báo cáo thống kê'],
@@ -36,7 +38,7 @@ export default function WebAppDuocKhoa() {
       {/* Hero */}
       <section className="relative pt-[120px] min-h-[340px] flex items-end overflow-hidden">
         <div className="absolute inset-0">
-          <img src={`${import.meta.env.BASE_URL}images/hero_pharmacy.png`} alt="WebApp Dược Khoa" className="w-full h-full object-cover" />
+          <img src={`${import.meta.env.BASE_URL}images/hero_pharmacy.webp`} alt="WebApp Dược Khoa" className="w-full h-full object-cover" />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg,rgba(15,23,42,0.88) 0%,rgba(159,18,57,0.5) 100%)' }} />
         </div>
         <div className="relative max-w-7xl mx-auto px-8 md:px-16 pb-14 pt-14 w-full">
@@ -45,8 +47,8 @@ export default function WebAppDuocKhoa() {
             className="font-serif text-white mt-4 leading-tight" style={{ fontSize: 'clamp(2.2rem,5vw,4rem)' }}>
             WebApp <em style={{ background: 'linear-gradient(90deg,#fda4af,#fb923c)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Dược Khoa</em>
           </motion.h1>
-          <p className="text-white/85 text-base md:text-lg mt-3 max-w-xl font-sans font-semibold">
-            Hệ thống ứng dụng web quản trị hoạt động nội bộ Khoa Dược
+            <p className="text-white/85 text-base md:text-lg mt-3 max-w-xl font-sans font-semibold">
+            Trang cổng ứng dụng nội bộ. Mỗi ứng dụng chạy tại đường dẫn tĩnh riêng dưới /webapp/.
           </p>
         </div>
       </section>
@@ -91,8 +93,6 @@ export default function WebAppDuocKhoa() {
               <motion.a
                 key={i}
                 href={app.href}
-                target="_blank"
-                rel="noopener noreferrer"
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -120,8 +120,12 @@ export default function WebAppDuocKhoa() {
                     ))}
                   </div>
 
+                  <div className="mb-5 text-[11px] font-mono text-gray-400 truncate">
+                    {app.pathLabel}
+                  </div>
+
                   <div className="flex items-center gap-2 text-sm font-bold text-blue-600 group-hover:text-blue-800 transition-colors">
-                    Mở ứng dụng <ExternalLink className="w-4 h-4" />
+                    Mở ứng dụng <ArrowRight className="w-4 h-4" />
                   </div>
                 </div>
               </motion.a>

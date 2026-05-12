@@ -1,17 +1,30 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CalendarDays, User, Clock, Share2, Tag } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import { Header, Footer, Breadcrumb } from '../components/SharedLayout';
-import { loadAllArticles } from '../data/articleLoader';
+import { loadArticleBySlug, type Article } from '../data/articleLoader';
 
 export const CapNhatChuyenMonDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const articles = loadAllArticles();
-  const article = articles.find(a => a.id === id);
+  const [article, setArticle] = useState<Article | null>();
+
+  useEffect(() => {
+    let isMounted = true;
+    setArticle(undefined);
+    if (!id) {
+      setArticle(null);
+      return () => { isMounted = false; };
+    }
+    loadArticleBySlug(id).then(loadedArticle => {
+      if (isMounted) setArticle(loadedArticle);
+    });
+    return () => { isMounted = false; };
+  }, [id]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -26,12 +39,24 @@ export const CapNhatChuyenMonDetail = () => {
         document.head.appendChild(metaDesc);
       }
       metaDesc.setAttribute('content', article.summary || article.title);
-    } else {
+    } else if (article === null) {
       document.title = "Không tìm thấy bài viết | Khoa Dược - TTYT Thanh Ba";
     }
   }, [id, article]);
 
-  if (!article) {
+  if (article === undefined) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+        <Header />
+        <main className="flex-grow pt-[100px] flex items-center justify-center text-slate-500 font-semibold">
+          Đang tải bài viết...
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (article === null) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
         <Header />
@@ -123,7 +148,7 @@ export const CapNhatChuyenMonDetail = () => {
                 [&_td]:p-3 [&_td]:border [&_td]:border-slate-200 [&_td]:text-slate-700 [&_td]:text-sm
                 [&_tr:hover]:bg-slate-50/50"
               >
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
                   {article.content}
                 </ReactMarkdown>
               </div>

@@ -20,6 +20,7 @@ import { Pie, Bar } from 'react-chartjs-2';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardBody, Badge, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Button } from '../components/ui';
 import { fetchDevices, fetchRepairs, updateDocumentStatus, type DeviceData, type RepairData } from '../services/api';
+import { useAuth } from '../authContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import './Dashboard.css';
@@ -33,6 +34,7 @@ const Dashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
 
   useEffect(() => {
     const loadData = async () => {
@@ -74,13 +76,13 @@ const Dashboard: React.FC = () => {
   };
 
   const processedDevices = devices.map(d => {
-    const deadlineStr = d['Thời hạn cấp lại/ Hạn đăng kiểm'] || d['Ngày bảo dưỡng tiếp theo'];
-    const prepDaysStr = d['Thời gian  chuẩn bị Hồ sơ'] || d['Thời gian chuẩn bị Hồ sơ'];
+    const deadlineStr = String(d['Thời hạn cấp lại/ Hạn đăng kiểm'] || d['Ngày bảo dưỡng tiếp theo'] || '');
+    const prepDaysStr = String(d['Thời gian  chuẩn bị Hồ sơ'] || d['Thời gian chuẩn bị Hồ sơ'] || '');
     
     let daysRemaining = 999;
     let warningLevel = 'safe'; // safe, warning, danger, critical
     let alertText = '';
-    let parsedDeadline = parseVietnameseDate(deadlineStr);
+    const parsedDeadline = parseVietnameseDate(deadlineStr);
     
     if (parsedDeadline) {
       const prepDays = parseInt(prepDaysStr) || 0;
@@ -122,6 +124,10 @@ const Dashboard: React.FC = () => {
   });
 
   const handleDocStatusUpdate = async (serial: string) => {
+    if (!isAdmin) {
+      alert('Chỉ tài khoản Admin được cập nhật trạng thái hồ sơ.');
+      return;
+    }
     setUpdatingId(serial);
     const res = await updateDocumentStatus(serial, 'Đã gửi');
     if (res && res.success) {
@@ -154,7 +160,8 @@ const Dashboard: React.FC = () => {
       if (!r.rowId) return;
       const parts = r.rowId.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
       if (parts) {
-        const [, _day, month, year] = parts;
+        const month = parts[2];
+        const year = parts[3];
         if (parseInt(year) === thisYear) {
           monthStats[parseInt(month) - 1]++;
         }
@@ -202,7 +209,7 @@ const Dashboard: React.FC = () => {
 
     const deptStats = getDepartmentStats();
     autoTable(doc, {
-      startY: (doc as any).lastAutoTable.finalY + 12,
+      startY: (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 12,
       head: [['Khoa/Phòng', 'Số lượng thiết bị']],
       body: deptStats.labels.map((l, i) => [l, deptStats.data[i]]),
       styles: { fontSize: 10 },
@@ -282,7 +289,7 @@ const Dashboard: React.FC = () => {
         <Card>
           <CardHeader
             title={<div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>Yêu cầu báo hỏng {repairCount > 0 && <Badge variant="danger">{repairCount} đang chờ</Badge>}</div>}
-            action={<Button variant="secondary" size="sm" onClick={() => navigate('/admin-repairs')}>Xem tất cả</Button>}
+            action={<Button variant="secondary" size="sm" onClick={() => navigate(isAdmin ? '/admin-repairs' : '/requests?type=repair')}>Xem tất cả</Button>}
           />
           <Table>
             <TableHead>
@@ -333,7 +340,7 @@ const Dashboard: React.FC = () => {
                       <TableCell>{device.deadlineDate}</TableCell>
                       <TableCell>
                         <strong style={device.warningLevel === 'critical' ? {color:'white'}:{}}>{device.alertText}</strong>
-                        {device.warningLevel !== 'success' && (
+                        {isAdmin && device.warningLevel !== 'success' && (
                           <div style={{ marginTop: '8px' }}>
                             <Button 
                               size="sm" 

@@ -3,15 +3,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { BookOpen, CalendarDays, User, ArrowRight, ShieldAlert, Stethoscope, FileWarning, Presentation, ClipboardList, Search, Clock } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { Header, Footer, Breadcrumb } from '../components/SharedLayout';
-import { loadAllArticles, CHUYEN_MON_CATEGORIES } from '../data/articleLoader';
+import { loadArticlesMeta, CHUYEN_MON_CATEGORIES, type ArticleMeta } from '../data/articleLoader';
 
 // Category image & color mapping
 const CATEGORY_META: Record<string, { img: string; from: string; to: string; accent: string; badgeBg: string }> = {
-  'canh-giac-duoc':   { img: `${import.meta.env.BASE_URL}images/articles/canh-giac-duoc.png`,  from: '#dc2626', to: '#991b1b', accent: '#dc2626', badgeBg: 'bg-red-50 text-red-700 border-red-200' },
-  'phac-do-dieu-tri': { img: `${import.meta.env.BASE_URL}images/articles/phac-do-dieu-tri.png`, from: '#059669', to: '#065f46', accent: '#059669', badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  'phac-do-noi-vien': { img: `${import.meta.env.BASE_URL}images/articles/phac-do-dieu-tri.png`, from: '#0891b2', to: '#0e7490', accent: '#0891b2', badgeBg: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
-  'cong-van':         { img: `${import.meta.env.BASE_URL}images/articles/cong-van.png`,         from: '#d97706', to: '#92400e', accent: '#d97706', badgeBg: 'bg-amber-50 text-amber-700 border-amber-200' },
-  'tap-huan':         { img: `${import.meta.env.BASE_URL}images/articles/tap-huan.png`,         from: '#7c3aed', to: '#4c1d95', accent: '#7c3aed', badgeBg: 'bg-violet-50 text-violet-700 border-violet-200' },
+  'canh-giac-duoc':   { img: `${import.meta.env.BASE_URL}images/articles/canh-giac-duoc.webp`,  from: '#dc2626', to: '#991b1b', accent: '#dc2626', badgeBg: 'bg-red-50 text-red-700 border-red-200' },
+  'phac-do-dieu-tri': { img: `${import.meta.env.BASE_URL}images/articles/phac-do-dieu-tri.webp`, from: '#059669', to: '#065f46', accent: '#059669', badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  'phac-do-noi-vien': { img: `${import.meta.env.BASE_URL}images/articles/phac-do-dieu-tri.webp`, from: '#0891b2', to: '#0e7490', accent: '#0891b2', badgeBg: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+  'cong-van':         { img: `${import.meta.env.BASE_URL}images/articles/cong-van.webp`,         from: '#d97706', to: '#92400e', accent: '#d97706', badgeBg: 'bg-amber-50 text-amber-700 border-amber-200' },
+  'tap-huan':         { img: `${import.meta.env.BASE_URL}images/articles/tap-huan.webp`,         from: '#7c3aed', to: '#4c1d95', accent: '#7c3aed', badgeBg: 'bg-violet-50 text-violet-700 border-violet-200' },
 };
 
 const DEFAULT_META = { img: '', from: '#334155', to: '#1e293b', accent: '#2563eb', badgeBg: 'bg-blue-50 text-blue-700 border-blue-200' };
@@ -21,9 +21,16 @@ export const CapNhatChuyenMon = () => {
   const [activeTab, setActiveTab] = useState<string>('all');
   const [activeSourceType, setActiveSourceType] = useState<string>('all');
   const [searchQ, setSearchQ] = useState('');
-  const articles = loadAllArticles();
+  const [articles, setArticles] = useState<ArticleMeta[]>([]);
+  const [isLoadingArticles, setIsLoadingArticles] = useState(true);
 
   useEffect(() => { setActiveSourceType('all'); }, [activeTab]);
+
+  useEffect(() => {
+    // loadArticlesMeta() đọc từ manifest JSON — đồng bộ, tải tức thì
+    setArticles(loadArticlesMeta());
+    setIsLoadingArticles(false);
+  }, []);
 
   useEffect(() => {
     const hash = location.hash.replace('#', '');
@@ -172,7 +179,9 @@ export const CapNhatChuyenMon = () => {
 
         {/* ── ARTICLES ── */}
         <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-12 mt-8">
-          {filteredArticles.length === 0 ? (
+          {isLoadingArticles ? (
+            <div className="py-24 text-center text-slate-500 font-semibold">Đang tải bài viết...</div>
+          ) : filteredArticles.length === 0 ? (
             <div className="py-24 text-center">
               <BookOpen className="w-16 h-16 mx-auto mb-4 text-slate-300" />
               <p className="text-slate-500 text-lg font-semibold">Không tìm thấy bài viết nào.</p>

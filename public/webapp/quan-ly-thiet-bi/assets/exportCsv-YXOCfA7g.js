@@ -1,0 +1,2 @@
+var e=e=>e==null?``:e instanceof Date?e.toISOString():String(e),t=t=>{let n=e(t);return/[",\r\n]/.test(n)?`"${n.replace(/"/g,`""`)}"`:n},n=e=>e.toLowerCase().endsWith(`.csv`)?e:`${e}.csv`,r=(e,r)=>{if(e.length===0)return;let i=Array.from(new Set(e.flatMap(e=>Object.keys(e)))),a=[i.map(t).join(`,`),...e.map(e=>i.map(n=>t(e[n])).join(`,`))],o=new Blob([`\uFEFF${a.join(`\r
+`)}`],{type:`text/csv;charset=utf-8`}),s=URL.createObjectURL(o),c=document.createElement(`a`);c.href=s,c.download=n(r),c.click(),URL.revokeObjectURL(s)};export{r as t};

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { HeartPulse, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { Input, Button } from '../components/ui';
 import { loginUser } from '../services/api';
-import { useAuth } from '../App';
+import { useAuth } from '../authContext';
 import './Login.css';
 
 const Login: React.FC = () => {

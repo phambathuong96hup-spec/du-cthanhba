@@ -1,9 +1,11 @@
 import React from 'react';
 import './Badge.css';
 
+export type BadgeVariant = 'success' | 'warning' | 'danger' | 'primary' | 'neutral';
+
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: 'success' | 'warning' | 'danger' | 'primary' | 'neutral';
+  variant?: BadgeVariant;
   className?: string;
 }
 

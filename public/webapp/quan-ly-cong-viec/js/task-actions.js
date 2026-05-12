@@ -68,10 +68,16 @@ function openReviewModal(id) {
     fileContainer.innerHTML = '';
     const fileUrl = task[13]; // Column 14 = File evidence URLs
     if (fileUrl && String(fileUrl).trim() !== '') {
-        const links = String(fileUrl).split('\n').filter(u => u.trim());
+        const links = String(fileUrl)
+            .split('\n')
+            .map(safeExternalUrl)
+            .filter(Boolean);
         fileContainer.innerHTML = links.map((url, idx) =>
-            `<a href="${escapeHtml(url.trim())}" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-link-45deg"></i> Tài liệu ${links.length > 1 ? (idx + 1) : ''}</a>`
+            `<a href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-link-45deg"></i> Tài liệu ${links.length > 1 ? (idx + 1) : ''}</a>`
         ).join('');
+        if (links.length === 0) {
+            fileContainer.innerHTML = `<span class="text-muted small">Không có tài liệu hợp lệ.</span>`;
+        }
     } else {
         fileContainer.innerHTML = `<span class="text-muted small">Không có tài liệu đính kèm.</span>`;
     }
@@ -168,7 +174,7 @@ function displaySelectedFiles() {
     const input = document.getElementById('reportFile');
     const display = document.getElementById('fileListDisplay');
     if (input.files.length > 0) {
-        let names = Array.from(input.files).map(f => "📎 " + f.name).join("<br>");
+        let names = Array.from(input.files).map(f => "📎 " + escapeHtml(f.name)).join("<br>");
         display.innerHTML = names;
     } else {
         display.innerHTML = "";

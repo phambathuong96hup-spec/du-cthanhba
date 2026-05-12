@@ -86,8 +86,14 @@ function populateFilter() {
         if (r[7]) a.push(...String(r[7]).split(',').map(v => v.trim()).filter(v => v));
     });
     
-    if (sGrp) [...new Set(g)].sort().forEach(n => { if (n) sGrp.innerHTML += `<option value="${n}">${n}</option>`; });
-    if (sAsgn) [...new Set(a)].sort().forEach(n => { if (n) sAsgn.innerHTML += `<option value="${n}">${n}</option>`; });
+    if (sGrp) [...new Set(g)].sort().forEach(n => {
+        if (!n) return;
+        sGrp.appendChild(new Option(n, n));
+    });
+    if (sAsgn) [...new Set(a)].sort().forEach(n => {
+        if (!n) return;
+        sAsgn.appendChild(new Option(n, n));
+    });
 }
 
 function applyFilters() {
@@ -153,7 +159,7 @@ function renderTasks() {
         if (status === 'Done') statusBadge = '<span class="status-badge bg-done">Hoàn thành</span>';
         else if (status === 'Waiting') statusBadge = '<span class="status-badge bg-waiting">Chờ duyệt</span>';
         else if (isOverdue) statusBadge = '<span class="status-badge bg-overdue">Quá hạn</span>';
-        else if (status === 'Todo') statusBadge = `<span class="status-badge bg-todo" style="cursor:pointer" title="Bấm để bắt đầu làm" onclick="event.stopPropagation();startTask('${escapeHtml(id)}')">Mới tạo ▶</span>`;
+        else if (status === 'Todo') statusBadge = `<span class="status-badge bg-todo" style="cursor:pointer" title="Bấm để bắt đầu làm" onclick="event.stopPropagation();startTask(${jsArg(id)})">Mới tạo ▶</span>`;
         else statusBadge = '<span class="status-badge bg-doing">Đang làm</span>';
 
         // Deadline display
@@ -191,7 +197,7 @@ function renderTasks() {
 
         let actionBtns = '';
         let attachLink = (fileUrl && currentUser && isAdminUser(currentUser)) 
-            ? `<button onclick="event.stopPropagation();openReviewModal('${escapeHtml(id)}')" class="btn btn-sm btn-white border shadow-sm text-primary" title="Xem báo cáo"><i class="bi bi-file-earmark-text-fill"></i></button>` 
+            ? `<button onclick="event.stopPropagation();openReviewModal(${jsArg(id)})" class="btn btn-sm btn-white border shadow-sm text-primary" title="Xem báo cáo"><i class="bi bi-file-earmark-text-fill"></i></button>` 
             : '';
 
         if (status === 'Done') {
@@ -200,27 +206,27 @@ function renderTasks() {
             actionBtns = attachLink;
             if (currentUser && isAdminUser(currentUser)) {
                 actionBtns += `
-                <button class="btn btn-sm btn-success ms-1" onclick="event.stopPropagation();approveTask('${escapeHtml(id)}')" title="Duyệt"><i class="bi bi-check-lg"></i></button>
-                <button class="btn btn-sm btn-danger ms-1" onclick="event.stopPropagation();rejectTask('${escapeHtml(id)}')" title="Từ chối"><i class="bi bi-x-lg"></i></button>`;
+                <button class="btn btn-sm btn-success ms-1" onclick="event.stopPropagation();approveTask(${jsArg(id)})" title="Duyệt"><i class="bi bi-check-lg"></i></button>
+                <button class="btn btn-sm btn-danger ms-1" onclick="event.stopPropagation();rejectTask(${jsArg(id)})" title="Từ chối"><i class="bi bi-x-lg"></i></button>`;
             } else {
                 actionBtns += `<span class="text-muted small fst-italic">Đợi duyệt...</span>`;
             }
         } else {
             if (currentUser && isAdminUser(currentUser)) {
-                actionBtns = `<button class="btn btn-sm btn-outline-success rounded-pill px-3" onclick="event.stopPropagation();approveTask('${escapeHtml(id)}')">Duyệt ngay</button>`;
+                actionBtns = `<button class="btn btn-sm btn-outline-success rounded-pill px-3" onclick="event.stopPropagation();approveTask(${jsArg(id)})">Duyệt ngay</button>`;
             } else {
                 actionBtns = `<div style="${disableControl}">
-                    <button class="btn btn-sm btn-primary-custom py-1 px-2" style="font-size:0.8rem" onclick="event.stopPropagation();openReportModal('${escapeHtml(id)}')" title="Báo cáo"><i class="bi bi-send-fill"></i></button>
-                    <button class="btn btn-sm btn-white border text-warning ms-1 py-1 px-2" style="font-size:0.8rem" onclick="event.stopPropagation();triggerTaskEmail('${escapeHtml(id)}')" title="Nhắc"><i class="bi bi-envelope-fill"></i></button>
+                    <button class="btn btn-sm btn-primary-custom py-1 px-2" style="font-size:0.8rem" onclick="event.stopPropagation();openReportModal(${jsArg(id)})" title="Báo cáo"><i class="bi bi-send-fill"></i></button>
+                    <button class="btn btn-sm btn-white border text-warning ms-1 py-1 px-2" style="font-size:0.8rem" onclick="event.stopPropagation();triggerTaskEmail(${jsArg(id)})" title="Nhắc"><i class="bi bi-envelope-fill"></i></button>
                 </div>`;
             }
         }
 
-        return `<tr class="fade-in cursor-pointer" style="animation-delay:${i * 25}ms" onclick="openTaskDetail('${escapeHtml(id)}')">
+        return `<tr class="fade-in cursor-pointer" style="animation-delay:${i * 25}ms" onclick="openTaskDetail(${jsArg(id)})">
             <td class="fw-bold text-center" style="color:var(--text-light);font-size:0.75rem">${start + i + 1}</td>
             <td><div class="fw-bold" style="font-size:0.85rem;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(name)}</div>
                 ${group ? `<span style="font-size:0.68rem;color:var(--text-light)">${escapeHtml(group)}</span>` : ''}</td>
-            <td><span class="priority-badge priority-${escapeHtml(difficulty)}">${escapeHtml(priorityLabel)}</span></td>
+            <td><span class="priority-badge priority-${escapeAttr(difficulty)}">${escapeHtml(priorityLabel)}</span></td>
             <td style="min-width:100px">
                 <div class="d-flex align-items-center gap-2">
                     <div class="progress" style="height:5px;flex:1;border-radius:4px;background:var(--border-color)">

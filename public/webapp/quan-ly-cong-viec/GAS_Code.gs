@@ -99,7 +99,7 @@ function doPost(e) {
           ? Utilities.formatDate(deadlineVal, "GMT+7", "dd/MM/yyyy")
           : "Chưa có";
 
-        var appUrl = "https://phambathuong96hup-spec.github.io/du-cthanhba/webapp/quan-ly-cong-viec/index.html";
+        var appUrl = "https://phambathuong96hup-spec.github.io/du-cthanhba/webapp/quan-ly-cong-viec/";
         var emailSubject = "🚨 [VIỆC MỚI] " + postData.taskName;
         var emailBody =
           "<div style='font-family:Arial,sans-serif;max-width:600px'>" +
@@ -378,10 +378,34 @@ function doPost(e) {
     if (action == 'add_compliance') {
       if (postData.role !== 'Admin') return responseJSON({ status: 'error', message: 'Không có quyền!' });
       ss.getSheetByName(SHEET_COMPLIANCE).appendRow([
-        Utilities.getUuid().slice(0, 8), new Date(),
+        Utilities.getUuid().slice(0, 8), postData.date ? new Date(postData.date) : new Date(),
         postData.person, postData.type, postData.fault, postData.note
       ]);
       return responseJSON({ status: 'success', message: 'Đã ghi nhận!' });
+    }
+
+    if (action == 'update_compliance') {
+      if (postData.role !== 'Admin') return responseJSON({ status: 'error', message: 'Không có quyền!' });
+      var complianceSheet = ss.getSheetByName(SHEET_COMPLIANCE);
+      var complianceRow = findRowById_(complianceSheet, postData.id);
+      if (complianceRow < 2) return responseJSON({ status: 'error', message: 'Không tìm thấy ghi nhận!' });
+      complianceSheet.getRange(complianceRow, 2, 1, 5).setValues([[
+        postData.date ? new Date(postData.date) : new Date(),
+        postData.person,
+        postData.type,
+        postData.fault,
+        postData.note
+      ]]);
+      return responseJSON({ status: 'success', message: 'Đã cập nhật ghi nhận!' });
+    }
+
+    if (action == 'delete_compliance') {
+      if (postData.role !== 'Admin') return responseJSON({ status: 'error', message: 'Không có quyền!' });
+      var deleteComplianceSheet = ss.getSheetByName(SHEET_COMPLIANCE);
+      var deleteComplianceRow = findRowById_(deleteComplianceSheet, postData.id);
+      if (deleteComplianceRow < 2) return responseJSON({ status: 'error', message: 'Không tìm thấy ghi nhận!' });
+      deleteComplianceSheet.deleteRow(deleteComplianceRow);
+      return responseJSON({ status: 'success', message: 'Đã xóa ghi nhận!' });
     }
 
     return responseJSON({ status: 'error', message: 'Action not found' });
@@ -604,6 +628,16 @@ function readSheetData(sheetName) {
     }
   }
   return responseJSON({ status: 'success', data: data });
+}
+
+function findRowById_(sheet, id) {
+  if (!sheet || !id || sheet.getLastRow() <= 1) return -1;
+  var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getDisplayValues();
+  var needle = String(id).trim();
+  for (var i = 0; i < values.length; i++) {
+    if (String(values[i][0]).trim() === needle) return i + 2;
+  }
+  return -1;
 }
 
 function logSystem(type, message) {

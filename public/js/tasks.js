@@ -40,7 +40,7 @@ function populateFilter() {
         String(r[7]).split(',').map(v => v.trim()).filter(Boolean).forEach(n => names.add(n));
     });
     [...names].sort().forEach(n => {
-        s.innerHTML += `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`;
+        s.appendChild(new Option(n, n));
     });
 }
 
@@ -205,7 +205,7 @@ function renderTable() {
         // Status badge
         let statusBadgeHtml = '';
         if (status === 'Todo' && isOwner) {
-            statusBadgeHtml = `<span class="status-badge bg-todo cursor-pointer" onclick="event.stopPropagation();startTask('${escapeHtml(id)}')" title="Bấm để bắt đầu"><i class="bi bi-play-circle-fill me-1"></i>Bắt đầu</span>`;
+            statusBadgeHtml = `<span class="status-badge bg-todo cursor-pointer" onclick="event.stopPropagation();startTask(${jsArg(id)})" title="Bấm để bắt đầu"><i class="bi bi-play-circle-fill me-1"></i>Bắt đầu</span>`;
         } else if (status === 'Done') {
             statusBadgeHtml = '<span class="status-badge bg-done">Hoàn thành</span>';
         } else if (status === 'Waiting') {
@@ -222,7 +222,7 @@ function renderTable() {
         let priorityHtml = '';
         if (difficulty) {
             const label = priorityLabels[difficulty] || 'TB';
-            priorityHtml = `<span class="priority-badge priority-${escapeHtml(difficulty)}">${escapeHtml(label)}</span>`;
+            priorityHtml = `<span class="priority-badge priority-${escapeAttr(difficulty)}">${escapeHtml(label)}</span>`;
         }
 
         // Date badge with color coding
@@ -248,15 +248,15 @@ function renderTable() {
         let slider = status === 'Done'
             ? `<div class="progress" style="height:5px;width:90px;border-radius:10px;"><div class="progress-bar bg-success" style="width:100%"></div></div>`
             : `<div class="d-flex align-items-center" style="${disableControl}">
-                <input type="range" class="form-range me-2" style="width:65px" min="0" max="100" step="10" value="${prog}" onclick="event.stopPropagation()" onchange="updateProgress('${escapeHtml(id)}',this.value)">
-                <span class="badge bg-light text-dark border" id="val-${escapeHtml(id)}" style="width:38px;font-size:0.72rem">${prog}%</span>
+                <input type="range" class="form-range me-2" style="width:65px" min="0" max="100" step="10" value="${prog}" onclick="event.stopPropagation()" onchange="updateProgress(${jsArg(id)},this.value)">
+                <span class="badge bg-light text-dark border" id="val-${escapeAttr(id)}" style="width:38px;font-size:0.72rem">${prog}%</span>
                </div>`;
 
         // Action buttons
         let actionBtns = '';
-        const safeId = escapeHtml(id);
+        const safeId = escapeAttr(id);
         const attachLink = (fileUrl && currentUser && isAdminUser(currentUser))
-            ? `<button onclick="event.stopPropagation();openReviewModal('${safeId}')" class="btn btn-sm border text-primary" title="Xem báo cáo" style="border-radius:8px"><i class="bi bi-file-earmark-text-fill"></i></button> `
+            ? `<button onclick="event.stopPropagation();openReviewModal(${jsArg(id)})" class="btn btn-sm border text-primary" title="Xem báo cáo" style="border-radius:8px"><i class="bi bi-file-earmark-text-fill"></i></button> `
             : '';
 
         if (status === 'Done') {
@@ -264,21 +264,21 @@ function renderTable() {
         } else if (status === 'Waiting') {
             actionBtns = attachLink;
             if (currentUser && isAdminUser(currentUser)) {
-                actionBtns += `<button class="btn btn-sm btn-success ms-1" onclick="event.stopPropagation();approveTask('${safeId}')" title="Duyệt" style="border-radius:8px"><i class="bi bi-check-lg"></i></button>
-                    <button class="btn btn-sm btn-danger ms-1" onclick="event.stopPropagation();rejectTask('${safeId}')" title="Từ chối" style="border-radius:8px"><i class="bi bi-x-lg"></i></button>`;
+                actionBtns += `<button class="btn btn-sm btn-success ms-1" onclick="event.stopPropagation();approveTask(${jsArg(id)})" title="Duyệt" style="border-radius:8px"><i class="bi bi-check-lg"></i></button>
+                    <button class="btn btn-sm btn-danger ms-1" onclick="event.stopPropagation();rejectTask(${jsArg(id)})" title="Từ chối" style="border-radius:8px"><i class="bi bi-x-lg"></i></button>`;
             } else {
                 actionBtns += '<span class="text-muted small fst-italic">Đợi duyệt...</span>';
             }
         } else if (currentUser && isAdminUser(currentUser)) {
-            actionBtns = `<button class="btn btn-sm btn-outline-success rounded-pill px-3" onclick="event.stopPropagation();approveTask('${safeId}')">Duyệt</button>`;
+            actionBtns = `<button class="btn btn-sm btn-outline-success rounded-pill px-3" onclick="event.stopPropagation();approveTask(${jsArg(id)})">Duyệt</button>`;
         } else {
             actionBtns = `<div style="${disableControl}">
-                <button class="btn btn-sm btn-primary-custom py-1 px-2" style="font-size:0.78rem" onclick="event.stopPropagation();openReportModal('${safeId}')" title="Báo cáo"><i class="bi bi-send-fill"></i></button>
+                <button class="btn btn-sm btn-primary-custom py-1 px-2" style="font-size:0.78rem" onclick="event.stopPropagation();openReportModal(${jsArg(id)})" title="Báo cáo"><i class="bi bi-send-fill"></i></button>
             </div>`;
         }
 
         const editBtn = (currentUser && isAdminUser(currentUser))
-            ? `<button class="btn btn-sm text-muted p-0 ms-2" style="opacity:0.4" onclick="event.stopPropagation();openEditTask('${safeId}')" title="Sửa"><i class="bi bi-pencil-square"></i></button>`
+            ? `<button class="btn btn-sm text-muted p-0 ms-2" style="opacity:0.4" onclick="event.stopPropagation();openEditTask(${jsArg(id)})" title="Sửa"><i class="bi bi-pencil-square"></i></button>`
             : '';
 
         const assignees = assignee.split(',').map(s => s.trim()).filter(Boolean);
@@ -290,7 +290,7 @@ function renderTable() {
               </div>`
             : '<span class="text-muted small">Chưa giao</span>';
 
-        rows.push(`<tr style="cursor:pointer" onclick="openTaskDetail('${safeId}')">
+        rows.push(`<tr style="cursor:pointer" onclick="openTaskDetail(${jsArg(id)})">
             <td><span class="text-muted" style="font-size:0.72rem;font-weight:600">${escapeHtml(taskIdStr)}</span></td>
             <td>
                 <div class="d-flex align-items-center">
@@ -568,10 +568,13 @@ function openReviewModal(id) {
 
     const container = document.getElementById('reviewFileContainer');
     if (task[13]) {
-        const fileUrls = String(task[13]).split('\n');
-        container.innerHTML = fileUrls.filter(u => u.trim()).map((url, i) =>
-            `<a href="${escapeHtml(url)}" target="_blank" class="btn btn-outline-primary w-100 fw-bold" style="border-radius:10px"><i class="bi bi-cloud-arrow-down-fill"></i> Mở File ${i + 1}</a>`
+        const fileUrls = String(task[13]).split('\n').map(safeExternalUrl).filter(Boolean);
+        container.innerHTML = fileUrls.map((url, i) =>
+            `<a href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary w-100 fw-bold" style="border-radius:10px"><i class="bi bi-cloud-arrow-down-fill"></i> Mở File ${i + 1}</a>`
         ).join('');
+        if (fileUrls.length === 0) {
+            container.innerHTML = '<span class="text-muted fst-italic">Không có file hợp lệ.</span>';
+        }
     } else {
         container.innerHTML = '<span class="text-muted fst-italic">Không có file đính kèm.</span>';
     }

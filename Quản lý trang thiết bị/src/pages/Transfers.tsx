@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { CheckCircle, Download, FileText, Loader2, RefreshCw, Repeat2, Send, XCircle, X, Camera } from 'lucide-react';
-import { Card, CardBody, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge } from '../components/ui';
+import { Card, CardBody, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge, type BadgeVariant } from '../components/ui';
 import {
   createTransfer,
   fetchDevices,
@@ -11,8 +11,9 @@ import {
   type DeviceData,
   type TransferData,
 } from '../services/api';
+import { useAuth } from '../authContext';
+import { exportCsv } from '../utils/exportCsv';
 import { Html5Qrcode } from 'html5-qrcode';
-import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -23,19 +24,23 @@ const statusText: Record<string, string> = {
   CANCELLED: 'Đã hủy',
 };
 
-const statusVariant = (status: string) => {
+const statusVariant = (status: string): BadgeVariant => {
   if (status === 'COMPLETED') return 'success';
   if (status === 'REJECTED' || status === 'CANCELLED') return 'danger';
   if (status === 'PENDING_RECEIVE') return 'warning';
   return 'neutral';
 };
 
-const Transfers: React.FC = () => {
+interface TransfersProps {
+  defaultTab?: 'create' | 'requests' | 'history';
+}
+
+const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
   const [devices, setDevices] = useState<DeviceData[]>([]);
   const [transfers, setTransfers] = useState<TransferData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'create' | 'requests' | 'history'>('requests');
+  const [activeTab, setActiveTab] = useState<'create' | 'requests' | 'history'>(defaultTab);
   const [transferType, setTransferType] = useState<'Cho mượn' | 'Mượn' | 'Trả'>('Cho mượn');
   const [deviceId, setDeviceId] = useState('');
   const [toDepartment, setToDepartment] = useState('');
@@ -46,26 +51,24 @@ const Transfers: React.FC = () => {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const scannerContainerId = 'qr-scanner-region';
 
-  const username = localStorage.getItem('username') || '';
-  const userDepartment = localStorage.getItem('userDepartment') || '';
-  const role = localStorage.getItem('userRole') || '';
-  const isAdmin = role.toLowerCase() === 'admin';
+  const { username, department: userDepartment, name: userName, isAdmin } = useAuth();
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     const [deviceData, transferData] = await Promise.all([fetchDevices(), fetchTransfers()]);
     setDevices(deviceData);
     setTransfers(transferData.reverse());
     setIsLoading(false);
-    if (!deviceId && deviceData.length > 0) {
+    setDeviceId(current => {
+      if (current || deviceData.length === 0) return current;
       const first = deviceData.find(d => isAdmin || d.department === userDepartment) || deviceData[0];
-      setDeviceId(first.id);
-    }
-  };
+      return first.id;
+    });
+  }, [isAdmin, userDepartment]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const departments = useMemo(() => {
     return Array.from(new Set(devices.map(d => d.department).filter(Boolean))).sort();
@@ -107,7 +110,7 @@ const Transfers: React.FC = () => {
           const found = transferableDevices.find(d =>
             d.id.toLowerCase() === cleanCode ||
             d.id.toLowerCase().includes(cleanCode) ||
-            (d.serial && d.serial.toLowerCase().includes(cleanCode))
+            (d.serial && String(d.serial).toLowerCase().includes(cleanCode))
           );
           if (found) {
             setDeviceId(found.id);
@@ -122,8 +125,9 @@ const Transfers: React.FC = () => {
         },
         () => { /* ignore scan failures (no code in frame) */ }
       );
-    } catch (err: any) {
-      setScanResult(`❌ Không thể mở camera: ${err?.message || err}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setScanResult(`❌ Không thể mở camera: ${message}`);
       setTimeout(() => setShowScanner(false), 2500);
     }
   }, [transferableDevices]);
@@ -203,12 +207,9 @@ const Transfers: React.FC = () => {
     'Lý do/Ghi chú': t.requestedNote || t.receivedNote || t.rejectReason,
   }));
 
-  const exportExcel = () => {
+  const exportCsvFile = () => {
     if (exportRows.length === 0) return alert('Không có dữ liệu để xuất.');
-    const ws = XLSX.utils.json_to_sheet(exportRows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'LuanChuyen');
-    XLSX.writeFile(wb, `LuanChuyenThietBi_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
+    exportCsv(exportRows, `LuanChuyenThietBi_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.csv`);
   };
 
   const exportPdf = () => {
@@ -250,7 +251,7 @@ const Transfers: React.FC = () => {
         <div className="action-buttons">
           <Button variant="secondary" icon={<RefreshCw size={16} />} onClick={loadData}>Làm mới</Button>
           <Button variant="secondary" icon={<FileText size={16} />} onClick={exportPdf}>PDF</Button>
-          <Button variant="primary" icon={<Download size={16} />} onClick={exportExcel}>Excel</Button>
+          <Button variant="primary" icon={<Download size={16} />} onClick={exportCsvFile}>CSV</Button>
         </div>
       </div>
 
@@ -267,7 +268,7 @@ const Transfers: React.FC = () => {
               <div>
                 <label className="input-label">Loại yêu cầu</label>
                 <select className="filter-select" style={{ width: '100%', marginBottom: '8px' }} value={transferType} onChange={e => {
-                  setTransferType(e.target.value as any);
+                  setTransferType(e.target.value as 'Cho mượn' | 'Mượn' | 'Trả');
                   setToDepartment('');
                 }}>
                   <option value="Cho mượn">Cho mượn / Luân chuyển đi</option>
@@ -325,7 +326,7 @@ const Transfers: React.FC = () => {
               </div>
               <div className="info-grid">
                 <div className="info-item"><span className="info-label">Vị trí thiết bị (các khoa chứa thiết bị)</span><span className="info-value">{selectedDevice?.department || '—'}</span></div>
-                <div className="info-item"><span className="info-label">Người tạo yêu cầu</span><span className="info-value">{localStorage.getItem('userName') || username} ({userDepartment})</span></div>
+                <div className="info-item"><span className="info-label">Người tạo yêu cầu</span><span className="info-value">{userName || username} ({userDepartment})</span></div>
               </div>
               <div>
                 <label className="input-label">{transferType === 'Cho mượn' || transferType === 'Trả' ? 'Khoa/phòng nhận' : 'Chuyển về khoa (Khoa của bạn)'}</label>
@@ -374,7 +375,7 @@ const Transfers: React.FC = () => {
                     <TableCell><strong>{transfer.deviceName || transfer.deviceId}</strong><br /><small>{transfer.deviceId}</small></TableCell>
                     <TableCell>{transfer.fromDepartment}<br /><strong>→ {transfer.toDepartment}</strong></TableCell>
                     <TableCell>{transfer.requestedByName || transfer.requestedBy}<br /><small>{transfer.requestedNote}</small></TableCell>
-                    <TableCell><Badge variant={statusVariant(transfer.status) as any}>{statusText[transfer.status] || transfer.status}</Badge></TableCell>
+                    <TableCell><Badge variant={statusVariant(transfer.status)}>{statusText[transfer.status] || transfer.status}</Badge></TableCell>
                     <TableCell>
                       {transfer.status === 'PENDING_RECEIVE' && (activeTab === 'requests' || isAdmin) ? (
                         <div style={{ display: 'flex', gap: '8px' }}>

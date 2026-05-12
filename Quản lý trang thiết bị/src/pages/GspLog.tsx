@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -9,23 +9,15 @@ import {
   Tooltip,
   Legend,
   Filler,
+  type TooltipItem,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { Thermometer, Droplets, Plus, RefreshCw, AlertTriangle, CheckCircle, Calendar } from 'lucide-react';
 import { Card, CardHeader, CardBody, Button } from '../components/ui';
-import { GOOGLE_SHEETS_API_URL } from '../services/api';
+import { addGspRecord, fetchGspRecords, type GspRecord } from '../services/api';
+import { useAuth } from '../authContext';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
-
-interface GspRecord {
-  date: string;
-  shift: string;
-  tempKho: number;
-  tempTuLanh: number;
-  humidity: number;
-  note: string;
-  recorder: string;
-}
 
 const GSP_LIMITS = {
   tempKho: { min: 15, max: 30 },
@@ -40,7 +32,7 @@ const GspLog: React.FC = () => {
   const [activeView, setActiveView] = useState<'chart' | 'table'>('chart');
   const [chartPeriod, setChartPeriod] = useState(30); // days
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const { name } = useAuth();
 
   const [form, setForm] = useState({
     shift: 'Sáng',
@@ -50,44 +42,29 @@ const GspLog: React.FC = () => {
     note: '',
   });
 
-  useEffect(() => {
-    fetchGspData();
+  const fetchGspData = useCallback(async () => {
+    setIsLoading(true);
+    const data = await fetchGspRecords();
+    setRecords(data);
+    setIsLoading(false);
   }, []);
 
-  const fetchGspData = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch(`${GOOGLE_SHEETS_API_URL}?action=getGSP`);
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setRecords(data);
-      }
-    } catch (e) {
-      console.error('GSP fetch error', e);
-    }
-    setIsLoading(false);
-  };
+  useEffect(() => {
+    fetchGspData();
+  }, [fetchGspData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.name) return alert('Vui lòng đăng nhập!');
+    if (!name) return alert('Vui lòng đăng nhập!');
     setIsSubmitting(true);
     try {
-      const payload = {
-        action: 'addGSP',
-        payload: {
-          ...form,
-          tempKho: parseFloat(form.tempKho),
-          tempTuLanh: parseFloat(form.tempTuLanh),
-          humidity: parseFloat(form.humidity),
-          recorder: user.name,
-        },
-      };
-      const res = await fetch(GOOGLE_SHEETS_API_URL, {
-        method: 'POST',
-        body: JSON.stringify(payload),
+      const result = await addGspRecord({
+        ...form,
+        tempKho: parseFloat(form.tempKho),
+        tempTuLanh: parseFloat(form.tempTuLanh),
+        humidity: parseFloat(form.humidity),
+        recorder: name,
       });
-      const result = await res.json();
       if (result.success) {
         alert('✅ Đã ghi nhận thành công!');
         setForm({ shift: 'Sáng', tempKho: '', tempTuLanh: '', humidity: '', note: '' });
@@ -95,7 +72,7 @@ const GspLog: React.FC = () => {
       } else {
         alert('❌ Lỗi: ' + result.message);
       }
-    } catch (e) {
+    } catch {
       alert('Lỗi kết nối mạng!');
     }
     setIsSubmitting(false);
@@ -158,8 +135,8 @@ const GspLog: React.FC = () => {
       legend: { position: 'top' as const },
       tooltip: {
         callbacks: {
-          label: (ctx: any) => {
-            const val = ctx.parsed.y;
+          label: (ctx: TooltipItem<'line'>) => {
+            const val = Number(ctx.parsed.y);
             const unit = ctx.datasetIndex === 2 ? '%' : '°C';
             let status = '';
             if (ctx.datasetIndex === 0) {

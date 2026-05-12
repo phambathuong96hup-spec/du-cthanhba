@@ -182,11 +182,14 @@ const DrugInfoField = ({ label, value, data }: { label: string; value: string; d
     <div className="flex flex-col md:flex-row gap-4 px-6 py-5 border-b border-slate-100 last:border-0">
       <div className="md:w-1/3 text-sm font-bold text-slate-600 shrink-0">{label}</div>
       <div className="md:w-2/3">
-        {isWarning ? (
-          <span className="text-red-600 font-bold text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: value.replace(/\n/g, '<br/>') }} />
-        ) : (
-          <span className="text-slate-700 text-sm leading-relaxed font-medium" dangerouslySetInnerHTML={{ __html: value.replace(/\n/g, '<br/>') }} />
-        )}
+        <span className={isWarning ? 'text-red-600 font-bold text-sm leading-relaxed' : 'text-slate-700 text-sm leading-relaxed font-medium'}>
+          {value.split(/\n/g).map((line, index, lines) => (
+            <React.Fragment key={`${index}-${line.slice(0, 12)}`}>
+              {line}
+              {index < lines.length - 1 && <br />}
+            </React.Fragment>
+          ))}
+        </span>
       </div>
     </div>
   );
@@ -436,7 +439,7 @@ export default function TraCuuTiemTruyen() {
       <section className="relative overflow-hidden" style={{ paddingTop: '88px', minHeight: '280px' }}>
         {/* Background image */}
         <div className="absolute inset-0">
-          <img src={`${import.meta.env.BASE_URL}images/tracuu_tiemtruyen.png`} alt="Tra cứu thuốc tiêm truyền"
+          <img src={`${import.meta.env.BASE_URL}images/tracuu_tiemtruyen.webp`} alt="Tra cứu thuốc tiêm truyền"
             className="w-full h-full object-cover object-center" />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(6,95,70,0.92) 0%, rgba(15,23,42,0.88) 60%, rgba(15,23,42,0.7) 100%)' }} />
         </div>

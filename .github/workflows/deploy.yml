@@ -28,7 +28,13 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Install equipment app dependencies
+        run: npm ci --prefix "Quản lý trang thiết bị"
+
+      - name: Build equipment app into public
+        run: npm run deploy:thiet-bi
 
       - name: Build
         run: npm run build

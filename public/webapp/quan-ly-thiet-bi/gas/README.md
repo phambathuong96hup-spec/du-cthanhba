@@ -8,11 +8,12 @@
    `https://docs.google.com/spreadsheets/d/10yRv_RD5ersJzD9xd-UDkZ8-hoiHxRBW6bz71qtMqoQ/edit?gid=1113591284`
 3. Vào `Extensions > Apps Script` trong file thiết bị, dán nội dung `Code.gs`.
 4. Chạy hàm `setupSheets` một lần để tạo các sheet chuẩn trong file thiết bị.
-5. Chạy hàm `migrateLegacyDevices` một lần để chuyển dữ liệu Excel gốc sang sheet `Devices`.
-6. Deploy Apps Script dạng `Web app`:
+5. Vào `Project Settings > Script Properties`, thêm `SESSION_SECRET` là một chuỗi ngẫu nhiên dài tối thiểu 32 ký tự.
+6. Chạy hàm `migrateLegacyDevices` một lần để chuyển dữ liệu Excel gốc sang sheet `Devices` nếu cần import dữ liệu cũ.
+7. Deploy Apps Script dạng `Web app`:
    - Execute as: `Me`
    - Who has access: tùy môi trường, thường chọn `Anyone with the link` nếu app tĩnh gọi trực tiếp.
-7. Lấy URL `/exec` sau khi deploy và dùng cho app hiện tại.
+8. Lấy URL `/exec` sau khi deploy và cấu hình trong app bằng biến `VITE_THIET_BI_API_URL` nếu đổi endpoint.
 
 ## Sheet được tạo
 
@@ -25,12 +26,19 @@
 ## API chính
 
 - `GET ?action=getDevices`
-- `GET ?action=getUsers`
-- `GET ?action=getRepairs`
-- `GET ?action=getTransfers`
+- `POST { action: "login", payload: { username, pin } }`
+- `POST { action: "getUsers", payload: { sessionToken } }` - Admin
+- `POST { action: "getRepairs", payload: { sessionToken } }`
+- `POST { action: "getTransfers", payload: { sessionToken } }`
 - `GET ?action=getDepartments`
-- `POST { action: "transferDevice", payload: { deviceId, toDepartment, handoverBy, receiveBy, operator, reason, note } }`
-- `POST { action: "migrateLegacyDevices", payload: {} }`
+- `POST { action: "reportRepair", payload: { sessionToken, deviceId, description } }`
+- `POST { action: "approveRepair", payload: { sessionToken, rowId, deviceId, newStatus, note } }` - Admin
+- `POST { action: "createTransfer", payload: { sessionToken, deviceId, toDepartment, reason, note } }`
+- `POST { action: "receiveTransfer" | "rejectTransfer" | "cancelTransfer", payload: { sessionToken, transferId, note, reason } }`
+- `POST { action: "addGSP", payload: { sessionToken, shift, tempKho, tempTuLanh, humidity, note } }`
+- `POST { action: "migrateLegacyDevices", payload: { sessionToken } }` - Admin
+
+Các action ghi dữ liệu không tin `actorUsername`, `approver`, `recorder`, `userName`, `userEmail` từ frontend. Script lấy lại người thao tác từ `sessionToken` để tránh giả mạo quyền bằng DevTools/localStorage.
 
 ## File dữ liệu đang cấu hình
 

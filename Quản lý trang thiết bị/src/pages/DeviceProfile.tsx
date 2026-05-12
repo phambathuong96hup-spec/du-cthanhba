@@ -3,11 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, AlertTriangle, RefreshCw, FileText, X, Save } from 'lucide-react';
 import { Card, CardBody, Button, Badge, Tabs, Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/ui';
 import { createTransfer, fetchDevices, fetchTransfers, type DeviceData, type TransferData } from '../services/api';
+import { useAuth } from '../authContext';
 import './Devices.css';
 
 const DeviceProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isAuthenticated, username } = useAuth();
   const [device, setDevice] = useState<DeviceData | null>(null);
   const [transfers, setTransfers] = useState<TransferData[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
@@ -35,17 +37,21 @@ const DeviceProfile: React.FC = () => {
   const handleReportBroken = () => {
     // Lưu deviceId vào sessionStorage để báo hỏng trang tự điền sẵn
     if (device) sessionStorage.setItem('repairDeviceId', device.id);
-    navigate('/repairs');
+    navigate('/requests?type=repair');
   };
 
   const handleTransfer = async () => {
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: { pathname: `/devices/${id}` } } });
+      return;
+    }
     if (!newDept.trim()) { alert('Vui lòng nhập Khoa/Phòng đích.'); return; }
     if (!device) return;
     const res = await createTransfer({
       deviceId: device.id,
       toDepartment: newDept,
       reason: transferNote,
-      actorUsername: localStorage.getItem('username') || '',
+      actorUsername: username,
     });
     alert((res.success ? '✅ ' : '❌ ') + (res.message || 'Có lỗi xảy ra.'));
     if (res.success) {
@@ -63,9 +69,9 @@ const DeviceProfile: React.FC = () => {
       <div className="info-item"><span className="info-label">Khoa/Phòng sử dụng</span><span className="info-value">{device?.department || '—'}</span></div>
       <div className="info-item"><span className="info-label">Số Serial / Mã TB</span><span className="info-value">{device?.id || '—'}</span></div>
       <div className="info-item"><span className="info-label">Ngày cấp / Đăng kiểm</span><span className="info-value">{device?.dateAdded || '—'}</span></div>
-      <div className="info-item"><span className="info-label">Năm sản xuất</span><span className="info-value">{device?.['Năm SX'] || '—'}</span></div>
-      <div className="info-item"><span className="info-label">Nhà cung cấp</span><span className="info-value">{device?.['Hãng sản xuất/ Xuất xứ'] || '—'}</span></div>
-      <div className="info-item"><span className="info-label">Nguồn vốn</span><span className="info-value">{device?.['Ghi chú'] || '—'}</span></div>
+      <div className="info-item"><span className="info-label">Năm sản xuất</span><span className="info-value">{String(device?.['Năm SX'] || '—')}</span></div>
+      <div className="info-item"><span className="info-label">Nhà cung cấp</span><span className="info-value">{String(device?.['Hãng sản xuất/ Xuất xứ'] || '—')}</span></div>
+      <div className="info-item"><span className="info-label">Nguồn vốn</span><span className="info-value">{String(device?.['Ghi chú'] || '—')}</span></div>
     </div>
   );
 

@@ -6,7 +6,7 @@ categoryName: "Cảnh giác dược"
 date: "2025-10-15"
 author: "Tổ Dược lâm sàng"
 summary: "Cập nhật phân tích chuyên sâu về tương tác lâm sàng giữa nhóm thuốc PPI và Clopidogrel, cùng các khuyến cáo thay đổi phác đồ an toàn."
-image: "/images/news_training.png"
+image: "/images/news_training.webp"
 ---
 
 # Tương tác thuốc giữa Clopidogrel và thuốc ức chế bơm Proton (PPI)

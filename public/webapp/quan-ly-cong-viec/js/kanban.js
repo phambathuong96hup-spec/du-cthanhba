@@ -71,11 +71,11 @@ function renderKanban() {
             if (prog < 30) barColor = '#ef4444';
             else if (prog < 70) barColor = '#f59e0b';
 
-            return `<div class="kanban-card" draggable="true" data-id="${escapeHtml(id)}"
+            return `<div class="kanban-card" draggable="true" data-id="${escapeAttr(id)}"
                 ondragstart="onDragStart(event)" ondragend="onDragEnd(event)"
-                onclick="openTaskDetail('${escapeHtml(id)}')">
+                onclick="openTaskDetail(${jsArg(id)})">
                 <div class="d-flex align-items-start justify-content-between gap-2 mb-1">
-                    <span class="priority-badge priority-${escapeHtml(difficulty)}">${escapeHtml(priorityLabel)}</span>
+                    <span class="priority-badge priority-${escapeAttr(difficulty)}">${escapeHtml(priorityLabel)}</span>
                     ${isOverdue ? '<span class="date-badge date-overdue" style="font-size:0.6rem">Quá hạn</span>' : ''}
                 </div>
                 <div class="kanban-card-title">${escapeHtml(name)}</div>
@@ -212,7 +212,7 @@ function openTaskDetail(id) {
                 oninput="document.getElementById('progressSliderVal').innerText=this.value+'%'"
             >
             <span class="fw-bold small" id="progressSliderVal" style="color:var(--text-main);min-width:36px">${prog}%</span>
-            ${canEdit ? `<button class="btn btn-sm btn-primary-custom btn-rounded px-2 py-0" onclick="saveProgressFromSlider('${escapeHtml(id)}')"><i class="bi bi-check2"></i></button>` : ''}
+            ${canEdit ? `<button class="btn btn-sm btn-primary-custom btn-rounded px-2 py-0" onclick="saveProgressFromSlider(${jsArg(id)})"><i class="bi bi-check2"></i></button>` : ''}
         </div>`;
     document.getElementById('detailAssignee').innerHTML = assignees.map(n => {
         const color = getRandomColor(n);

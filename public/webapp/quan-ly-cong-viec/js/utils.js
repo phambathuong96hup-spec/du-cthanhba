@@ -99,6 +99,37 @@ function escapeHtml(text) {
 }
 
 /**
+ * Escape text used inside HTML attributes.
+ */
+function escapeAttr(text) {
+    return String(text ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/**
+ * Allow only external URLs that are safe to open from generated links.
+ */
+function safeExternalUrl(url) {
+    try {
+        const parsed = new URL(String(url || '').trim());
+        return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : '';
+    } catch {
+        return '';
+    }
+}
+
+/**
+ * Serialize a value for inline event handlers embedded in generated HTML.
+ */
+function jsArg(value) {
+    return escapeAttr(JSON.stringify(String(value ?? '')));
+}
+
+/**
  * Parse progress value from various formats
  */
 function parseProgress(val) {

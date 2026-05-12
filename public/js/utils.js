@@ -98,6 +98,28 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+function escapeAttr(text) {
+    return String(text ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function safeExternalUrl(url) {
+    try {
+        const parsed = new URL(String(url || '').trim());
+        return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : '';
+    } catch {
+        return '';
+    }
+}
+
+function jsArg(value) {
+    return escapeAttr(JSON.stringify(String(value ?? '')));
+}
+
 /**
  * Parse progress value from various formats
  */

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FileText, Download, Printer, Activity, CheckCircle, ShieldCheck } from 'lucide-react';
 import { Card, CardBody, Button, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge } from '../components/ui';
 import { fetchDevices, fetchRepairs, type DeviceData, type RepairData } from '../services/api';
-import * as XLSX from 'xlsx';
+import { exportCsv, type CsvRow } from '../utils/exportCsv';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import './Reports.css';
@@ -47,8 +47,8 @@ const Reports: React.FC = () => {
 
   const getDeviceDetails = (id: string) => devices.find(d => d.id === id);
 
-  const handleExportExcel = () => {
-    let exportData: any[] = [];
+  const handleExportCsv = () => {
+    let exportData: CsvRow[] = [];
     if (activeMainTab === 'thong-ke') {
       if (activeRepairs.length === 0) return alert('Không có dữ liệu.');
       exportData = activeRepairs.map((r, i) => {
@@ -69,10 +69,7 @@ const Reports: React.FC = () => {
         }));
       }
     }
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Data');
-    XLSX.writeFile(wb, `BaoCao_${activeMainTab}_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
+    exportCsv(exportData, `BaoCao_${activeMainTab}_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.csv`);
   };
 
   const handleExportPDF = () => {
@@ -81,7 +78,7 @@ const Reports: React.FC = () => {
     
     let title = 'BAO CAO THONG KE';
     let headers: string[][] = [];
-    let body: any[] = [];
+    let body: (string | number)[][] = [];
 
     if (activeMainTab === 'thong-ke') {
       title = 'THONG KE THIET BI DANG HONG HOC';
@@ -101,7 +98,7 @@ const Reports: React.FC = () => {
       } else {
         title = 'BAO CAO KIEM DINH CHUNG';
         headers = [['STT', 'Ma TB', 'Ten Thiet Bi', 'Khoa/Phong', 'Ngay Cap/Dang kiem', 'Bao duong tiep theo']];
-        body = devices.map((d, i) => [i+1, d.id, d.name, d.department, d['Ngày cấp/ Ngày Đăng kiểm'] || 'N/A', d['Ngày bảo dưỡng tiếp theo'] || 'N/A']);
+        body = devices.map((d, i) => [i + 1, d.id, d.name, d.department, String(d['Ngày cấp/ Ngày Đăng kiểm'] || 'N/A'), String(d['Ngày bảo dưỡng tiếp theo'] || 'N/A')]);
       }
     }
 
@@ -119,7 +116,7 @@ const Reports: React.FC = () => {
       headStyles: { fillColor: [13, 148, 136], textColor: 255, fontStyle: 'bold' }
     });
 
-    const pageCount = (doc as any).internal.getNumberOfPages();
+    const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
         doc.setFontSize(8);
@@ -178,7 +175,7 @@ const Reports: React.FC = () => {
             <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
               <Button variant="secondary" icon={<Printer size={16} />} onClick={() => window.print()}>In</Button>
               <Button variant="secondary" icon={<FileText size={16} />} onClick={handleExportPDF}>Tải PDF</Button>
-              <Button variant="primary" icon={<Download size={16} />} onClick={handleExportExcel}>Tải Excel</Button>
+              <Button variant="primary" icon={<Download size={16} />} onClick={handleExportCsv}>Tải CSV</Button>
             </div>
           </div>
 
@@ -277,15 +274,15 @@ const Reports: React.FC = () => {
                   <TableBody>
                     {isLoading ? <TableRow><TableCell colSpan={6} style={{textAlign:'center', padding: '2rem'}}>Đang tải...</TableCell></TableRow> : 
                      devices.map((d, i) => {
-                       const dk = d['Ngày cấp/ Ngày Đăng kiểm'];
+                       const dk = String(d['Ngày cấp/ Ngày Đăng kiểm'] || '');
                        const isMissing = !dk || dk.trim() === '' || dk.trim() === 'N/A';
                        return (
                          <TableRow key={i}>
                            <TableCell style={{color:'var(--text-secondary)'}}>{d.id}</TableCell>
                            <TableCell><strong>{d.name}</strong></TableCell>
                            <TableCell>{d.department}</TableCell>
-                           <TableCell>{dk || 'N/A'}</TableCell>
-                           <TableCell>{d['Ngày bảo dưỡng tiếp theo'] || 'N/A'}</TableCell>
+                            <TableCell>{dk || 'N/A'}</TableCell>
+                            <TableCell>{String(d['Ngày bảo dưỡng tiếp theo'] || 'N/A')}</TableCell>
                            <TableCell>
                              {isMissing ? <Badge variant="danger">Chưa kiểm định</Badge> : <Badge variant="success">Đã kiểm định</Badge>}
                            </TableCell>

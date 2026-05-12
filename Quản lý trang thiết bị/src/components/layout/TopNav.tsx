@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Menu, Search, Bell, ChevronDown, LogOut, LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../App';
+import { useAuth } from '../../authContext';
 import './TopNav.css';
 
 interface TopNavProps {
@@ -16,7 +16,7 @@ const TopNav: React.FC<TopNavProps> = ({ toggleSidebar }) => {
   const initial = name ? name.charAt(0).toUpperCase() : '?';
 
   const handleLogout = () => {
-    logout();                    // ← xóa state + localStorage → re-render toàn app
+    logout();
     setShowDropdown(false);
     navigate('/dashboard');
   };

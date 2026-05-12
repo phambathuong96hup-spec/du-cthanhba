@@ -23,13 +23,20 @@ async function deploy() {
   await mkdir(targetDir, { recursive: true });
 
   const sourceEntries = await readdir(sourceDir);
+  let replaced = 0;
   for (const entry of sourceEntries) {
-    await rm(path.join(targetDir, entry), { recursive: true, force: true });
-    await cp(path.join(sourceDir, entry), path.join(targetDir, entry), { recursive: true });
+    const sourcePath = path.join(sourceDir, entry);
+    const targetPath = path.resolve(targetDir, entry);
+    if (!targetPath.startsWith(targetDir + path.sep)) {
+      throw new Error(`Refusing to write outside deploy target: ${targetPath}`);
+    }
+    await rm(targetPath, { recursive: true, force: true });
+    await cp(sourcePath, targetPath, { recursive: true });
+    replaced += 1;
   }
 
   console.log(`Deployed thiet-bi build from ${sourceDir} to ${targetDir}`);
-  console.log('Preserved non-build files in target, such as gas/.');
+  console.log(`Replaced ${replaced} build entries and preserved non-build files in target, such as gas/.`);
 }
 
 deploy().catch((error) => {

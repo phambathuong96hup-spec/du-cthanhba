@@ -1,6 +1,23 @@
-export const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbznJoCVhOyzoGQmqIMXxB3stCBQYCd_OQ76k6hR75VDYsCs0V9dhtzrFmJMZO11di0K_w/exec';
+import { getAuthPayload } from '../authSession';
 
+const DEFAULT_GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbznJoCVhOyzoGQmqIMXxB3stCBQYCd_OQ76k6hR75VDYsCs0V9dhtzrFmJMZO11di0K_w/exec';
 
+export const GOOGLE_SHEETS_API_URL = import.meta.env.VITE_THIET_BI_API_URL || DEFAULT_GOOGLE_SHEETS_API_URL;
+
+type ApiRow = Record<string, unknown>;
+
+const asText = (value: unknown, fallback = '') => {
+  if (value === null || value === undefined) return fallback;
+  return String(value);
+};
+
+const getText = (row: ApiRow, keys: string[], fallback = '') => {
+  for (const key of keys) {
+    const value = asText(row[key]).trim();
+    if (value) return value;
+  }
+  return fallback;
+};
 export interface DeviceDocument {
   docType: string;
   licenseNo: string;
@@ -21,7 +38,7 @@ export interface DeviceData {
   documents?: DeviceDocument[];
   alertLevel?: 'ok' | 'warning' | 'danger';
   minDaysUntil?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface UserData {
@@ -30,6 +47,8 @@ export interface UserData {
   name: string;
   email?: string;
   department?: string;
+  token?: string;
+  expiresAt?: number;
 }
 
 export interface RepairData {
@@ -82,7 +101,7 @@ const safeFetch = async (input: RequestInfo, init?: RequestInit) => {
         console.warn('API returned success=false:', data);
       }
       return data;
-    } catch (e) {
+    } catch {
       console.error('Failed to parse JSON response. Response text was:', text);
       return null;
     }
@@ -92,97 +111,107 @@ const safeFetch = async (input: RequestInfo, init?: RequestInit) => {
   }
 };
 
+const postAction = async (action: string, payload: Record<string, unknown> = {}) => {
+  const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      action,
+      payload: {
+        ...payload,
+        ...getAuthPayload(),
+      },
+    }),
+  });
+  return data || { success: false, message: 'Lỗi kết nối mạng.' };
+};
+
+const postReadAction = async (action: string) => safeFetch(GOOGLE_SHEETS_API_URL, {
+  method: 'POST',
+  headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+  body: JSON.stringify({ action, payload: getAuthPayload() }),
+});
+
 export const fetchDevices = async (): Promise<DeviceData[]> => {
   const data = await safeFetch(`${GOOGLE_SHEETS_API_URL}?action=getDevices`);
   if (!data || !Array.isArray(data)) return [];
 
-  const validData = data.filter((item: any) => (item['Tên Thiết bị'] && item['Tên Thiết bị'].trim() !== '') || (item.name && item.name.trim() !== ''));
+  const rows = data as ApiRow[];
+  const validData = rows.filter(item => getText(item, ['Tên Thiết bị', 'name']) !== '');
 
-  return validData.map((item: any, index: number) => {
+  return validData.map((item, index: number) => {
     const isOldFormat = 'Tên Thiết bị' in item;
+    const documents = Array.isArray(item.documents) ? item.documents as DeviceDocument[] : [];
     return {
-      id: isOldFormat ? (item['Seri Máy'] || `TB-${String(index + 1).padStart(3, '0')}`) : (item.serial || `TB-${String(index + 1).padStart(3, '0')}`),
-      name: isOldFormat ? item['Tên Thiết bị'].trim() : item.name.trim(),
-      department: isOldFormat ? (item['Nơi đặt thiết bị'] || 'Chưa phân bổ') : (item.location || 'Chưa phân bổ'),
+      ...item,
+      id: isOldFormat ? getText(item, ['Seri Máy'], `TB-${String(index + 1).padStart(3, '0')}`) : getText(item, ['serial'], `TB-${String(index + 1).padStart(3, '0')}`),
+      name: isOldFormat ? getText(item, ['Tên Thiết bị']) : getText(item, ['name']),
+      department: isOldFormat ? getText(item, ['Nơi đặt thiết bị'], 'Chưa phân bổ') : getText(item, ['location'], 'Chưa phân bổ'),
       status: 'O',
-      dateAdded: isOldFormat ? (item['Ngày cấp/ Ngày Đăng kiểm'] || 'N/A') : ((item.documents && item.documents.length > 0) ? item.documents[0].issuedDate : 'N/A'),
-      ...item
+      dateAdded: isOldFormat ? getText(item, ['Ngày cấp/ Ngày Đăng kiểm'], 'N/A') : (documents[0]?.issuedDate || 'N/A'),
     };
   });
 };
 
 export const fetchUsers = async (): Promise<UserData[]> => {
-  const data = await safeFetch(`${GOOGLE_SHEETS_API_URL}?action=getUsers`);
+  const data = await postReadAction('getUsers');
   if (!data || !Array.isArray(data)) return [];
 
-  const validData = data.filter((item: any) => {
-    const uname = item['Tên đăng nhập'] || item['Username'] || item['username'] || '';
-    return uname && String(uname).trim() !== '';
-  });
+  const rows = data as ApiRow[];
+  const validData = rows.filter(item => getText(item, ['Tên đăng nhập', 'Username', 'username']) !== '');
 
-  return validData.map((item: any) => ({
-    username: (item['Tên đăng nhập'] || item['Username'] || item['username'] || '').toString().trim(),
-    role: (item['Quyền hạn'] || item['Quyền'] || item['Role'] || 'User').toString().trim(),
-    name: (item['Họ và Tên'] || item['Họ và tên'] || item['Name'] || 'Người dùng').toString().trim(),
-    email: (item['Email'] || item['email'] || '').toString().trim(),
-    department: (item['Khoa/Phòng'] || item['Khoa/Phong'] || '').toString().trim(),
+  return validData.map(item => ({
+    username: getText(item, ['Tên đăng nhập', 'Username', 'username']),
+    role: getText(item, ['Quyền hạn', 'Quyền', 'Role'], 'User'),
+    name: getText(item, ['Họ và Tên', 'Họ và tên', 'Name'], 'Người dùng'),
+    email: getText(item, ['Email', 'email']),
+    department: getText(item, ['Khoa/Phòng', 'Khoa/Phong']),
   }));
 };
 
 export const loginUser = async (payload: { username: string; pin: string }) => {
-  // Use GET to avoid CORS redirect issues with Google Apps Script
-  // GAS 302-redirects POST, browsers convert POST→GET on redirect, losing body
-  const queryParams = new URLSearchParams({
-    action: 'login',
-    username: payload.username,
-    pin: payload.pin,
-    password: payload.pin
-  }).toString();
-  
-  const data = await safeFetch(`${GOOGLE_SHEETS_API_URL}?${queryParams}`);
+  const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'login', payload }),
+  });
   
   if (!data?.success) return data || { success: false, message: 'Lỗi kết nối mạng.' };
-  const item = data.user || {};
+  const item = (data.user || {}) as ApiRow;
   return {
     success: true,
     user: {
-      username: (item['Tên đăng nhập'] || item['Username'] || item['username'] || '').toString().trim(),
-      role: (item['Quyền hạn'] || item['Quyền'] || item['Role'] || 'User').toString().trim(),
-      name: (item['Họ và Tên'] || item['Họ và tên'] || item['Name'] || 'Người dùng').toString().trim(),
-      email: (item['Email'] || item['email'] || '').toString().trim(),
-      department: (item['Khoa/Phòng'] || item['Khoa/Phong'] || item['Khoa/ Phòng'] || item['Khoa'] || item['Department'] || item['department'] || item['Nơi công tác'] || item['Noi cong tac'] || '').toString().trim(),
+      username: getText(item, ['Tên đăng nhập', 'Username', 'username']),
+      role: getText(item, ['Quyền hạn', 'Quyền', 'Role'], 'User'),
+      name: getText(item, ['Họ và Tên', 'Họ và tên', 'Name'], 'Người dùng'),
+      email: getText(item, ['Email', 'email']),
+      department: getText(item, ['Khoa/Phòng', 'Khoa/Phong', 'Khoa/ Phòng', 'Khoa', 'Department', 'department', 'Nơi công tác', 'Noi cong tac']),
+      token: asText(data.token || item.token || item.sessionToken),
+      expiresAt: Number(data.expiresAt || item.expiresAt || 0) || undefined,
     } as UserData,
   };
 };
 
 export const fetchRepairs = async (): Promise<RepairData[]> => {
-  const data = await safeFetch(`${GOOGLE_SHEETS_API_URL}?action=getRepairs`);
+  const data = await postReadAction('getRepairs');
   if (!data || !Array.isArray(data)) return [];
 
-  return data.map((item: any) => ({
-    rowId: item['Thời gian'] || '',
-    deviceId: item['Mã Máy/Thiết bị'] || '',
-    userName: item['Người báo lỗi'] || '',
-    userEmail: item['Email người báo'] || '',
-    description: item['Mô tả lỗi'] || '',
-    status: item['Trạng Thái'] || 'Chờ duyệt',
+  return (data as ApiRow[]).map(item => ({
+    rowId: getText(item, ['Thời gian']),
+    deviceId: getText(item, ['Mã Máy/Thiết bị']),
+    userName: getText(item, ['Người báo lỗi']),
+    userEmail: getText(item, ['Email người báo']),
+    description: getText(item, ['Mô tả lỗi']),
+    status: getText(item, ['Trạng Thái'], 'Chờ duyệt'),
   }));
 };
 
-export const reportRepair = async (payload: any) => {
-  const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
-    method: 'POST',
-    body: JSON.stringify({ action: 'reportRepair', payload }),
-  });
-  return data || { success: false, message: 'Lỗi kết nối mạng.' };
+export const reportRepair = async (payload: Record<string, unknown>) => {
+  return postAction('reportRepair', payload);
 };
 
 export const approveRepair = async (payload: { rowId: string; deviceId: string; newStatus: string; approver?: string; note?: string }) => {
-  const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
-    method: 'POST',
-    body: JSON.stringify({ action: 'approveRepair', payload }),
-  });
-  return data || { success: false, message: 'Lỗi kết nối mạng.' };
+  return postAction('approveRepair', payload);
 };
 
 export const addDevice = async (payload: {
@@ -192,11 +221,7 @@ export const addDevice = async (payload: {
   dateAdded: string;
   notes?: string;
 }) => {
-  const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
-    method: 'POST',
-    body: JSON.stringify({ action: 'addDevice', payload }),
-  });
-  return data || { success: false, message: 'Lỗi kết nối mạng.' };
+  return postAction('addDevice', payload);
 };
 
 export const editDevice = async (payload: {
@@ -206,50 +231,42 @@ export const editDevice = async (payload: {
   dateAdded: string;
   notes?: string;
 }) => {
-  const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
-    method: 'POST',
-    body: JSON.stringify({ action: 'editDevice', payload }),
-  });
-  return data || { success: false, message: 'Lỗi kết nối mạng.' };
+  return postAction('editDevice', payload);
 };
 
 export const updateDocumentStatus = async (serial: string, status: string) => {
-  const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
-    method: 'POST',
-    body: JSON.stringify({ action: 'updateDocStatus', payload: { serial, status } }),
-  });
-  return data || { success: false, message: 'Lỗi kết nối mạng.' };
+  return postAction('updateDocStatus', { serial, status });
 };
 
-const mapTransfer = (item: any): TransferData => ({
-  transferId: item.TransferId || item['TransferId'] || item['Thời gian'] || '',
-  createdAt: item.CreatedAt || item['CreatedAt'] || item['Thời gian'] || '',
-  deviceId: item.DeviceId || item['Mã Máy/Thiết bị'] || '',
-  deviceName: item.DeviceName || item['Tên Thiết bị'] || '',
-  fromDepartment: item.FromDepartment || item['Từ khoa/phòng'] || '',
-  toDepartment: item.ToDepartment || item['Đến khoa/phòng'] || '',
-  quantity: item.Quantity || item['Số lượng'] || '',
-  status: item.Status || item['Trạng thái'] || '',
-  requestedBy: item.RequestedBy || '',
-  requestedByName: item.RequestedByName || item['Người thực hiện'] || '',
-  requestedByEmail: item.RequestedByEmail || '',
-  requestedNote: item.RequestedNote || item['Lý do'] || item['Ghi chú'] || '',
-  requestedAt: item.RequestedAt || '',
-  receivedBy: item.ReceivedBy || '',
-  receivedByName: item.ReceivedByName || item['Người nhận'] || '',
-  receivedByEmail: item.ReceivedByEmail || '',
-  receivedNote: item.ReceivedNote || '',
-  receivedAt: item.ReceivedAt || '',
-  rejectedBy: item.RejectedBy || '',
-  rejectedAt: item.RejectedAt || '',
-  rejectReason: item.RejectReason || '',
-  updatedAt: item.UpdatedAt || '',
+const mapTransfer = (item: ApiRow): TransferData => ({
+  transferId: getText(item, ['TransferId', 'Thời gian']),
+  createdAt: getText(item, ['CreatedAt', 'Thời gian']),
+  deviceId: getText(item, ['DeviceId', 'Mã Máy/Thiết bị']),
+  deviceName: getText(item, ['DeviceName', 'Tên Thiết bị']),
+  fromDepartment: getText(item, ['FromDepartment', 'Từ khoa/phòng']),
+  toDepartment: getText(item, ['ToDepartment', 'Đến khoa/phòng']),
+  quantity: getText(item, ['Quantity', 'Số lượng']),
+  status: getText(item, ['Status', 'Trạng thái']),
+  requestedBy: getText(item, ['RequestedBy']),
+  requestedByName: getText(item, ['RequestedByName', 'Người thực hiện']),
+  requestedByEmail: getText(item, ['RequestedByEmail']),
+  requestedNote: getText(item, ['RequestedNote', 'Lý do', 'Ghi chú']),
+  requestedAt: getText(item, ['RequestedAt']),
+  receivedBy: getText(item, ['ReceivedBy']),
+  receivedByName: getText(item, ['ReceivedByName', 'Người nhận']),
+  receivedByEmail: getText(item, ['ReceivedByEmail']),
+  receivedNote: getText(item, ['ReceivedNote']),
+  receivedAt: getText(item, ['ReceivedAt']),
+  rejectedBy: getText(item, ['RejectedBy']),
+  rejectedAt: getText(item, ['RejectedAt']),
+  rejectReason: getText(item, ['RejectReason']),
+  updatedAt: getText(item, ['UpdatedAt']),
 });
 
 export const fetchTransfers = async (): Promise<TransferData[]> => {
-  const data = await safeFetch(`${GOOGLE_SHEETS_API_URL}?action=getTransfers`);
+  const data = await postReadAction('getTransfers');
   if (!Array.isArray(data)) return [];
-  return data.map(mapTransfer);
+  return (data as ApiRow[]).map(mapTransfer);
 };
 
 export const createTransfer = async (payload: {
@@ -259,35 +276,19 @@ export const createTransfer = async (payload: {
   reason?: string;
   actorUsername: string;
 }) => {
-  const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
-    method: 'POST',
-    body: JSON.stringify({ action: 'createTransfer', payload }),
-  });
-  return data || { success: false, message: 'Lỗi kết nối mạng.' };
+  return postAction('createTransfer', payload);
 };
 
 export const receiveTransfer = async (payload: { transferId: string; actorUsername: string; note?: string }) => {
-  const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
-    method: 'POST',
-    body: JSON.stringify({ action: 'receiveTransfer', payload }),
-  });
-  return data || { success: false, message: 'Lỗi kết nối mạng.' };
+  return postAction('receiveTransfer', payload);
 };
 
 export const rejectTransfer = async (payload: { transferId: string; actorUsername: string; reason?: string }) => {
-  const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
-    method: 'POST',
-    body: JSON.stringify({ action: 'rejectTransfer', payload }),
-  });
-  return data || { success: false, message: 'Lỗi kết nối mạng.' };
+  return postAction('rejectTransfer', payload);
 };
 
 export const cancelTransfer = async (payload: { transferId: string; actorUsername: string; reason?: string }) => {
-  const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
-    method: 'POST',
-    body: JSON.stringify({ action: 'cancelTransfer', payload }),
-  });
-  return data || { success: false, message: 'Lỗi kết nối mạng.' };
+  return postAction('cancelTransfer', payload);
 };
 
 // ===== GSP (Nhiệt độ/Độ ẩm Kho) =====
@@ -303,23 +304,19 @@ export interface GspRecord {
 }
 
 export const fetchGspRecords = async (): Promise<GspRecord[]> => {
-  const data = await safeFetch(`${GOOGLE_SHEETS_API_URL}?action=getGSP`);
+  const data = await postReadAction('getGSP');
   if (!Array.isArray(data)) return [];
-  return data.map((item: any) => ({
-    date: item['Ngày'] || item['date'] || '',
-    shift: item['Ca'] || item['shift'] || '',
-    tempKho: parseFloat(item['Nhiệt độ Kho'] || item['tempKho'] || 0),
-    tempTuLanh: parseFloat(item['Nhiệt độ Tủ lạnh'] || item['tempTuLanh'] || 0),
-    humidity: parseFloat(item['Độ ẩm'] || item['humidity'] || 0),
-    note: item['Ghi chú'] || item['note'] || '',
-    recorder: item['Người ghi'] || item['recorder'] || '',
+  return (data as ApiRow[]).map(item => ({
+    date: getText(item, ['Ngày', 'date']),
+    shift: getText(item, ['Ca', 'shift']),
+    tempKho: parseFloat(getText(item, ['Nhiệt độ Kho', 'tempKho'], '0')),
+    tempTuLanh: parseFloat(getText(item, ['Nhiệt độ Tủ lạnh', 'tempTuLanh'], '0')),
+    humidity: parseFloat(getText(item, ['Độ ẩm', 'humidity'], '0')),
+    note: getText(item, ['Ghi chú', 'note']),
+    recorder: getText(item, ['Người ghi', 'recorder']),
   }));
 };
 
 export const addGspRecord = async (payload: Omit<GspRecord, 'date'>) => {
-  const data = await safeFetch(GOOGLE_SHEETS_API_URL, {
-    method: 'POST',
-    body: JSON.stringify({ action: 'addGSP', payload }),
-  });
-  return data || { success: false, message: 'Lỗi kết nối mạng.' };
+  return postAction('addGSP', payload);
 };

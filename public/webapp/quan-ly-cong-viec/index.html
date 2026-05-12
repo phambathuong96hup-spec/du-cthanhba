@@ -3,8 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý Công việc — Khoa Dược</title>
+    <title>WebApp Dược Khoa — Quản lý Công việc</title>
     <meta name="description" content="Hệ thống quản lý công việc nội bộ Khoa Dược - Trung tâm Y tế khu vực Thanh Ba">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="manifest" href="site.webmanifest">
+    <meta name="theme-color" content="#0f766e">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,10 +32,10 @@
     <!-- ═══ SIDEBAR ═══ -->
     <nav id="sidebar">
         <div class="brand-logo">
-            <div class="brand-icon"><i class="bi bi-capsule"></i></div>
+            <div class="brand-icon"><i class="bi bi-capsule-pill"></i></div>
             <div style="flex:1">
-                <h5 class="fw-bold mb-0" style="color:var(--text-main)">Khoa Dược</h5>
-                <small class="text-muted" style="font-size:0.68rem">TTYT KV Thanh Ba</small>
+                <h5 class="fw-bold mb-0" style="color:var(--text-main)">WebApp Dược Khoa</h5>
+                <small class="text-muted" style="font-size:0.68rem">Quản lý Công việc</small>
             </div>
             <button class="sidebar-collapse-btn d-none d-lg-flex" onclick="toggleSidebarDesktop()" title="Thu gọn">
                 <i class="bi bi-chevron-bar-left" id="sidebarCollapseIcon"></i>
@@ -339,11 +345,13 @@
                         <table class="table-modern">
                             <thead>
                                 <tr>
+                                    <th style="width:60px" class="text-center">STT</th>
                                     <th style="width:100px">Ngày</th>
                                     <th>Nhân viên</th>
                                     <th style="width:120px">Loại</th>
                                     <th>Nội dung</th>
                                     <th>Ghi chú</th>
+                                    <th style="width:120px" class="text-end">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody id="complianceBody"></tbody>
@@ -751,6 +759,7 @@
       </div>
       <div class="modal-body p-4">
         <form id="complianceForm" onsubmit="event.preventDefault(); submitCompliance(document.getElementById('btnCompliance'))">
+          <input type="hidden" name="id">
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label form-label-custom">Nhân viên</label>

@@ -15,7 +15,7 @@ const features = [
 
 const leaders = [
   { name: 'DSCKI. Nguyễn Thị Hương Giang', role: 'Trưởng Khoa Dược', exp: '20 năm kinh nghiệm', desc: 'Phụ trách chỉ đạo chuyên môn toàn khoa, triển khai quy trình GSP và đào tạo nhân lực.', img: `${import.meta.env.BASE_URL}images/leadership_doctor.png` },
-  { name: 'DSDH. Trần Thị Huyền Trang', role: 'Phó Trưởng Khoa', exp: '15 năm kinh nghiệm', desc: 'Chuyên sâu Thống kê & nghiệp vụ dược.', img: `${import.meta.env.BASE_URL}images/phokhoa.png` },
+  { name: 'DSDH. Trần Thị Huyền Trang', role: 'Phó Trưởng Khoa', exp: '15 năm kinh nghiệm', desc: 'Chuyên sâu Thống kê & nghiệp vụ dược.', img: `${import.meta.env.BASE_URL}images/phokhoa.webp` },
 ];
 
 export default function GioiThieu() {
@@ -30,7 +30,7 @@ export default function GioiThieu() {
       {/* Hero */}
       <section className="relative pt-[120px] pb-0 min-h-[380px] flex items-end overflow-hidden">
         <div className="absolute inset-0">
-          <img src={`${import.meta.env.BASE_URL}images/about_team.png`} alt="Đội ngũ Khoa Dược" className="w-full h-full object-cover" />
+          <img src={`${import.meta.env.BASE_URL}images/about_team.webp`} alt="Đội ngũ Khoa Dược" className="w-full h-full object-cover" />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg,rgba(15,23,42,0.82) 0%,rgba(22,163,74,0.45) 100%)' }} />
         </div>
         <div className="relative max-w-7xl mx-auto px-8 md:px-16 pb-16 pt-16 w-full">
@@ -88,7 +88,7 @@ export default function GioiThieu() {
               </p>
             </div>
             <div className="rounded-3xl overflow-hidden shadow-2xl">
-              <img src={`${import.meta.env.BASE_URL}images/hero_pharmacy.png`} alt="Lịch sử Khoa Dược" className="w-full object-cover max-h-[480px]" />
+              <img src={`${import.meta.env.BASE_URL}images/hero_pharmacy.webp`} alt="Lịch sử Khoa Dược" className="w-full object-cover max-h-[480px]" />
             </div>
           </div>
         </div>

@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Download, Printer, Search, Eye, Edit2, X, Save, Loader2, CheckCircle, AlertTriangle, Monitor } from 'lucide-react';
 import { Card, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge } from '../components/ui';
 import { fetchDevices, addDevice, editDevice, type DeviceData } from '../services/api';
+import { useAuth } from '../authContext';
+import { exportCsv } from '../utils/exportCsv';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import * as XLSX from 'xlsx';
 import './Devices.css';
 
 interface DeviceFormData {
@@ -43,6 +44,7 @@ const DeviceList: React.FC = () => {
   const [saveMsg, setSaveMsg] = useState('');
 
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
 
   const loadData = async () => {
     setIsLoading(true);
@@ -93,8 +95,8 @@ const DeviceList: React.FC = () => {
     else alert('Không có thiết bị nào trong danh sách hiển thị để in.');
   };
 
-  const handleExportExcel = () => {
-    if (filteredDevices.length === 0) { alert('Không có dữ liệu để xuất Excel.'); return; }
+  const handleExportCsv = () => {
+    if (filteredDevices.length === 0) { alert('Không có dữ liệu để xuất CSV.'); return; }
     const exportData = filteredDevices.map(d => ({
       'Mã thiết bị': d.id,
       'Tên thiết bị': d.name,
@@ -102,13 +104,11 @@ const DeviceList: React.FC = () => {
       'Trạng thái': (d['Hiện trạng thực tế'] || d.status) === 'O' ? 'Hoạt động tốt' : 'Báo hỏng/Khác',
       'Ngày nhập / Đăng kiểm': d.dateAdded,
     }));
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'DanhSachTB');
-    XLSX.writeFile(wb, 'DanhSachThietBi_ThanhBa.xlsx');
+    exportCsv(exportData, 'DanhSachThietBi_ThanhBa.csv');
   };
 
   const openAddModal = () => {
+    if (!isAdmin) return;
     setFormData(emptyForm);
     setModalMode('add');
     setSaveMsg('');
@@ -116,6 +116,7 @@ const DeviceList: React.FC = () => {
   };
 
   const openEditModal = (device: DeviceData) => {
+    if (!isAdmin) return;
     setFormData({
       serial: String(device.id || ''),
       name: String(device.name || ''),
@@ -134,6 +135,10 @@ const DeviceList: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) {
+      setSaveMsg('❌ Bạn không có quyền thay đổi danh mục thiết bị.');
+      return;
+    }
     if (!formData.name.trim() || !formData.department.trim()) {
       setSaveMsg('❌ Vui lòng điền đầy đủ Tên thiết bị và Khoa/Phòng.');
       return;
@@ -158,9 +163,9 @@ const DeviceList: React.FC = () => {
       <div className="page-header">
         <h1 className="page-title">Danh sách Trang thiết bị</h1>
         <div className="action-buttons">
-          <Button variant="secondary" icon={<Download size={18} />} onClick={handleExportExcel}>Xuất Excel</Button>
+          <Button variant="secondary" icon={<Download size={18} />} onClick={handleExportCsv}>Xuất CSV</Button>
           <Button variant="secondary" icon={<Printer size={18} />} onClick={handlePrintBulkQR}>In QR hàng loạt</Button>
-          <Button variant="primary" icon={<Plus size={18} />} onClick={openAddModal}>Thêm thiết bị mới</Button>
+          {isAdmin && <Button variant="primary" icon={<Plus size={18} />} onClick={openAddModal}>Thêm thiết bị mới</Button>}
         </div>
       </div>
 
@@ -244,7 +249,7 @@ const DeviceList: React.FC = () => {
                   <TableCell>
                     <div className="action-buttons-cell">
                       <Button variant="secondary" size="sm" icon={<Eye size={16} />} title="Xem chi tiết" onClick={() => navigate(`/devices/${encodeURIComponent(device.id)}`)} className="btn-icon-only" />
-                      <Button variant="secondary" size="sm" icon={<Edit2 size={16} />} title="Sửa" onClick={() => openEditModal(device)} className="btn-icon-only" />
+                      {isAdmin && <Button variant="secondary" size="sm" icon={<Edit2 size={16} />} title="Sửa" onClick={() => openEditModal(device)} className="btn-icon-only" />}
                       <Button variant="secondary" size="sm" icon={<Printer size={16} />} title="In QR" onClick={() => handlePrintSingleQR(device)} className="btn-icon-only" />
                     </div>
                   </TableCell>
@@ -272,7 +277,7 @@ const DeviceList: React.FC = () => {
           {printingDevices.map((device, index) => {
             // Đổi mã QR thành đường dẫn URL trỏ thẳng vào web (Device Profile)
             // Khi điện thoại quét URL, nó sẽ không search Google mà mở Trình duyệt web.
-            const qrUrl = `${window.location.origin}/devices/${encodeURIComponent(device.id)}`;
+            const qrUrl = `${window.location.origin}${import.meta.env.BASE_URL}devices/${encodeURIComponent(device.id)}`;
             return (
             <div className="print-page" key={`print-${device.id}-${index}`}>
               <h2>TTYT khu vực Thanh Ba</h2>

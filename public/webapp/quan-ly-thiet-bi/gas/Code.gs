@@ -64,8 +64,12 @@ const TRANSFER_HEADERS = [
   'UpdatedAt'
 ];
 const GSP_HEADERS = ['date', 'shift', 'tempKho', 'tempTuLanh', 'humidity', 'note', 'recorder'];
+const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 
 function doGet(e) {
+  if (e.parameter.action === 'login') {
+    return json_({ success: false, message: 'Đăng nhập phải dùng POST để không lộ mã PIN trên URL.' });
+  }
   return json_(route_(e.parameter.action, e.parameter));
 }
 
@@ -80,51 +84,93 @@ function doPost(e) {
 
 function route_(action, payload) {
   setupSheets();
+  let actor;
   switch (action) {
     case 'getDevices':
       return getRows_(SHEETS.devices);
+    case 'getDepartments':
+      return getDepartments_();
+    case 'login':
+      return login_(payload);
     case 'getUsers':
+      actor = requireAdmin_(payload);
+      if (!actor) return authError_();
       return getUserRows_()
-        .filter(row => String(row['Trạng thái'] || 'active').toLowerCase() !== 'inactive')
+        .filter(row => userStatus_(row) !== 'inactive')
         .map(row => {
            const safeRow = { ...row };
            delete safeRow['Mã PIN']; // BẢO MẬT: Không trả về mã PIN
            delete safeRow['Mật khẩu']; // Tương thích dữ liệu cũ, nếu còn
            return safeRow;
         });
-    case 'login':
-      return login_(payload);
     case 'getRepairs':
+      actor = requireAuthenticated_(payload);
+      if (!actor) return authError_();
       return getRows_(SHEETS.repairs);
     case 'getTransfers':
+      actor = requireAuthenticated_(payload);
+      if (!actor) return authError_();
       return getRows_(SHEETS.transfers);
-    case 'getDepartments':
-      return getDepartments_();
+    case 'getGSP':
+      actor = requireAuthenticated_(payload);
+      if (!actor) return authError_();
+      return getRows_(SHEETS.gsp);
     case 'addDevice':
+      actor = requireAdmin_(payload);
+      if (!actor) return authError_('Chỉ Admin được thêm thiết bị.');
       return addDevice_(payload);
     case 'editDevice':
+      actor = requireAdmin_(payload);
+      if (!actor) return authError_('Chỉ Admin được sửa thiết bị.');
       return editDevice_(payload);
     case 'reportRepair':
+      actor = requireAuthenticated_(payload);
+      if (!actor) return authError_();
+      payload.userName = userDisplayName_(actor);
+      payload.userEmail = userEmail_(actor);
       return reportRepair_(payload);
     case 'approveRepair':
+      actor = requireAdmin_(payload);
+      if (!actor) return authError_('Chỉ Admin được duyệt hoặc cập nhật sửa chữa.');
+      payload.approver = userDisplayName_(actor);
       return approveRepair_(payload);
     case 'updateDocStatus':
+      actor = requireAdmin_(payload);
+      if (!actor) return authError_('Chỉ Admin được cập nhật trạng thái hồ sơ.');
       return updateDocStatus_(payload);
     case 'createTransfer':
+      actor = requireAuthenticated_(payload);
+      if (!actor) return authError_();
+      payload.actorUsername = userUsername_(actor);
       return createTransfer_(payload);
     case 'receiveTransfer':
+      actor = requireAuthenticated_(payload);
+      if (!actor) return authError_();
+      payload.actorUsername = userUsername_(actor);
       return receiveTransfer_(payload);
     case 'rejectTransfer':
+      actor = requireAuthenticated_(payload);
+      if (!actor) return authError_();
+      payload.actorUsername = userUsername_(actor);
       return rejectTransfer_(payload);
     case 'cancelTransfer':
+      actor = requireAuthenticated_(payload);
+      if (!actor) return authError_();
+      payload.actorUsername = userUsername_(actor);
       return cancelTransfer_(payload);
     case 'transferDevice':
+      actor = requireAuthenticated_(payload);
+      if (!actor) return authError_();
+      payload.actorUsername = userUsername_(actor);
       return createTransfer_(payload);
     case 'addGSP':
+      actor = requireAuthenticated_(payload);
+      if (!actor) return authError_();
+      payload.recorder = userDisplayName_(actor);
       return addGSP_(payload);
-    case 'getGSP':
-      return getRows_(SHEETS.gsp);
     case 'migrateLegacyDevices':
+      actor = requireAdmin_(payload);
+      if (!actor) return authError_('Chỉ Admin được chạy migrate dữ liệu.');
       return migrateLegacyDevices_();
     default:
       return { success: false, message: 'Action không hợp lệ: ' + action };
@@ -148,16 +194,95 @@ function login_(payload) {
   });
   
   if (user) {
-    const status = getUserField_(user, ['Trạng thái', 'Trang thai', 'Status', 'status']) || 'active';
-    if (String(status).toLowerCase() === 'inactive') {
+    if (userStatus_(user) === 'inactive') {
       return { success: false, message: 'Tài khoản đã bị khóa.' };
     }
     const safeUser = { ...user };
     // Xóa các trường nhạy cảm trước khi trả về
     ['Mã PIN', 'Ma PIN', 'PIN', 'pin', 'Mật khẩu', 'Mat khau', 'Password', 'password', 'Mã pin', 'MÃ PIN'].forEach(k => delete safeUser[k]);
-    return { success: true, user: safeUser };
+    const session = createSessionToken_(user);
+    return { success: true, user: safeUser, token: session.token, expiresAt: session.expiresAt };
   }
   return { success: false, message: 'Tên đăng nhập hoặc mã PIN không chính xác.' };
+}
+
+function createSessionToken_(user) {
+  const expiresAt = Date.now() + SESSION_TTL_MS;
+  const body = JSON.stringify({
+    username: userUsername_(user),
+    expiresAt: expiresAt
+  });
+  const encodedBody = stripBase64Padding_(Utilities.base64EncodeWebSafe(body, Utilities.Charset.UTF_8));
+  return {
+    token: encodedBody + '.' + signSessionValue_(encodedBody),
+    expiresAt: expiresAt
+  };
+}
+
+function verifySessionToken_(token) {
+  const parts = String(token || '').split('.');
+  if (parts.length !== 2) return null;
+  if (!constantTimeEqual_(signSessionValue_(parts[0]), parts[1])) return null;
+
+  try {
+    const body = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(padBase64_(parts[0]))).getDataAsString());
+    if (!body.username || Number(body.expiresAt) <= Date.now()) return null;
+    const user = findUser_(body.username);
+    if (!user) return null;
+    if (userStatus_(user) === 'inactive') return null;
+    return user;
+  } catch (err) {
+    console.error('verifySessionToken_ failed', err);
+    return null;
+  }
+}
+
+function requireAuthenticated_(payload) {
+  return verifySessionToken_(payload && payload.sessionToken);
+}
+
+function requireAdmin_(payload) {
+  const user = requireAuthenticated_(payload);
+  return user && isAdmin_(user) ? user : null;
+}
+
+function authError_(message) {
+  return {
+    success: false,
+    message: message || 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.'
+  };
+}
+
+function signSessionValue_(value) {
+  const signature = Utilities.computeHmacSha256Signature(value, sessionSecret_());
+  return stripBase64Padding_(Utilities.base64EncodeWebSafe(signature));
+}
+
+function sessionSecret_() {
+  const configured = PropertiesService.getScriptProperties().getProperty('SESSION_SECRET');
+  if (configured) return configured;
+  return ScriptApp.getScriptId() + ':' + DEVICE_SPREADSHEET_ID + ':' + USERS_SPREADSHEET_ID;
+}
+
+function stripBase64Padding_(value) {
+  return String(value || '').replace(/=+$/g, '');
+}
+
+function padBase64_(value) {
+  const text = String(value || '');
+  const padding = (4 - (text.length % 4)) % 4;
+  return text + '='.repeat(padding);
+}
+
+function constantTimeEqual_(left, right) {
+  const a = String(left || '');
+  const b = String(right || '');
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
 }
 
 function setupSheets() {
@@ -281,11 +406,11 @@ function createTransfer_(payload) {
   const isBorrow = String(payload.reason || '').indexOf('[Mượn]') === 0;
   if (!isAdmin_(actor)) {
     if (isBorrow) {
-      if (normalize_(actor['Khoa/Phòng']) !== normalize_(toDepartment)) {
+      if (normalize_(userDepartment_(actor)) !== normalize_(toDepartment)) {
         return { success: false, message: 'Chỉ tài khoản thuộc khoa nhận mới được tạo yêu cầu mượn.' };
       }
     } else {
-      if (normalize_(actor['Khoa/Phòng']) !== normalize_(fromDepartment)) {
+      if (normalize_(userDepartment_(actor)) !== normalize_(fromDepartment)) {
         return { success: false, message: 'Chỉ tài khoản thuộc khoa đang giữ thiết bị mới được tạo yêu cầu chuyển.' };
       }
     }
@@ -302,9 +427,9 @@ function createTransfer_(payload) {
     ToDepartment: toDepartment,
     Quantity: payload.quantity || device['Số lượng'] || 1,
     Status: 'PENDING_RECEIVE',
-    RequestedBy: actor['Tên đăng nhập'] || '',
-    RequestedByName: actor['Họ và Tên'] || '',
-    RequestedByEmail: actor.Email || actor['Email'] || '',
+    RequestedBy: userUsername_(actor),
+    RequestedByName: userDisplayName_(actor),
+    RequestedByEmail: userEmail_(actor),
     RequestedNote: payload.reason || payload.note || '',
     RequestedAt: now,
     UpdatedAt: now
@@ -331,7 +456,7 @@ function receiveTransfer_(payload) {
 
   const transfer = rowObject_(SHEETS.transfers, rowIndex);
   if (transfer.Status !== 'PENDING_RECEIVE') return { success: false, message: 'Yêu cầu này không còn ở trạng thái chờ nhận.' };
-  if (!isAdmin_(actor) && normalize_(actor['Khoa/Phòng']) !== normalize_(transfer.ToDepartment)) {
+  if (!isAdmin_(actor) && normalize_(userDepartment_(actor)) !== normalize_(transfer.ToDepartment)) {
     return { success: false, message: 'Chỉ tài khoản thuộc khoa nhận mới được xác nhận nhận thiết bị.' };
   }
 
@@ -344,9 +469,9 @@ function receiveTransfer_(payload) {
   });
   updateRowByObject_(SHEETS.transfers, rowIndex, {
     Status: 'COMPLETED',
-    ReceivedBy: actor['Tên đăng nhập'] || '',
-    ReceivedByName: actor['Họ và Tên'] || '',
-    ReceivedByEmail: actor.Email || actor['Email'] || '',
+    ReceivedBy: userUsername_(actor),
+    ReceivedByName: userDisplayName_(actor),
+    ReceivedByEmail: userEmail_(actor),
     ReceivedNote: payload.note || '',
     ReceivedAt: now,
     UpdatedAt: now
@@ -370,14 +495,14 @@ function rejectTransfer_(payload) {
 
   const transfer = rowObject_(SHEETS.transfers, rowIndex);
   if (transfer.Status !== 'PENDING_RECEIVE') return { success: false, message: 'Yêu cầu này không còn ở trạng thái chờ nhận.' };
-  if (!isAdmin_(actor) && normalize_(actor['Khoa/Phòng']) !== normalize_(transfer.ToDepartment)) {
+  if (!isAdmin_(actor) && normalize_(userDepartment_(actor)) !== normalize_(transfer.ToDepartment)) {
     return { success: false, message: 'Chỉ tài khoản thuộc khoa nhận mới được từ chối yêu cầu.' };
   }
 
   const now = new Date();
   updateRowByObject_(SHEETS.transfers, rowIndex, {
     Status: 'REJECTED',
-    RejectedBy: actor['Tên đăng nhập'] || '',
+    RejectedBy: userUsername_(actor),
     RejectedAt: now,
     RejectReason: payload.reason || '',
     UpdatedAt: now
@@ -401,7 +526,7 @@ function cancelTransfer_(payload) {
 
   const transfer = rowObject_(SHEETS.transfers, rowIndex);
   if (transfer.Status !== 'PENDING_RECEIVE') return { success: false, message: 'Chỉ hủy được yêu cầu đang chờ nhận.' };
-  if (!isAdmin_(actor) && String(actor['Tên đăng nhập']) !== String(transfer.RequestedBy)) {
+  if (!isAdmin_(actor) && String(userUsername_(actor)) !== String(transfer.RequestedBy)) {
     return { success: false, message: 'Chỉ người tạo yêu cầu hoặc Admin mới được hủy.' };
   }
 
@@ -511,6 +636,26 @@ function getUserField_(user, keys) {
   return '';
 }
 
+function userUsername_(user) {
+  return String(getUserField_(user, ['Tên đăng nhập', 'Ten dang nhap', 'Username', 'Tài khoản', 'Tai khoan', 'username']) || '').trim();
+}
+
+function userDisplayName_(user) {
+  return String(getUserField_(user, ['Họ và Tên', 'Họ và tên', 'Ho va Ten', 'Ho va ten', 'Name', 'name']) || userUsername_(user)).trim();
+}
+
+function userEmail_(user) {
+  return String(getUserField_(user, ['Email', 'email']) || '').trim();
+}
+
+function userDepartment_(user) {
+  return String(getUserField_(user, ['Khoa/Phòng', 'Khoa/Phong', 'Khoa/ Phòng', 'Khoa', 'Department', 'department', 'Nơi công tác', 'Noi cong tac']) || '').trim();
+}
+
+function userStatus_(user) {
+  return String(getUserField_(user, ['Trạng thái', 'Trang thai', 'Status', 'status']) || 'active').trim().toLowerCase();
+}
+
 function appendObject_(sheetName, object) {
   const sheet = deviceSpreadsheet_().getSheetByName(sheetName);
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -565,11 +710,11 @@ function findTransferRow_(transferId) {
 function findUser_(username) {
   const normalized = normalize_(username);
   if (!normalized) return null;
-  return getUserRows_().find(user => normalize_(user['Tên đăng nhập']) === normalized) || null;
+  return getUserRows_().find(user => normalize_(userUsername_(user)) === normalized) || null;
 }
 
 function isAdmin_(user) {
-  return normalize_(user['Quyền hạn']) === 'admin';
+  return normalize_(getUserField_(user, ['Quyền hạn', 'Quyền', 'Role', 'role'])) === 'admin';
 }
 
 function normalize_(value) {
@@ -590,9 +735,9 @@ function nextTransferId_() {
 
 function emailsByDepartment_(department) {
   return getUserRows_()
-    .filter(user => String(user['Trạng thái'] || 'active').toLowerCase() !== 'inactive')
-    .filter(user => normalize_(user['Khoa/Phòng']) === normalize_(department) || isAdmin_(user))
-    .map(user => user.Email || user['Email'])
+    .filter(user => userStatus_(user) !== 'inactive')
+    .filter(user => normalize_(userDepartment_(user)) === normalize_(department) || isAdmin_(user))
+    .map(user => userEmail_(user))
     .filter(Boolean);
 }
 
@@ -604,7 +749,7 @@ function sendTransferMail_(data) {
     const deviceName = transfer.DeviceName || device['Tên Thiết bị'] || device.name || '';
     const fromDepartment = data.fromDepartment || transfer.FromDepartment || '';
     const toDepartment = data.toDepartment || transfer.ToDepartment || '';
-    const actorName = data.actor ? (data.actor['Họ và Tên'] || data.actor['Tên đăng nhập']) : '';
+    const actorName = data.actor ? userDisplayName_(data.actor) : '';
     const note = data.note || '';
     const transferId = data.transferId || transfer.TransferId || '';
     let subject = '';

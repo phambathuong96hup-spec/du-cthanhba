@@ -1,16 +1,15 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  HeartPulse,
+  Pill,
   Activity,
   Microscope,
-  Wrench,
+  ClipboardPlus,
   PieChart,
   Thermometer,
-  Repeat2,
   Lock,
 } from 'lucide-react';
-import { useAuth } from '../../App';
+import { useAuth } from '../../authContext';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -27,8 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
   ];
 
   const privateItems = [
-    { path: '/repairs', name: 'Báo Hỏng / Sửa Chữa', icon: Wrench, private: true },
-    { path: '/transfers', name: 'Luân chuyển Thiết bị', icon: Repeat2, private: true },
+    { path: '/requests', name: 'Tạo yêu cầu', icon: ClipboardPlus, private: true },
     { path: '/reports', name: 'Thống kê & Báo cáo', icon: PieChart, private: true },
     { path: '/gsp', name: 'Nhật ký Nhiệt độ (GSP)', icon: Thermometer, private: true },
   ];
@@ -44,9 +42,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
   return (
     <aside className={`sidebar ${!isOpen ? 'collapsed' : ''}`}>
       <div className="sidebar-header">
-        <HeartPulse size={28} className="sidebar-logo-icon" />
+        <Pill size={28} className="sidebar-logo-icon" />
         <span className="sidebar-title" style={{ fontSize: '0.9rem' }}>
-          Trung tâm Y tế khu vực Thanh Ba
+          WebApp Dược Khoa
+          <small style={{ display: 'block', fontSize: '0.68rem', opacity: 0.72, fontWeight: 500 }}>
+            Quản lý Trang thiết bị
+          </small>
         </span>
       </div>
 

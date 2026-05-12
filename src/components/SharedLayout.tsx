@@ -54,8 +54,8 @@ export const NAV_MENU: NavMenuItem[] = [
   {
     label: 'WEBAPP DƯỢC KHOA', href: '/webapp-duoc-khoa', id: 'webapp',
     children: [
-      { label: 'Quản lý công việc', href: `${import.meta.env.BASE_URL}webapp/quan-ly-cong-viec/index.html`, external: true },
-      { label: 'Quản lý trang thiết bị', href: `${import.meta.env.BASE_URL}webapp/quan-ly-thiet-bi/index.html`, external: true },
+      { label: 'Quản lý công việc', href: `${import.meta.env.BASE_URL}webapp/quan-ly-cong-viec/`, external: true },
+      { label: 'Quản lý trang thiết bị', href: `${import.meta.env.BASE_URL}webapp/quan-ly-thiet-bi/`, external: true },
     ]
   },
   { label: 'LIÊN HỆ', href: '/lien-he', id: 'contact' },
@@ -104,7 +104,7 @@ const NavDropdownItem = ({ item, active, onActivate }: { item: NavMenuItem; acti
           >
             {item.children!.map((child, i) => (
               child.external ? (
-                <a key={i} href={child.href} target="_blank" rel="noopener noreferrer"
+                <a key={i} href={child.href}
                   className="flex items-center gap-2 px-5 py-3.5 text-[13px] text-white/80 hover:text-white hover:bg-white/10 transition-colors border-b border-white/5 font-medium"
                   onClick={() => setOpen(false)}>
                   <ChevronRight className="w-3 h-3 text-green-400 shrink-0" />
@@ -137,8 +137,11 @@ export const Header = () => {
     const path = location.pathname;
     if (path === '/') return 'home';
     if (path.startsWith('/gioi-thieu')) return 'about';
-    if (path.startsWith('/duoc-lam-sang') || path.startsWith('/tra-cuu-tuong-hop')) return 'clinical';
-    if (path.startsWith('/tra-cuu-tiem-truyen')) return 'search';
+    if (path.startsWith('/duoc-lam-sang')) return 'clinical';
+    if (path.startsWith('/tra-cuu-nhanh') || path.startsWith('/tra-cuu-thuoc') || path.startsWith('/tra-cuu-tiem-truyen') || path.startsWith('/tuong-tac-thuoc') || path.startsWith('/tra-cuu-tuong-hop')) return 'search';
+    if (path.startsWith('/deepmed-ai')) return 'deepmed';
+    if (path.startsWith('/cap-nhat-chuyen-mon')) return 'news';
+    if (path.startsWith('/webapp-duoc-khoa')) return 'webapp';
     if (path.startsWith('/lien-he')) return 'contact';
     return '';
   };
@@ -249,7 +252,7 @@ export const Header = () => {
                         className="overflow-hidden bg-gray-50 rounded-xl mb-1">
                         {item.children.map((child, ci) => (
                           child.external ? (
-                            <a key={ci} href={child.href} target="_blank" rel="noopener noreferrer"
+                            <a key={ci} href={child.href}
                               className="flex items-center gap-2 px-5 py-3 text-sm font-semibold text-gray-700 hover:text-green-700 border-b border-gray-100"
                               onClick={() => setIsMobileOpen(false)}>
                               <ChevronRight className="w-3 h-3 text-green-500" />{child.label}

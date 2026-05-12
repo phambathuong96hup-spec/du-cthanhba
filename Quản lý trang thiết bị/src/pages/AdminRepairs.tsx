@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { fetchRepairs, approveRepair, type RepairData } from '../services/api';
 import { Card, CardHeader, CardBody, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge } from '../components/ui';
 import { CheckCircle, Clock, Search, Wrench, Edit } from 'lucide-react';
+import { useAuth } from '../authContext';
 
 const AdminRepairs: React.FC = () => {
+  const { name } = useAuth();
   const [repairs, setRepairs] = useState<RepairData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -32,7 +34,8 @@ const AdminRepairs: React.FC = () => {
     const res = await approveRepair({
       rowId,
       deviceId,
-      newStatus
+      newStatus,
+      approver: name,
     });
 
     if (!res.success) {
