@@ -88,6 +88,15 @@ function isAdminUser(user = currentUser) {
     return role === 'admin' || role.includes('admin');
 }
 
+function getAuthPayload() {
+    return {
+        username: currentUser?.username || '',
+        user_fullname: currentUser?.name || '',
+        role: currentUser?.role || '',
+        token: currentUser?.token || ''
+    };
+}
+
 /**
  * Escape HTML to prevent XSS
  */

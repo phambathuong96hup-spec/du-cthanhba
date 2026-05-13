@@ -142,7 +142,7 @@ async function submitCompliance(btn) {
     setBtnLoading(btn, true);
     try {
         const action = id ? 'update_compliance' : 'add_compliance';
-        const res = await apiFetch(action, { id, date, person: name, type, fault: content, note, role: currentUser.role });
+        const res = await apiFetch(action, { ...getAuthPayload(), id, date, person: name, type, fault: content, note });
         if (id && res?.message === 'Action not found') {
             throw new Error('Backend Apps Script chưa deploy chức năng sửa ghi nhận. Cần cập nhật GAS_Code.gs và Deploy lại Web App.');
         }
@@ -172,7 +172,7 @@ async function deleteCompliance(encodedId) {
     if (!confirm(message)) return;
 
     try {
-        const res = await apiFetch('delete_compliance', { id, role: currentUser.role });
+        const res = await apiFetch('delete_compliance', { ...getAuthPayload(), id });
         if (res?.message === 'Action not found') {
             throw new Error('Backend Apps Script chưa deploy chức năng xóa ghi nhận. Cần cập nhật GAS_Code.gs và Deploy lại Web App.');
         }

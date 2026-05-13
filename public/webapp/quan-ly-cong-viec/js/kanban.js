@@ -132,15 +132,16 @@ async function updateTaskStatusFromKanban(id, newStatus) {
 
     try {
         if (newStatus === 'Done' && isAdminUser(currentUser)) {
-            await apiFetch('approve_done', { id, role: currentUser.role });
+            const res = await apiFetch('approve_done', { ...getAuthPayload(), id });
+            if (res.status === 'error') throw new Error(res.message || 'Không thể duyệt công việc');
         } else if (newStatus === 'Waiting') {
-            await apiFetch('update_progress', {
-                id, progress: 100, user_fullname: currentUser.name, role: currentUser.role
-            });
+            return showToast("Vui lòng dùng nút Báo cáo và tải minh chứng để gửi duyệt.", 'warning');
         } else {
-            await apiFetch('update_progress', {
-                id, progress: newProgress, user_fullname: currentUser.name, role: currentUser.role
+            const res = await apiFetch('update_progress', {
+                ...getAuthPayload(),
+                id, progress: newProgress
             });
+            if (res.status === 'error') throw new Error(res.message || 'Không thể cập nhật trạng thái');
         }
         showToast("Đã cập nhật trạng thái!", 'success');
         loadTaskList();
@@ -260,7 +261,8 @@ async function saveProgressFromSlider(id) {
     if (!slider) return;
     const prog = parseInt(slider.value);
     try {
-        await apiFetch('update_progress', { id, progress: prog, user_fullname: currentUser.name, role: currentUser.role });
+        const res = await apiFetch('update_progress', { ...getAuthPayload(), id, progress: prog });
+        if (res.status === 'error') throw new Error(res.message || 'Không thể lưu tiến độ');
         showToast('Đã lưu tiến độ ' + prog + '%!', 'success');
         bootstrap.Modal.getInstance(document.getElementById('taskDetailModal'))?.hide();
         loadTaskList();

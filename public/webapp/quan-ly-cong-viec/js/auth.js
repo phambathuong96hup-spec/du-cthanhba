@@ -9,6 +9,11 @@ function checkSession() {
     if (saved) {
         try {
             currentUser = JSON.parse(saved);
+            if (!currentUser.token) {
+                sessionStorage.removeItem('user');
+                currentUser = null;
+                return;
+            }
             applyLoginState();
         } catch { currentUser = null; }
     }
@@ -50,7 +55,7 @@ async function performLogin(btn) {
     try {
         const res = await apiFetch('login', { username, pin });
         if (res.status === 'success') {
-            currentUser = { username: res.username, name: res.name, role: res.role };
+            currentUser = { username: res.username, name: res.name, role: res.role, token: res.token || '' };
             sessionStorage.setItem('user', JSON.stringify(currentUser));
             applyLoginState();
             bootstrap.Modal.getInstance(document.getElementById('loginModal'))?.hide();

@@ -390,12 +390,11 @@ async function submitTask(btn) {
     try {
         const action = editId ? 'edit_task' : 'add';
         const payload = {
+            ...getAuthPayload(),
             id: editId || undefined,
             taskName: name,
             deadline, notes: note, assignee: assignees,
             group, type, taskType: type, difficulty,
-            user_fullname: currentUser.name,
-            role: currentUser.role
         };
         const res = await apiFetch(action, payload);
         if (res.status === 'error') throw new Error(res.message || 'Lỗi không xác định từ server');
@@ -456,11 +455,13 @@ function openEditTask(id) {
 async function startTask(id) {
     const task = globalData.find(r => r[0] == id);
     if (!task) return;
-    if (currentUser && !isAdminUser(currentUser) && !String(task[7]).includes(currentUser.name)) {
+    const assignees = String(task[7]).split(',').map(s => s.trim()).filter(Boolean);
+    if (currentUser && !isAdminUser(currentUser) && !assignees.includes(currentUser.name)) {
         return showToast('⛔ Không phải việc của bạn!', 'warning');
     }
     try {
-        await apiFetch('update_progress', { id, progress: 1, user_fullname: currentUser.name, role: currentUser.role });
+        const res = await apiFetch('update_progress', { ...getAuthPayload(), id, progress: 1 });
+        if (res.status === 'error') throw new Error(res.message || 'Không thể cập nhật tiến độ');
         showToast('Đã chuyển sang Đang làm!', 'success');
         loadTaskList();
     } catch (err) {
@@ -475,11 +476,11 @@ async function updateProgress(id) {
     if (isNaN(prog) || prog < 0 || prog > 100) return showToast("Giá trị không hợp lệ!", 'warning');
 
     try {
-        await apiFetch('update_progress', {
-            id, progress: prog,
-            user_fullname: currentUser.name,
-            role: currentUser.role
+        const res = await apiFetch('update_progress', {
+            ...getAuthPayload(),
+            id, progress: prog
         });
+        if (res.status === 'error') throw new Error(res.message || 'Không thể cập nhật tiến độ');
         showToast("Đã cập nhật tiến độ!", 'success');
         loadTaskList();
     } catch (err) {
@@ -490,7 +491,8 @@ async function updateProgress(id) {
 async function approveDone(id) {
     if (!confirm("Duyệt hoàn thành công việc này?")) return;
     try {
-        await apiFetch('approve_done', { id, role: currentUser.role });
+        const res = await apiFetch('approve_done', { ...getAuthPayload(), id });
+        if (res.status === 'error') throw new Error(res.message || 'Không thể duyệt hoàn thành');
         showToast("Đã duyệt hoàn thành!", 'success');
         loadTaskList();
     } catch (err) {

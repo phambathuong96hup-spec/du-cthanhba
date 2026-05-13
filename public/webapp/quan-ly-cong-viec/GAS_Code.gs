@@ -42,8 +42,12 @@ function doPost(e) {
       for (var i = 1; i < staffData.length; i++) {
         if (String(staffData[i][0]).toLowerCase() == String(postData.username).toLowerCase() &&
           String(staffData[i][1]) == String(postData.pin)) {
+          var sessionToken = Utilities.getUuid();
+          CacheService.getScriptCache().put("session_" + sessionToken, JSON.stringify({
+            username: staffData[i][0], name: staffData[i][2], role: staffData[i][3]
+          }), 21600);
           return responseJSON({
-            status: 'success', username: staffData[i][0], name: staffData[i][2], role: staffData[i][3]
+            status: 'success', username: staffData[i][0], name: staffData[i][2], role: staffData[i][3], token: sessionToken
           });
         }
       }
@@ -68,7 +72,7 @@ function doPost(e) {
     // ACTION: ADD - Tạo công việc mới + Thông báo Calendar
     // ======================================================
     if (action == 'add') {
-      if (postData.role !== 'Admin') return responseJSON({ status: 'error', message: 'Không có quyền!' });
+      if (!isAdminRequest_(ss, postData)) return responseJSON({ status: 'error', message: 'Không có quyền!' });
 
       // Hỗ trợ cả 2 tên field: type và taskType
       var taskType = postData.type || postData.taskType || '';
@@ -94,22 +98,26 @@ function doPost(e) {
       try {
         var teamEmails = getEmailMap(ss);
         var assignees = String(postData.assignee || '').split(',');
-        var deadlineVal = postData.deadline ? new Date(postData.deadline) : null;
+        var deadlineVal = parseValidDate_(postData.deadline);
         var deadlineText = deadlineVal
           ? Utilities.formatDate(deadlineVal, "GMT+7", "dd/MM/yyyy")
           : "Chưa có";
 
         var appUrl = "https://phambathuong96hup-spec.github.io/du-cthanhba/webapp/quan-ly-cong-viec/";
         var emailSubject = "🚨 [VIỆC MỚI] " + postData.taskName;
+        var safeTaskName = escapeHtml_(postData.taskName || '');
+        var safeGroup = escapeHtml_(postData.group || '');
+        var safeNotes = escapeHtml_(postData.notes || '');
+        var safeAssignee = escapeHtml_(postData.assignee || '');
         var emailBody =
           "<div style='font-family:Arial,sans-serif;max-width:600px'>" +
           "<h2 style='color:#e74c3c'>🚨 Bạn được giao việc mới!</h2>" +
           "<table style='border-collapse:collapse;width:100%'>" +
-          "<tr><td style='padding:8px;font-weight:bold;width:130px'>📋 Tên công việc:</td><td style='padding:8px'>" + (postData.taskName || '') + "</td></tr>" +
-          "<tr style='background:#f9f9f9'><td style='padding:8px;font-weight:bold'>📂 Tổ:</td><td style='padding:8px'>" + (postData.group || '') + "</td></tr>" +
-          "<tr><td style='padding:8px;font-weight:bold'>⏰ Deadline:</td><td style='padding:8px;color:#e74c3c'><b>" + deadlineText + "</b></td></tr>" +
-          "<tr style='background:#f9f9f9'><td style='padding:8px;font-weight:bold'>📝 Ghi chú:</td><td style='padding:8px'>" + (postData.notes || '') + "</td></tr>" +
-          "<tr><td style='padding:8px;font-weight:bold'>👥 Người thực hiện:</td><td style='padding:8px'>" + (postData.assignee || '') + "</td></tr>" +
+          "<tr><td style='padding:8px;font-weight:bold;width:130px'>📋 Tên công việc:</td><td style='padding:8px'>" + safeTaskName + "</td></tr>" +
+          "<tr style='background:#f9f9f9'><td style='padding:8px;font-weight:bold'>📂 Tổ:</td><td style='padding:8px'>" + safeGroup + "</td></tr>" +
+          "<tr><td style='padding:8px;font-weight:bold'>⏰ Deadline:</td><td style='padding:8px;color:#e74c3c'><b>" + escapeHtml_(deadlineText) + "</b></td></tr>" +
+          "<tr style='background:#f9f9f9'><td style='padding:8px;font-weight:bold'>📝 Ghi chú:</td><td style='padding:8px'>" + safeNotes + "</td></tr>" +
+          "<tr><td style='padding:8px;font-weight:bold'>👥 Người thực hiện:</td><td style='padding:8px'>" + safeAssignee + "</td></tr>" +
           "</table>" +
           "<br><a href='" + appUrl + "' style='background:#3498db;color:white;padding:10px 20px;text-decoration:none;border-radius:5px'>🔗 Mở bảng quản lý</a>" +
           "</div>";
@@ -168,7 +176,7 @@ function doPost(e) {
     }
 
     if (action == 'edit_task') {
-      if (postData.role !== 'Admin') return responseJSON({ status: 'error', message: 'Không có quyền!' });
+      if (!isAdminRequest_(ss, postData)) return responseJSON({ status: 'error', message: 'Không có quyền!' });
       var sheet = ss.getSheetByName(SHEET_DATA);
       var data = sheet.getDataRange().getValues();
       for (var i = 1; i < data.length; i++) {
@@ -188,7 +196,7 @@ function doPost(e) {
     }
 
     if (action == 'delete_task') {
-      if (postData.role !== 'Admin') return responseJSON({ status: 'error', message: 'Không có quyền!' });
+      if (!isAdminRequest_(ss, postData)) return responseJSON({ status: 'error', message: 'Không có quyền!' });
       var sheet = ss.getSheetByName(SHEET_DATA);
       var data = sheet.getDataRange().getValues();
       for (var i = 1; i < data.length; i++) {
@@ -207,19 +215,21 @@ function doPost(e) {
       var data = sheet.getDataRange().getValues();
       for (var i = 1; i < data.length; i++) {
         if (String(data[i][0]) == postData.id) {
-          if (postData.role !== 'Admin' && !String(data[i][7]).includes(postData.user_fullname)) {
+          if (!isAdminRequest_(ss, postData) && (!isUserIdentityRequest_(postData) || !isAssignedTo_(data[i][7], postData.user_fullname))) {
             return responseJSON({ status: 'error', message: 'Không phải việc của bạn!' });
           }
-          sheet.getRange(i + 1, 9).setValue("'" + postData.progress + "%");
+          var progressValue = Math.max(0, Math.min(100, Number(postData.progress)));
+          if (isNaN(progressValue)) return responseJSON({ status: 'error', message: 'Tiến độ không hợp lệ!' });
+          sheet.getRange(i + 1, 9).setValue("'" + progressValue + "%");
           var currentStatus = data[i][2];
           if (currentStatus !== 'Waiting') {
-            if (postData.role === 'Admin') {
+            if (isAdminRequest_(ss, postData)) {
               // Admin: set trạng thái trực tiếp
-              var newStatus = postData.progress == 100 ? "Done" : (postData.progress > 0 ? "Doing" : "Todo");
+              var newStatus = progressValue == 100 ? "Done" : (progressValue > 0 ? "Doing" : "Todo");
               sheet.getRange(i + 1, 3).setValue(newStatus);
-            } else if (postData.progress < 100) {
+            } else if (progressValue < 100) {
               // User: chỉ đổi Todo/Doing. Progress 100% phải qua report_done
-              sheet.getRange(i + 1, 3).setValue(postData.progress > 0 ? "Doing" : "Todo");
+              sheet.getRange(i + 1, 3).setValue(progressValue > 0 ? "Doing" : "Todo");
             }
             // User set 100% -> chỉ cập nhật số %, không đổi status (phải submit report)
           }
@@ -233,6 +243,19 @@ function doPost(e) {
       var sheet = ss.getSheetByName(SHEET_DATA);
       var data = sheet.getDataRange().getValues();
       var uploadedLinks = [];
+      var reportRowIndex = -1;
+
+      for (var reportIdx = 1; reportIdx < data.length; reportIdx++) {
+        if (String(data[reportIdx][0]) == postData.id) {
+          reportRowIndex = reportIdx;
+          break;
+        }
+      }
+
+      if (reportRowIndex < 1) return responseJSON({ status: 'error', message: 'Không tìm thấy ID công việc.' });
+      if (!isUserIdentityRequest_(postData) || !isAssignedTo_(data[reportRowIndex][7], postData.user_fullname)) {
+        return responseJSON({ status: 'error', message: 'Không phải việc của bạn!' });
+      }
 
       if (postData.files && postData.files.length > 0) {
         try {
@@ -256,7 +279,7 @@ function doPost(e) {
 
       var finalLinkString = uploadedLinks.join("\n");
 
-      for (var i = 1; i < data.length; i++) {
+      for (var i = reportRowIndex; i <= reportRowIndex; i++) {
         if (String(data[i][0]) == postData.id) {
           sheet.getRange(i + 1, 3).setValue("Waiting");
           sheet.getRange(i + 1, 9).setValue("'100%");
@@ -273,7 +296,7 @@ function doPost(e) {
                 to: adminEmails,
                 subject: "🔔 [BÁO CÁO] " + postData.user_fullname + " đã xong: " + data[i][1],
                 htmlBody: "<p>Chào Admin,</p>" +
-                  "<p>Nhân viên <b>" + postData.user_fullname + "</b> báo cáo hoàn thành: <b>" + data[i][1] + "</b>.</p>" +
+                  "<p>Nhân viên <b>" + escapeHtml_(postData.user_fullname) + "</b> báo cáo hoàn thành: <b>" + escapeHtml_(data[i][1]) + "</b>.</p>" +
                   "<p>Minh chứng (" + uploadedLinks.length + " file): " + (emailLinks || 'Không có file') + "</p>" +
                   "<p>Vui lòng vào App để duyệt.</p>"
               });
@@ -286,7 +309,7 @@ function doPost(e) {
     }
 
     if (action == 'approve_done') {
-      if (postData.role !== 'Admin') return responseJSON({ status: 'error', message: '⛔ Chỉ Admin mới được duyệt!' });
+      if (!isAdminRequest_(ss, postData)) return responseJSON({ status: 'error', message: '⛔ Chỉ Admin mới được duyệt!' });
       var sheet = ss.getSheetByName(SHEET_DATA);
       var data = sheet.getDataRange().getValues();
       for (var i = 1; i < data.length; i++) {
@@ -295,7 +318,7 @@ function doPost(e) {
           sheet.getRange(i + 1, 9).setValue("'100%");
           sendNotificationEmail(ss, String(data[i][7]),
             "✅ [ĐÃ DUYỆT] " + data[i][1],
-            "<p>Admin đã duyệt hoàn thành công việc: <b>" + data[i][1] + "</b>.</p>");
+            "<p>Admin đã duyệt hoàn thành công việc: <b>" + escapeHtml_(data[i][1]) + "</b>.</p>");
           return responseJSON({ status: 'success', message: 'Đã duyệt!' });
         }
       }
@@ -303,7 +326,7 @@ function doPost(e) {
     }
 
     if (action == 'reject_done') {
-      if (postData.role !== 'Admin') return responseJSON({ status: 'error', message: '⛔ Chỉ Admin mới được trả về!' });
+      if (!isAdminRequest_(ss, postData)) return responseJSON({ status: 'error', message: '⛔ Chỉ Admin mới được trả về!' });
       var sheet = ss.getSheetByName(SHEET_DATA);
       var data = sheet.getDataRange().getValues();
       for (var i = 1; i < data.length; i++) {
@@ -312,7 +335,7 @@ function doPost(e) {
           sheet.getRange(i + 1, 9).setValue("'90%");
           sendNotificationEmail(ss, String(data[i][7]),
             "❌ [YÊU CẦU LẠI] " + data[i][1],
-            "<p>Báo cáo công việc <b>" + data[i][1] + "</b> chưa đạt yêu cầu. Vui lòng kiểm tra lại.</p>");
+            "<p>Báo cáo công việc <b>" + escapeHtml_(data[i][1]) + "</b> chưa đạt yêu cầu. Vui lòng kiểm tra lại.</p>");
           return responseJSON({ status: 'success', message: 'Đã trả về!' });
         }
       }
@@ -320,7 +343,7 @@ function doPost(e) {
     }
 
     if (action == 'send_email_manual') {
-      if (postData.role !== 'Admin') return responseJSON({ status: 'error', message: 'Không có quyền!' });
+      if (!isAdminRequest_(ss, postData)) return responseJSON({ status: 'error', message: 'Không có quyền!' });
       var emails = getEmailMap(ss);
       var people = postData.assignee.split(',');
       var count = 0;
@@ -331,7 +354,7 @@ function doPost(e) {
             MailApp.sendEmail({
               to: emails[p],
               subject: "🔔 NHẮC VIỆC: " + postData.taskName,
-              htmlBody: "<p>Nhắc nhở: <b>" + postData.taskName + "</b>. Hạn: " + postData.deadline + "</p>"
+              htmlBody: "<p>Nhắc nhở: <b>" + escapeHtml_(postData.taskName) + "</b>. Hạn: " + escapeHtml_(postData.deadline) + "</p>"
             });
             count++;
           } catch (e) { }
@@ -341,7 +364,7 @@ function doPost(e) {
     }
 
     if (action == 'send_bulk_email') {
-      if (postData.role !== 'Admin') return responseJSON({ status: 'error', message: 'Không có quyền!' });
+      if (!isAdminRequest_(ss, postData)) return responseJSON({ status: 'error', message: 'Không có quyền!' });
       var sheet = ss.getSheetByName(SHEET_DATA);
       var data = sheet.getDataRange().getValues();
       var emails = getEmailMap(ss);
@@ -363,11 +386,11 @@ function doPost(e) {
       var count = 0;
       for (var p in userTasksMap) {
         try {
-          var taskListHtml = userTasksMap[p].map(function (t) { return "<li><b>" + t + "</b></li>"; }).join('');
+          var taskListHtml = userTasksMap[p].map(function (t) { return "<li><b>" + escapeHtml_(t) + "</b></li>"; }).join('');
           MailApp.sendEmail({
             to: emails[p],
             subject: "🔔 NHẮC VIỆC TỒN ĐỌNG",
-            htmlBody: "<p>Chào <b>" + p + "</b>,</p><p>Bạn hiện đang có các công việc tồn đọng chưa hoàn thành sau đây:</p><ul>" + taskListHtml + "</ul><p>Vui lòng sắp xếp thời gian hoàn thành sớm nhé.</p>"
+            htmlBody: "<p>Chào <b>" + escapeHtml_(p) + "</b>,</p><p>Bạn hiện đang có các công việc tồn đọng chưa hoàn thành sau đây:</p><ul>" + taskListHtml + "</ul><p>Vui lòng sắp xếp thời gian hoàn thành sớm nhé.</p>"
           });
           count++;
         } catch (e) { }
@@ -376,7 +399,7 @@ function doPost(e) {
     }
 
     if (action == 'add_compliance') {
-      if (postData.role !== 'Admin') return responseJSON({ status: 'error', message: 'Không có quyền!' });
+      if (!isAdminRequest_(ss, postData)) return responseJSON({ status: 'error', message: 'Không có quyền!' });
       ss.getSheetByName(SHEET_COMPLIANCE).appendRow([
         Utilities.getUuid().slice(0, 8), postData.date ? new Date(postData.date) : new Date(),
         postData.person, postData.type, postData.fault, postData.note
@@ -385,7 +408,7 @@ function doPost(e) {
     }
 
     if (action == 'update_compliance') {
-      if (postData.role !== 'Admin') return responseJSON({ status: 'error', message: 'Không có quyền!' });
+      if (!isAdminRequest_(ss, postData)) return responseJSON({ status: 'error', message: 'Không có quyền!' });
       var complianceSheet = ss.getSheetByName(SHEET_COMPLIANCE);
       var complianceRow = findRowById_(complianceSheet, postData.id);
       if (complianceRow < 2) return responseJSON({ status: 'error', message: 'Không tìm thấy ghi nhận!' });
@@ -400,7 +423,7 @@ function doPost(e) {
     }
 
     if (action == 'delete_compliance') {
-      if (postData.role !== 'Admin') return responseJSON({ status: 'error', message: 'Không có quyền!' });
+      if (!isAdminRequest_(ss, postData)) return responseJSON({ status: 'error', message: 'Không có quyền!' });
       var deleteComplianceSheet = ss.getSheetByName(SHEET_COMPLIANCE);
       var deleteComplianceRow = findRowById_(deleteComplianceSheet, postData.id);
       if (deleteComplianceRow < 2) return responseJSON({ status: 'error', message: 'Không tìm thấy ghi nhận!' });
@@ -474,7 +497,7 @@ function executeAISendEmail(targetName, taskNames, reason, ss) {
   try {
     MailApp.sendEmail({
       to: emails[targetName], subject: "[Lily AI] Nhắc nhở",
-      htmlBody: "<p>Chào " + targetName + ",</p><p>Check: <b>" + taskNames + "</b>.</p><p>Lý do: " + reason + "</p>"
+      htmlBody: "<p>Chào " + escapeHtml_(targetName) + ",</p><p>Check: <b>" + escapeHtml_(taskNames) + "</b>.</p><p>Lý do: " + escapeHtml_(reason) + "</p>"
     });
     return "✅ Đã gửi mail nhắc " + targetName + ".";
   } catch (e) { return "Lỗi gửi mail."; }
@@ -610,6 +633,72 @@ function getEmailMap(ss) {
     }
   }
   return emails;
+}
+
+function getUserRecordByUsername_(ss, username) {
+  if (!username) return null;
+  var data = ss.getSheetByName(SHEET_STAFF).getDataRange().getValues();
+  var needle = String(username).trim().toLowerCase();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim().toLowerCase() === needle) {
+      return {
+        username: data[i][0],
+        name: data[i][2],
+        role: String(data[i][3] || '').trim(),
+        email: data[i][4]
+      };
+    }
+  }
+  return null;
+}
+
+function getSessionUser_(postData) {
+  if (!postData || !postData.token) return null;
+  var cached = CacheService.getScriptCache().get("session_" + String(postData.token));
+  if (!cached) return null;
+  try {
+    var user = JSON.parse(cached);
+    if (postData.username && String(user.username).trim().toLowerCase() !== String(postData.username).trim().toLowerCase()) {
+      return null;
+    }
+    return user;
+  } catch (e) {
+    return null;
+  }
+}
+
+function isAdminRequest_(ss, postData) {
+  var user = getSessionUser_(postData);
+  return !!user && user.role === 'Admin';
+}
+
+function isUserIdentityRequest_(postData) {
+  var user = getSessionUser_(postData);
+  return !!user && String(user.name || '').trim() === String(postData && postData.user_fullname || '').trim();
+}
+
+function isAssignedTo_(assigneesStr, fullName) {
+  var needle = String(fullName || '').trim();
+  if (!needle) return false;
+  return String(assigneesStr || '')
+    .split(',')
+    .map(function (name) { return name.trim(); })
+    .some(function (name) { return name === needle; });
+}
+
+function parseValidDate_(value) {
+  if (!value) return null;
+  var date = new Date(value);
+  return isNaN(date.getTime()) ? null : date;
+}
+
+function escapeHtml_(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function readSheetData(sheetName) {

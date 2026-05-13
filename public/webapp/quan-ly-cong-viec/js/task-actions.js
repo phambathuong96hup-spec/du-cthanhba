@@ -21,9 +21,10 @@ async function deleteTaskFromDetail() {
 
     try {
         const res = await apiFetch('delete_task', {
+            ...getAuthPayload(),
             id: currentDetailTaskId,
-            role: currentUser.role
         });
+        if (res.status === 'error') throw new Error(res.message || 'Không thể xóa công việc');
         showToast(res.message || 'Đã xóa công việc thành công!', 'success');
         bootstrap.Modal.getInstance(document.getElementById('taskDetailModal'))?.hide();
         loadTaskList();
@@ -94,10 +95,12 @@ async function submitReviewDecision(decision) {
     
     try {
         if (decision === 'approve') {
-            await apiFetch('approve_done', { id, role: currentUser.role });
+            const res = await apiFetch('approve_done', { ...getAuthPayload(), id });
+            if (res.status === 'error') throw new Error(res.message || 'Không thể duyệt báo cáo');
             showToast("Đã duyệt báo cáo thành công!", 'success');
         } else if (decision === 'reject') {
-            await apiFetch('reject_done', { id, role: currentUser.role });
+            const res = await apiFetch('reject_done', { ...getAuthPayload(), id });
+            if (res.status === 'error') throw new Error(res.message || 'Không thể trả lại báo cáo');
             showToast("Đã trả lại báo cáo!", 'warning');
         }
         bootstrap.Modal.getInstance(document.getElementById('reviewModal'))?.hide();
@@ -119,13 +122,14 @@ async function triggerTaskEmail(id) {
     if (!confirm("Bạn muốn gửi mail nhắc nhở công việc này?")) return;
     
     try {
-        await apiFetch('send_email_manual', {
+        const res = await apiFetch('send_email_manual', {
+            ...getAuthPayload(),
             id,
             taskName: task[1] || '',
             assignee: task[7] || '',
             deadline: task[9] || task[4] || '',
-            role: currentUser.role
         });
+        if (res.status === 'error') throw new Error(res.message || 'Không thể gửi mail nhắc');
         showToast("Đã gửi mail nhắc nhở!", 'success');
     } catch (err) {
         showToast("Lỗi: " + err.message, 'danger');
@@ -146,7 +150,8 @@ async function triggerBulkEmail(btn) {
     btn.disabled = true;
     
     try {
-        const res = await apiFetch('send_bulk_email', { role: currentUser.role });
+        const res = await apiFetch('send_bulk_email', getAuthPayload());
+        if (res.status === 'error') throw new Error(res.message || 'Không thể gửi mail hàng loạt');
         showToast(res?.message || "Đã gửi mail nhắc nhở hàng loạt!", 'success');
     } catch (err) {
         showToast("Lỗi: " + err.message, 'danger');
@@ -251,8 +256,8 @@ async function submitReport() {
     statusDiv.innerText = "Đang gửi...";
 
     const payload = {
+        ...getAuthPayload(),
         id: id,
-        user_fullname: currentUser.name,
         files: filePayloads
     };
 
@@ -285,21 +290,27 @@ async function submitReport() {
 }
 
 function approveTask(id) {
-    if(!currentUser || currentUser.role !== 'Admin') return showToast("⛔ Chỉ Admin mới được duyệt!", 'warning');
+    if(!currentUser || !isAdminUser(currentUser)) return showToast("⛔ Chỉ Admin mới được duyệt!", 'warning');
     if(!confirm('Duyệt hoàn thành công việc này?')) return;
 
     // Reuse centralized logic via apiFetch
-    apiFetch('approve_done', { id, role: currentUser.role })
-        .then(() => { showToast("Đã duyệt báo cáo thành công!", 'success'); loadTaskList(); })
+    apiFetch('approve_done', { ...getAuthPayload(), id })
+        .then(res => {
+            if (res.status === 'error') throw new Error(res.message || 'Lỗi duyệt');
+            showToast("Đã duyệt báo cáo thành công!", 'success'); loadTaskList();
+        })
         .catch(err => showToast(err.message || "Lỗi duyệt", 'danger'));
 }
 
 function rejectTask(id) {
-    if(!currentUser || currentUser.role !== 'Admin') return showToast("⛔ Chỉ Admin mới được duyệt!", 'warning');
+    if(!currentUser || !isAdminUser(currentUser)) return showToast("⛔ Chỉ Admin mới được duyệt!", 'warning');
     if(!confirm('Trả lại báo cáo này?')) return;
 
     // Reuse centralized logic via apiFetch — calls reject_done (NOT update_progress)
-    apiFetch('reject_done', { id, role: currentUser.role })
-        .then(() => { showToast("Đã trả lại báo cáo!", 'warning'); loadTaskList(); })
+    apiFetch('reject_done', { ...getAuthPayload(), id })
+        .then(res => {
+            if (res.status === 'error') throw new Error(res.message || 'Lỗi reject');
+            showToast("Đã trả lại báo cáo!", 'warning'); loadTaskList();
+        })
         .catch(err => showToast(err.message || "Lỗi reject", 'danger'));
 }
