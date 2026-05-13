@@ -153,13 +153,24 @@ function drawCharts(tasks, compliance) {
 
 function drawComplianceChart(data, textColor, font, bg) {
     const violations = {}, rewards = {};
+    let totalViolations = 0, totalRewards = 0;
     data.forEach(r => {
         const name = r[2];
         const hasExtraCol = r.length >= 6;
         const type = hasExtraCol ? r[3] : (String(r[3]).includes("Khen") ? "Khen" : "Vi phạm");
-        if (type.includes("Khen")) rewards[name] = (rewards[name] || 0) + 1;
-        else violations[name] = (violations[name] || 0) + 1;
+        if (type.includes("Khen")) {
+            rewards[name] = (rewards[name] || 0) + 1;
+            totalRewards++;
+        } else {
+            violations[name] = (violations[name] || 0) + 1;
+            totalViolations++;
+        }
     });
+
+    const reportViolationCount = document.getElementById('reportViolationCount');
+    const reportRewardCount = document.getElementById('reportRewardCount');
+    if (reportViolationCount) reportViolationCount.innerText = `(${totalViolations})`;
+    if (reportRewardCount) reportRewardCount.innerText = `(${totalRewards})`;
 
     const vArr = [['NV', 'Vi phạm', { role: "style" }]];
     Object.keys(violations).sort().forEach(k => { if (violations[k] > 0) vArr.push([k, violations[k], '#ef4444']); });

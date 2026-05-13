@@ -43,6 +43,8 @@ function renderCompliance() {
     const tbody = document.getElementById('complianceBody');
     if (!tbody) return;
 
+    updateComplianceSummary(globalCompliance);
+
     if (globalCompliance.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-5">
             <i class="bi bi-clipboard-check fs-1 d-block mb-2 opacity-25"></i>Chưa có dữ liệu nội quy</td></tr>`;
@@ -73,6 +75,21 @@ function renderCompliance() {
             <td class="text-end">${actions}</td>
         </tr>`;
     }).join('');
+}
+
+function getComplianceStats(rows) {
+    return (rows || []).reduce((stats, row) => {
+        const item = normalizeComplianceRow(row);
+        if (String(item.type || '').includes('Khen')) stats.rewards++;
+        else stats.violations++;
+        return stats;
+    }, { violations: 0, rewards: 0 });
+}
+
+function updateComplianceSummary(rows) {
+    const stats = getComplianceStats(rows);
+    animateCounter(document.getElementById('complianceViolationCount'), stats.violations);
+    animateCounter(document.getElementById('complianceRewardCount'), stats.rewards);
 }
 
 function setComplianceModalMode(mode) {
