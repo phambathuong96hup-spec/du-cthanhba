@@ -221,10 +221,21 @@ function getInitials(name) {
 function toggleSidebarDesktop() {
     const sidebar = document.getElementById('sidebar');
     const icon = document.getElementById('sidebarCollapseIcon');
+    const toggle = document.querySelector('.sidebar-collapse-btn');
     sidebar.classList.toggle('collapsed');
     if (sidebar.classList.contains('collapsed')) {
         icon.className = 'bi bi-chevron-bar-right';
+        if (toggle) {
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.setAttribute('aria-label', 'Mở rộng thanh điều hướng');
+            toggle.setAttribute('title', 'Mở rộng');
+        }
     } else {
         icon.className = 'bi bi-chevron-bar-left';
+        if (toggle) {
+            toggle.setAttribute('aria-expanded', 'true');
+            toggle.setAttribute('aria-label', 'Thu gọn thanh điều hướng');
+            toggle.setAttribute('title', 'Thu gọn');
+        }
     }
 }

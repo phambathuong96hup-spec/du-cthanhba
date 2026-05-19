@@ -35,8 +35,13 @@ function showSection(section, clickedEl) {
 }
 
 function toggleSidebar() {
-    document.getElementById('sidebar')?.classList.toggle('active');
+    const sidebar = document.getElementById('sidebar');
+    const toggle = document.getElementById('mobileSidebarToggle');
+    sidebar?.classList.toggle('active');
     document.querySelector('.overlay')?.classList.toggle('active');
+    if (toggle && sidebar) {
+        toggle.setAttribute('aria-expanded', String(sidebar.classList.contains('active')));
+    }
 }
 
 

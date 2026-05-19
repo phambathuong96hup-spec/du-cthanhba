@@ -1576,3 +1576,17 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .icon-container-danger {
     background: linear-gradient(135deg, #ef4444, #f97316);
 }
+
+:where(button, a, input, select, textarea):focus-visible {
+    outline: 3px solid var(--primary);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}

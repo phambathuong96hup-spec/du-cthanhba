@@ -11,8 +11,10 @@ function toggleChat() {
         return;
     }
     const box = document.getElementById('chatBox');
+    const toggle = document.querySelector('.chat-btn');
     const isOpen = box.style.display === 'flex';
     box.style.display = isOpen ? 'none' : 'flex';
+    if (toggle) toggle.setAttribute('aria-expanded', String(!isOpen));
     if (!isOpen) document.getElementById('chatInput').focus();
 }
 

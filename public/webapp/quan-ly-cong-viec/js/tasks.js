@@ -30,12 +30,22 @@ function getFilteredData() {
     const statusVal = document.getElementById('filterStatus')?.value || '';
     const diffVal = document.getElementById('filterDifficulty')?.value || '';
     const monthVal = document.getElementById('filterMonth')?.value || '';
+    const quickFilterMode = document.getElementById('quickFilterMode')?.value || '';
 
     return globalData.filter(r => {
         const rawSt = String(r[2]).trim();
         const status = getEffectiveStatus(rawSt, r[6]);
         const dlRaw = r[9] || r[4];
         const isOverdue = dlRaw && new Date(dlRaw) < today && status !== 'Done' && status !== 'Waiting';
+
+        if (quickFilterMode === '7days' || quickFilterMode === '30days') {
+            if (!dlRaw) return false;
+            const dl = new Date(dlRaw);
+            dl.setHours(0, 0, 0, 0);
+            const rangeEnd = new Date(today);
+            rangeEnd.setDate(rangeEnd.getDate() + (quickFilterMode === '7days' ? 7 : 30));
+            if (dl < today || dl > rangeEnd) return false;
+        }
 
         // Month filter
         if (monthVal && dlRaw) {
@@ -509,6 +519,7 @@ function resetFilters() {
     document.getElementById('filterStatus').value = '';
     document.getElementById('filterDifficulty').value = '';
     document.getElementById('filterMonth').value = '';
+    document.getElementById('quickFilterMode').value = '';
     currentStatusFilter = 'all';
     document.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
     document.querySelector('.status-tab[data-status="all"]')?.classList.add('active');
@@ -525,7 +536,9 @@ function applyQuickFilter(mode, btn) {
     if (btn) btn.classList.add('active');
 
     const monthInput = document.getElementById('filterMonth');
+    const quickFilterInput = document.getElementById('quickFilterMode');
     if (monthInput) monthInput.value = '';
+    if (quickFilterInput) quickFilterInput.value = '';
 
     // Clear other filters
     document.getElementById('filterStatus').value = '';
@@ -535,12 +548,9 @@ function applyQuickFilter(mode, btn) {
         // Show overdue tasks only
         document.getElementById('filterStatus').value = 'Overdue';
     } else if (mode === '7days') {
-        // Set month filter to current month
-        const now = new Date();
-        monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        document.getElementById('quickFilterMode').value = '7days';
+        if (quickFilterInput) quickFilterInput.value = '7days';
     } else if (mode === '30days') {
-        document.getElementById('quickFilterMode').value = '30days';
+        if (quickFilterInput) quickFilterInput.value = '30days';
     }
 
     currentPage = 1;
