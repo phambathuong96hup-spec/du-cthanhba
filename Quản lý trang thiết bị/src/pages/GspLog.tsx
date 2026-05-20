@@ -2,7 +2,7 @@ import React, { useCallback, useState, useEffect } from 'react';
 import { type TooltipItem } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { Thermometer, Droplets, Plus, RefreshCw, AlertTriangle, CheckCircle, Calendar } from 'lucide-react';
-import { Card, CardHeader, CardBody, Button, useToast } from '../components/ui';
+import { Card, CardHeader, CardBody, Button } from '../components/ui';
 import { addGspRecord, fetchGspRecords, type GspRecord } from '../services/api';
 import { useAuth } from '../authContext';
 import './GspLog.css';
@@ -215,7 +215,6 @@ const GspLog: React.FC = () => {
                   Ca làm việc
                 </label>
                 <select
-                  className="form-select"
                   value={form.shift}
                   onChange={e => setForm({...form, shift: e.target.value})}
                   className="gsp-form-input"
