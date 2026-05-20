@@ -35,9 +35,31 @@
 }
 
 .data-table tbody tr:hover {
-  background-color: #f1f5f9; /* Slate 100 */
+  background-color: var(--surface-50, #f8fafc);
 }
 
 .data-table tbody tr:last-child td {
   border-bottom: none;
 }
+
+/* Responsive wrapper */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-lg);
+}
+
+/* Zebra striping (opt-in) */
+.data-table.table-striped tbody tr:nth-child(even) {
+  background-color: var(--surface-50, #f8fafc);
+}
+
+/* Mobile table adjustments */
+@media (max-width: 768px) {
+  .data-table th,
+  .data-table td {
+    padding: 12px 14px;
+    font-size: 0.85rem;
+  }
+}
+

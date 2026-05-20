@@ -1,23 +1,11 @@
 import React, { useCallback, useState, useEffect } from 'react';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-  type TooltipItem,
-} from 'chart.js';
+import { type TooltipItem } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { Thermometer, Droplets, Plus, RefreshCw, AlertTriangle, CheckCircle, Calendar } from 'lucide-react';
-import { Card, CardHeader, CardBody, Button } from '../components/ui';
+import { Card, CardHeader, CardBody, Button, useToast } from '../components/ui';
 import { addGspRecord, fetchGspRecords, type GspRecord } from '../services/api';
 import { useAuth } from '../authContext';
-
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
+import './GspLog.css';
 
 const GSP_LIMITS = {
   tempKho: { min: 15, max: 30 },
@@ -216,21 +204,21 @@ const GspLog: React.FC = () => {
         </Card>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '1.5rem', alignItems: 'start' }}>
+      <div className="gsp-layout">
         {/* Form nhập liệu */}
         <Card>
           <CardHeader title={<div style={{ display:'flex', gap:'8px', alignItems:'center' }}><Plus size={18} /> Ghi nhận ca mới</div>} />
           <CardBody>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <form onSubmit={handleSubmit} className="gsp-form">
               <div>
-                <label style={{ display:'block', fontSize:'0.8rem', fontWeight:600, marginBottom:'6px', color:'var(--text-secondary)' }}>
+                <label className="gsp-form-label">
                   Ca làm việc
                 </label>
                 <select
                   className="form-select"
                   value={form.shift}
                   onChange={e => setForm({...form, shift: e.target.value})}
-                  style={{ width:'100%', padding:'8px 12px', borderRadius:'8px', border:'1px solid var(--border-color)', background:'var(--bg-primary)', color:'var(--text-primary)' }}
+                  className="gsp-form-input"
                 >
                   <option value="Sáng">☀️ Ca Sáng (7h - 11h30)</option>
                   <option value="Chiều">🌇 Ca Chiều (13h - 16h30)</option>
@@ -238,7 +226,7 @@ const GspLog: React.FC = () => {
               </div>
 
               <div>
-                <label style={{ display:'block', fontSize:'0.8rem', fontWeight:600, marginBottom:'6px', color:'var(--text-secondary)' }}>
+                <label className="gsp-form-label">
                   <Thermometer size={14} style={{ marginRight:4 }} />
                   Nhiệt độ Kho thường (°C) <span style={{ color: 'var(--warning)', fontSize:'0.7rem' }}>15 - 30°C</span>
                 </label>
@@ -249,17 +237,17 @@ const GspLog: React.FC = () => {
                   value={form.tempKho}
                   onChange={e => setForm({...form, tempKho: e.target.value})}
                   placeholder="VD: 25.5"
-                  style={{ width:'100%', padding:'8px 12px', borderRadius:'8px', border:'1px solid var(--border-color)', background:'var(--bg-primary)', color:'var(--text-primary)' }}
+                  className="gsp-form-input"
                 />
                 {form.tempKho && (parseFloat(form.tempKho) < 15 || parseFloat(form.tempKho) > 30) && (
-                  <div style={{ color:'var(--danger)', fontSize:'0.75rem', marginTop:'4px' }}>
+                  <div className="gsp-violation-hint">
                     ⚠️ Ngoài giới hạn GSP! Cần báo cáo ngay.
                   </div>
                 )}
               </div>
 
               <div>
-                <label style={{ display:'block', fontSize:'0.8rem', fontWeight:600, marginBottom:'6px', color:'var(--text-secondary)' }}>
+                <label className="gsp-form-label">
                   <Thermometer size={14} style={{ marginRight:4 }} />
                   Nhiệt độ Tủ lạnh (°C) <span style={{ color: 'var(--warning)', fontSize:'0.7rem' }}>2 - 8°C</span>
                 </label>
@@ -270,17 +258,17 @@ const GspLog: React.FC = () => {
                   value={form.tempTuLanh}
                   onChange={e => setForm({...form, tempTuLanh: e.target.value})}
                   placeholder="VD: 5.0"
-                  style={{ width:'100%', padding:'8px 12px', borderRadius:'8px', border:'1px solid var(--border-color)', background:'var(--bg-primary)', color:'var(--text-primary)' }}
+                  className="gsp-form-input"
                 />
                 {form.tempTuLanh && (parseFloat(form.tempTuLanh) < 2 || parseFloat(form.tempTuLanh) > 8) && (
-                  <div style={{ color:'var(--danger)', fontSize:'0.75rem', marginTop:'4px' }}>
+                  <div className="gsp-violation-hint">
                     ⚠️ Ngoài giới hạn GSP! Tủ lạnh gặp sự cố.
                   </div>
                 )}
               </div>
 
               <div>
-                <label style={{ display:'block', fontSize:'0.8rem', fontWeight:600, marginBottom:'6px', color:'var(--text-secondary)' }}>
+                <label className="gsp-form-label">
                   <Droplets size={14} style={{ marginRight:4 }} />
                   Độ ẩm Kho (%) <span style={{ color: 'var(--warning)', fontSize:'0.7rem' }}>40 - 75%</span>
                 </label>
@@ -291,17 +279,17 @@ const GspLog: React.FC = () => {
                   value={form.humidity}
                   onChange={e => setForm({...form, humidity: e.target.value})}
                   placeholder="VD: 60"
-                  style={{ width:'100%', padding:'8px 12px', borderRadius:'8px', border:'1px solid var(--border-color)', background:'var(--bg-primary)', color:'var(--text-primary)' }}
+                  className="gsp-form-input"
                 />
                 {form.humidity && (parseFloat(form.humidity) < 40 || parseFloat(form.humidity) > 75) && (
-                  <div style={{ color:'var(--danger)', fontSize:'0.75rem', marginTop:'4px' }}>
+                  <div className="gsp-violation-hint">
                     ⚠️ Ngoài giới hạn GSP!
                   </div>
                 )}
               </div>
 
               <div>
-                <label style={{ display:'block', fontSize:'0.8rem', fontWeight:600, marginBottom:'6px', color:'var(--text-secondary)' }}>
+                <label className="gsp-form-label">
                   Ghi chú (nếu có)
                 </label>
                 <textarea
@@ -309,7 +297,7 @@ const GspLog: React.FC = () => {
                   onChange={e => setForm({...form, note: e.target.value})}
                   placeholder="Biện pháp xử lý nếu vượt giới hạn..."
                   rows={2}
-                  style={{ width:'100%', padding:'8px 12px', borderRadius:'8px', border:'1px solid var(--border-color)', background:'var(--bg-primary)', color:'var(--text-primary)', resize:'vertical' }}
+                  className="gsp-form-input"
                 />
               </div>
 
@@ -318,9 +306,9 @@ const GspLog: React.FC = () => {
               </Button>
             </form>
 
-            <div style={{ marginTop: '1.5rem', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+            <div className="gsp-standards-box">
               <strong>📋 Tiêu chuẩn GSP:</strong>
-              <ul style={{ margin:'8px 0 0', paddingLeft:'16px', lineHeight:1.8 }}>
+              <ul>
                 <li>Kho thường: <strong>15°C – 30°C</strong></li>
                 <li>Tủ lạnh bảo quản: <strong>2°C – 8°C</strong></li>
                 <li>Độ ẩm: <strong>40% – 75%</strong></li>
@@ -340,21 +328,21 @@ const GspLog: React.FC = () => {
                   <select
                     value={chartPeriod}
                     onChange={e => setChartPeriod(parseInt(e.target.value))}
-                    style={{ padding:'4px 8px', borderRadius:'8px', border:'1px solid var(--border-color)', background:'var(--bg-primary)', color:'var(--text-primary)', fontSize:'0.8rem' }}
+                    className="gsp-period-select"
                   >
                     <option value={7}>7 ngày</option>
                     <option value={14}>14 ngày</option>
                     <option value={30}>30 ngày</option>
                     <option value={60}>60 ngày</option>
                   </select>
-                  <div style={{ display:'flex', gap:'4px' }}>
+                  <div className="gsp-view-toggle">
                     <button
                       onClick={() => setActiveView('chart')}
-                      style={{ padding:'4px 12px', borderRadius:'8px', border:'1px solid var(--border-color)', background: activeView === 'chart' ? 'var(--primary)' : 'var(--bg-primary)', color: activeView === 'chart' ? 'white' : 'var(--text-primary)', fontSize:'0.8rem', cursor:'pointer' }}
+                      className={activeView === 'chart' ? 'active' : ''}
                     >Biểu đồ</button>
                     <button
                       onClick={() => setActiveView('table')}
-                      style={{ padding:'4px 12px', borderRadius:'8px', border:'1px solid var(--border-color)', background: activeView === 'table' ? 'var(--primary)' : 'var(--bg-primary)', color: activeView === 'table' ? 'white' : 'var(--text-primary)', fontSize:'0.8rem', cursor:'pointer' }}
+                      className={activeView === 'table' ? 'active' : ''}
                     >Bảng</button>
                   </div>
                 </div>
@@ -366,16 +354,16 @@ const GspLog: React.FC = () => {
               ) : filteredRecords.length === 0 ? (
                 <div style={{ textAlign:'center', padding:'3rem', color:'var(--text-secondary)' }}>Chưa có dữ liệu trong {chartPeriod} ngày qua. Hãy bắt đầu ghi chép!</div>
               ) : activeView === 'chart' ? (
-                <div style={{ height: '380px', position: 'relative' }}>
+                <div className="gsp-chart-container">
                   <Line data={chartData} options={chartOptions} />
                 </div>
               ) : (
-                <div style={{ overflowX: 'auto', maxHeight: '420px' }}>
-                  <table style={{ width:'100%', borderCollapse:'separate', borderSpacing:0 }}>
+                <div className="gsp-table-container">
+                  <table className="gsp-table">
                     <thead>
                       <tr style={{ background:'var(--bg-secondary)' }}>
                         {['Ngày', 'Ca', 'Kho (°C)', 'Tủ lạnh (°C)', 'Độ ẩm (%)', 'Ghi chú', 'Người ghi'].map(h => (
-                          <th key={h} style={{ padding:'10px 14px', fontSize:'0.75rem', fontWeight:700, color:'var(--text-secondary)', textAlign:'left', borderBottom:'1px solid var(--border-color)' }}>{h}</th>
+                          <th key={h}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -386,22 +374,20 @@ const GspLog: React.FC = () => {
                         const humOk = r.humidity >= 40 && r.humidity <= 75;
                         const hasViolation = !khoOk || !tuLanhOk || !humOk;
                         return (
-                          <tr key={i} style={{ background: hasViolation ? 'rgba(239,68,68,0.04)' : 'transparent' }}>
-                            <td style={{ padding:'10px 14px', fontSize:'0.85rem', borderBottom:'1px solid var(--border-color)' }}>
-                              {new Date(r.date).toLocaleDateString('vi-VN')}
-                            </td>
-                            <td style={{ padding:'10px 14px', fontSize:'0.85rem', borderBottom:'1px solid var(--border-color)' }}>{r.shift}</td>
-                            <td style={{ padding:'10px 14px', fontSize:'0.85rem', borderBottom:'1px solid var(--border-color)', color: khoOk ? 'inherit' : 'var(--danger)', fontWeight: khoOk ? 'normal' : 'bold' }}>
+                          <tr key={i} className={hasViolation ? 'has-violation' : ''}>
+                            <td>{new Date(r.date).toLocaleDateString('vi-VN')}</td>
+                            <td>{r.shift}</td>
+                            <td className={!khoOk ? 'violation-value' : ''}>
                               {r.tempKho}°C {!khoOk && '⚠️'}
                             </td>
-                            <td style={{ padding:'10px 14px', fontSize:'0.85rem', borderBottom:'1px solid var(--border-color)', color: tuLanhOk ? 'inherit' : 'var(--danger)', fontWeight: tuLanhOk ? 'normal' : 'bold' }}>
+                            <td className={!tuLanhOk ? 'violation-value' : ''}>
                               {r.tempTuLanh}°C {!tuLanhOk && '⚠️'}
                             </td>
-                            <td style={{ padding:'10px 14px', fontSize:'0.85rem', borderBottom:'1px solid var(--border-color)', color: humOk ? 'inherit' : 'var(--danger)', fontWeight: humOk ? 'normal' : 'bold' }}>
+                            <td className={!humOk ? 'violation-value' : ''}>
                               {r.humidity}% {!humOk && '⚠️'}
                             </td>
-                            <td style={{ padding:'10px 14px', fontSize:'0.8rem', borderBottom:'1px solid var(--border-color)', color:'var(--text-secondary)' }}>{r.note || '--'}</td>
-                            <td style={{ padding:'10px 14px', fontSize:'0.8rem', borderBottom:'1px solid var(--border-color)', color:'var(--text-secondary)' }}>{r.recorder || '--'}</td>
+                            <td className="gsp-note-cell">{r.note || '--'}</td>
+                            <td className="gsp-note-cell">{r.recorder || '--'}</td>
                           </tr>
                         );
                       })}
@@ -418,7 +404,7 @@ const GspLog: React.FC = () => {
               <CardBody>
                 <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
                   {violations.slice(0, 5).map((r, i) => (
-                    <div key={i} style={{ padding:'12px 16px', background:'rgba(239,68,68,0.05)', borderRadius:'10px', border:'1px solid rgba(239,68,68,0.2)', fontSize:'0.85rem' }}>
+                    <div key={i} className="gsp-violation-card">
                       <strong>{new Date(r.date).toLocaleDateString('vi-VN')} - {r.shift}:</strong>
                       {r.tempKho < 15 || r.tempKho > 30 ? <span style={{ marginLeft:8, color:'var(--danger)' }}>Kho {r.tempKho}°C</span> : null}
                       {r.tempTuLanh < 2 || r.tempTuLanh > 8 ? <span style={{ marginLeft:8, color:'var(--danger)' }}>Tủ lạnh {r.tempTuLanh}°C</span> : null}

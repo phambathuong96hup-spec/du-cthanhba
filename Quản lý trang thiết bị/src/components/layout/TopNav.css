@@ -173,3 +173,137 @@
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(13, 148, 136, 0.4);
 }
+
+/* User Dropdown Menu */
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--border);
+  z-index: 100;
+  overflow: hidden;
+  animation: scaleIn 0.15s ease-out;
+}
+
+.user-dropdown-info {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.user-dropdown-info .dropdown-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.user-dropdown-info .dropdown-dept {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.user-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  transition: background var(--transition-fast);
+  font-family: inherit;
+}
+
+.user-dropdown-item:hover {
+  background: var(--background);
+}
+
+.user-dropdown-item.danger {
+  color: var(--danger);
+}
+
+.user-dropdown-item.danger:hover {
+  background: var(--danger-light);
+}
+
+/* Notification badge with count */
+.notification-badge-count {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background-color: var(--danger);
+  color: white;
+  font-size: 0.6rem;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  border: 2px solid var(--surface);
+}
+
+@media (max-width: 700px) {
+  .topnav {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .topnav-center {
+    min-width: 0;
+    margin: 0 4px;
+  }
+
+  .search-bar {
+    padding: 6px 10px;
+    border-radius: 12px;
+  }
+
+  .search-input {
+    font-size: 0.85rem;
+  }
+
+  .topnav-right {
+    gap: 8px;
+  }
+
+  .user-info,
+  .user-profile > svg {
+    display: none;
+  }
+
+  .user-profile {
+    padding: 2px;
+  }
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .user-dropdown {
+    position: fixed;
+    top: var(--header-height);
+    right: 8px;
+    left: 8px;
+    min-width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .topnav-center {
+    display: none;
+  }
+}
+

@@ -3,6 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import AuthProvider from './AuthProvider';
 import { useAuth } from './authContext';
 import MasterLayout from './components/layout/MasterLayout';
+import ErrorBoundary from './components/ErrorBoundary';
+import { ToastProvider } from './components/ui';
+import { SkeletonCard } from './components/ui';
 
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -14,7 +17,10 @@ const Reports = lazy(() => import('./pages/Reports'));
 const GspLog = lazy(() => import('./pages/GspLog'));
 
 const PageLoader = () => (
-  <div style={{ padding: '32px', color: 'var(--text-secondary)' }}>Đang tải...</div>
+  <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <SkeletonCard />
+    <SkeletonCard />
+  </div>
 );
 
 // ========== ROUTE GUARDS ==========
@@ -42,32 +48,35 @@ function LoginRedirect() {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/login" element={<LoginRedirect />} />
+      <ToastProvider>
+        <BrowserRouter basename={import.meta.env.BASE_URL}>
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/login" element={<LoginRedirect />} />
 
-            <Route path="/" element={<MasterLayout />}>
-              <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route path="/" element={<MasterLayout />}>
+                  <Route index element={<Navigate to="/dashboard" replace />} />
 
-              {/* ✅ PUBLIC */}
-              <Route path="dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-              <Route path="devices" element={<Devices />} />
-              <Route path="devices/:id" element={<DeviceDetails />} />
+                  {/* PRIVATE */}
+                  <Route path="dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+                  <Route path="devices" element={<PrivateRoute><Devices /></PrivateRoute>} />
+                  <Route path="devices/:id" element={<PrivateRoute><DeviceDetails /></PrivateRoute>} />
 
-              {/* 🔒 PRIVATE */}
-              <Route path="requests" element={<PrivateRoute><Requests /></PrivateRoute>} />
-              <Route path="repairs" element={<Navigate to="/requests?type=repair" replace />} />
-              <Route path="admin-repairs" element={<PrivateRoute roles={['admin']}><AdminRepairs /></PrivateRoute>} />
-              <Route path="transfers" element={<Navigate to="/requests?type=transfer" replace />} />
-              <Route path="reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
-              <Route path="gsp" element={<PrivateRoute><GspLog /></PrivateRoute>} />
-            </Route>
+                  <Route path="requests" element={<PrivateRoute><Requests /></PrivateRoute>} />
+                  <Route path="repairs" element={<Navigate to="/requests?type=repair" replace />} />
+                  <Route path="admin-repairs" element={<PrivateRoute roles={['admin']}><AdminRepairs /></PrivateRoute>} />
+                  <Route path="transfers" element={<Navigate to="/requests?type=transfer" replace />} />
+                  <Route path="reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
+                  <Route path="gsp" element={<PrivateRoute><GspLog /></PrivateRoute>} />
+                </Route>
 
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
+        </BrowserRouter>
+      </ToastProvider>
     </AuthProvider>
   );
 }

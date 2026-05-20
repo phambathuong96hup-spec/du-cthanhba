@@ -73,3 +73,21 @@
   padding: 12px 24px;
   font-size: 1.05rem;
 }
+
+/* Focus */
+.btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Loading state */
+.btn-loading {
+  opacity: 0.75;
+  cursor: wait;
+  pointer-events: none;
+}
+
+.btn-loading .btn-spinner {
+  animation: spin 1s linear infinite;
+}
+

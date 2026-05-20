@@ -5,7 +5,10 @@ import TopNav from './TopNav';
 import './MasterLayout.css';
 
 const MasterLayout: React.FC = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.innerWidth >= 900;
+  });
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -14,6 +17,7 @@ const MasterLayout: React.FC = () => {
   return (
     <div className="master-layout">
       <Sidebar isOpen={isSidebarOpen} />
+      {isSidebarOpen && <button className="layout-scrim" aria-label="Đóng thanh điều hướng" onClick={toggleSidebar} />}
       <div className="content-wrapper">
         <TopNav toggleSidebar={toggleSidebar} />
         <main className="main-content">

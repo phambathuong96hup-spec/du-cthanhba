@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Menu, Search, Bell, ChevronDown, LogOut, LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../authContext';
@@ -12,6 +12,35 @@ const TopNav: React.FC<TopNavProps> = ({ toggleSidebar }) => {
   const navigate = useNavigate();
   const { isAuthenticated, name, role, logout } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  // Click-outside to close dropdown
+  useEffect(() => {
+    if (!showDropdown) return;
+    const handler = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showDropdown]);
+
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value),
+    []
+  );
+
+  const handleSearchKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter' && searchQuery.trim()) {
+        navigate(`/devices?search=${encodeURIComponent(searchQuery.trim())}`);
+        setSearchQuery('');
+      }
+    },
+    [searchQuery, navigate]
+  );
 
   const initial = name ? name.charAt(0).toUpperCase() : '?';
 
@@ -36,6 +65,9 @@ const TopNav: React.FC<TopNavProps> = ({ toggleSidebar }) => {
             type="text"
             placeholder="Tìm theo tên thiết bị, số Serial..."
             className="search-input"
+            value={searchQuery}
+            onChange={handleSearchChange}
+            onKeyDown={handleSearchKeyDown}
           />
         </div>
       </div>
@@ -49,9 +81,9 @@ const TopNav: React.FC<TopNavProps> = ({ toggleSidebar }) => {
         {isAuthenticated ? (
           /* ===== ĐÃ ĐĂNG NHẬP: Hiện avatar + tên ===== */
           <div
+            ref={profileRef}
             className="user-profile"
             onClick={() => setShowDropdown(!showDropdown)}
-            style={{ position: 'relative', cursor: 'pointer' }}
           >
             <div className="avatar">{initial}</div>
             <div className="user-info">
@@ -63,25 +95,14 @@ const TopNav: React.FC<TopNavProps> = ({ toggleSidebar }) => {
             <ChevronDown size={16} color="var(--text-secondary)" />
 
             {showDropdown && (
-              <div
-                style={{
-                  position: 'absolute', top: '100%', right: 0,
-                  background: 'white', border: '1px solid var(--border)',
-                  borderRadius: '8px', padding: '8px 0', marginTop: '8px',
-                  zIndex: 100, minWidth: '160px', boxShadow: 'var(--shadow-md)'
-                }}
-              >
-                <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{name}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{role}</div>
+              <div className="user-dropdown">
+                <div className="user-dropdown-info">
+                  <div className="dropdown-name">{name}</div>
+                  <div className="dropdown-dept">{role}</div>
                 </div>
                 <button
                   onClick={handleLogout}
-                  style={{
-                    width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
-                    padding: '8px 16px', background: 'none', border: 'none',
-                    textAlign: 'left', color: 'var(--danger)', fontSize: '0.9rem', cursor: 'pointer'
-                  }}
+                  className="user-dropdown-item danger"
                 >
                   <LogOut size={16} /> Đăng xuất
                 </button>

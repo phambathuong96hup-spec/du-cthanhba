@@ -74,14 +74,6 @@ const Login: React.FC = () => {
             required
           />
 
-          <div className="login-options">
-            <label className="remember-me">
-              <input type="checkbox" />
-              Nhớ mã PIN
-            </label>
-            <a href="#" className="forgot-password">Quên mã PIN?</a>
-          </div>
-
           <Button type="submit" variant="primary" className="login-btn" disabled={isLoading}>
             {isLoading ? <><Loader2 size={18} className="animate-spin" /> Đang đăng nhập...</> : 'Đăng nhập'}
           </Button>

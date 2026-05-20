@@ -6,16 +6,6 @@ import {
   Download,
   ShieldAlert
 } from 'lucide-react';
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title
-} from 'chart.js';
 import { Pie, Bar } from 'react-chartjs-2';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardBody, Badge, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Button } from '../components/ui';
@@ -25,12 +15,11 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import './Dashboard.css';
 
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title);
+
 
 const Dashboard: React.FC = () => {
   const [devices, setDevices] = useState<DeviceData[]>([]);
   const [repairs, setRepairs] = useState<RepairData[]>([]);
-  const [repairCount, setRepairCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -42,25 +31,27 @@ const Dashboard: React.FC = () => {
       const [devData, repData] = await Promise.all([fetchDevices(), fetchRepairs()]);
       setDevices(devData);
       setRepairs(repData);
-      setRepairCount(repData.filter(r => !r.status.toLowerCase().includes('hoàn')).length);
       setIsLoading(false);
     };
     loadData();
   }, []);
 
+  const activeRepairs = repairs.filter(r => {
+    const status = r.status.toLowerCase();
+    return !status.includes('hoàn') && !status.includes('từ chối');
+  });
+  const repairCount = activeRepairs.length;
+
   const getDepartmentStats = () => {
     const deptCount: Record<string, number> = {};
     devices.forEach(d => {
-      let dept = d.department ? d.department.trim() : 'Khác';
-      if (dept === '') dept = 'Khác';
+      let dept = d.department ? d.department.trim() : 'Chưa phân bổ';
+      if (dept === '') dept = 'Chưa phân bổ';
       deptCount[dept] = (deptCount[dept] || 0) + 1;
     });
     const sorted = Object.entries(deptCount).sort((a, b) => b[1] - a[1]);
-    const top4 = sorted.slice(0, 4);
-    const others = sorted.slice(4).reduce((sum, item) => sum + item[1], 0);
-    const labels = top4.map(item => item[0]);
-    const data = top4.map(item => item[1]);
-    if (others > 0) { labels.push('Khác'); data.push(others); }
+    const labels = sorted.map(item => item[0]);
+    const data = sorted.map(item => item[1]);
     return { labels, data };
   };
 
@@ -143,12 +134,19 @@ const Dashboard: React.FC = () => {
     .sort((a, b) => a.daysRemaining - b.daysRemaining);
 
   const { labels: pieLabels, data: pieDataValues } = getDepartmentStats();
+  const departmentColors = [
+    '#0d9488', '#3b82f6', '#f59e0b', '#e11d48', '#64748b',
+    '#7c3aed', '#0891b2', '#84cc16', '#ea580c', '#be123c',
+    '#2563eb', '#16a34a', '#9333ea', '#ca8a04', '#475569',
+  ];
 
   const pieDataConfig = {
     labels: pieLabels.length > 0 ? pieLabels : ['Chưa có dữ liệu'],
     datasets: [{
       data: pieDataValues.length > 0 ? pieDataValues : [1],
-      backgroundColor: ['#0d9488', '#3b82f6', '#f59e0b', '#e11d48', '#94a3b8'],
+      backgroundColor: (pieLabels.length > 0 ? pieLabels : ['Chưa có dữ liệu']).map((_, index) =>
+        departmentColors[index % departmentColors.length]
+      ),
       borderWidth: 0,
     }],
   };
@@ -267,9 +265,20 @@ const Dashboard: React.FC = () => {
             <div className="chart-container">
               {isLoading
                 ? <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'var(--text-secondary)' }}>Đang tải biểu đồ...</div>
-                : <Pie data={pieDataConfig} options={{ maintainAspectRatio: false }} />
+                : <Pie data={pieDataConfig} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } } }} />
               }
             </div>
+            {!isLoading && pieLabels.length > 0 && (
+              <div className="department-detail-list">
+                {pieLabels.map((label, index) => (
+                  <div className="department-detail-item" key={label}>
+                    <span className="department-detail-dot" style={{ backgroundColor: departmentColors[index % departmentColors.length] }} />
+                    <span className="department-detail-name">{label}</span>
+                    <span className="department-detail-count">{pieDataValues[index]}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardBody>
         </Card>
         <Card>
@@ -304,11 +313,11 @@ const Dashboard: React.FC = () => {
                 ? <TableRow><TableCell colSpan={3} style={{ textAlign: 'center', padding: '1rem' }}>Đang tải...</TableCell></TableRow>
                 : repairCount === 0
                   ? <TableRow><TableCell colSpan={3} style={{ textAlign: 'center', padding: '1rem', color: 'var(--success)' }}>Không có yêu cầu nào đang chờ.</TableCell></TableRow>
-                  : devices.slice(0, 5).map((device) => (
-                    <TableRow key={device.id}>
-                      <TableCell>{device.id}</TableCell>
-                      <TableCell>{device.department}</TableCell>
-                      <TableCell><Badge variant="success">Hoạt động</Badge></TableCell>
+                  : activeRepairs.slice(0, 5).map((repair) => (
+                    <TableRow key={`${repair.rowId}-${repair.deviceId}`}>
+                      <TableCell>{repair.deviceId}</TableCell>
+                      <TableCell>{devices.find(device => device.id === repair.deviceId)?.department || 'Chưa rõ'}</TableCell>
+                      <TableCell><Badge variant="warning">{repair.status}</Badge></TableCell>
                     </TableRow>
                   ))
               }

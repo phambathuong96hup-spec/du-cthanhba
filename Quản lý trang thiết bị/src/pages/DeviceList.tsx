@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Download, Printer, Search, Eye, Edit2, X, Save, Loader2, CheckCircle, AlertTriangle, Monitor } from 'lucide-react';
-import { Card, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge } from '../components/ui';
+import { Card, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Modal, useToast } from '../components/ui';
 import { fetchDevices, addDevice, editDevice, type DeviceData } from '../services/api';
 import { useAuth } from '../authContext';
 import { exportCsv } from '../utils/exportCsv';
@@ -24,6 +24,11 @@ const emptyForm: DeviceFormData = {
   notes: '',
 };
 
+const splitDeviceCodes = (value: unknown) => String(value || '')
+  .split(';')
+  .map(item => item.trim())
+  .filter(Boolean);
+
 const DeviceList: React.FC = () => {
   const [devices, setDevices] = useState<DeviceData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,6 +50,7 @@ const DeviceList: React.FC = () => {
 
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
+  const toast = useToast();
 
   const loadData = async () => {
     setIsLoading(true);
@@ -92,11 +98,11 @@ const DeviceList: React.FC = () => {
   const handlePrintSingleQR = (device: DeviceData) => setPrintingDevices([device]);
   const handlePrintBulkQR = () => {
     if (filteredDevices.length > 0) setPrintingDevices(filteredDevices.slice(0, 20));
-    else alert('Không có thiết bị nào trong danh sách hiển thị để in.');
+    else toast.warning('Không có thiết bị nào trong danh sách hiển thị để in.');
   };
 
   const handleExportCsv = () => {
-    if (filteredDevices.length === 0) { alert('Không có dữ liệu để xuất CSV.'); return; }
+    if (filteredDevices.length === 0) { toast.warning('Không có dữ liệu để xuất CSV.'); return; }
     const exportData = filteredDevices.map(d => ({
       'Mã thiết bị': d.id,
       'Tên thiết bị': d.name,
@@ -150,9 +156,9 @@ const DeviceList: React.FC = () => {
       : await editDevice({ serial: formData.serial, name: formData.name, department: formData.department, dateAdded: formData.dateAdded, notes: formData.notes });
     setIsSaving(false);
     if (res.success) {
-      setSaveMsg('✅ ' + (res.message || 'Thành công!'));
+      toast.success(res.message || 'Thành công!');
       await loadData();
-      setTimeout(() => setShowModal(false), 1200);
+      setShowModal(false);
     } else {
       setSaveMsg('❌ ' + (res.message || 'Có lỗi xảy ra.'));
     }
@@ -213,15 +219,15 @@ const DeviceList: React.FC = () => {
           </div>
         </div>
 
-        <Table>
+        <Table className="device-inventory-table">
           <TableHead>
             <TableRow>
-              <TableHeader>Mã / Seri</TableHeader>
-              <TableHeader>Tên thiết bị</TableHeader>
-              <TableHeader>Khoa/Phòng</TableHeader>
-              <TableHeader>Trạng thái</TableHeader>
-              <TableHeader>Ngày nhập</TableHeader>
-              <TableHeader>Thao tác</TableHeader>
+              <TableHeader className="col-device-code">Mã / Seri</TableHeader>
+              <TableHeader className="col-device-name">Tên thiết bị</TableHeader>
+              <TableHeader className="col-device-dept">Khoa/Phòng</TableHeader>
+              <TableHeader className="col-device-status">Trạng thái</TableHeader>
+              <TableHeader className="col-device-date">Ngày nhập</TableHeader>
+              <TableHeader className="col-device-actions">Thao tác</TableHeader>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -235,18 +241,36 @@ const DeviceList: React.FC = () => {
               </TableCell></TableRow>
             ) : paginatedDevices.map(device => {
               const isBroken = String(device['Hiện trạng thực tế']).toLowerCase().includes('hỏng') || String(device['Hiện trạng thực tế']).toLowerCase().includes('sửa chữa');
+              const deviceCodes = splitDeviceCodes(device.id);
+              const visibleCodes = deviceCodes.slice(0, 2);
+              const hiddenCodeCount = Math.max(0, deviceCodes.length - visibleCodes.length);
+              const isUnassigned = !device.department || device.department === 'Chưa phân bổ';
               return (
                 <TableRow key={device.id} className="device-table-row">
-                  <TableCell><strong className="device-id-cell">{device.id}</strong></TableCell>
-                  <TableCell><span className="device-name-cell">{device.name}</span></TableCell>
-                  <TableCell><span className="department-badge">{device.department}</span></TableCell>
-                  <TableCell>
-                    <Badge variant={!isBroken ? 'success' : 'warning'} className="status-badge-large">
-                      {!isBroken ? 'Hoạt động tốt' : 'Sửa chữa/Hỏng'}
-                    </Badge>
+                  <TableCell className="col-device-code">
+                    <div className="device-code-stack" title={String(device.id || '')}>
+                      {(visibleCodes.length > 0 ? visibleCodes : [device.id]).map(code => (
+                        <span className="device-id-cell" key={String(code)}>{code}</span>
+                      ))}
+                      {hiddenCodeCount > 0 && <span className="device-id-more">+{hiddenCodeCount}</span>}
+                    </div>
                   </TableCell>
-                  <TableCell>{device.dateAdded}</TableCell>
+                  <TableCell className="col-device-name">
+                    <span className="device-name-cell">{device.name}</span>
+                  </TableCell>
+                  <TableCell className="col-device-dept">
+                    <span className={`department-badge ${isUnassigned ? 'is-unassigned' : ''}`} title={String(device.department || '')}>{device.department}</span>
+                  </TableCell>
                   <TableCell>
+                    <span className={`device-status-pill ${isBroken ? 'is-warning' : 'is-ok'}`}>
+                      <span className="device-status-dot" />
+                      {!isBroken ? 'Hoạt động tốt' : 'Sửa chữa/Hỏng'}
+                    </span>
+                  </TableCell>
+                  <TableCell className="col-device-date">
+                    <span className="device-date-cell">{device.dateAdded}</span>
+                  </TableCell>
+                  <TableCell className="col-device-actions">
                     <div className="action-buttons-cell">
                       <Button variant="secondary" size="sm" icon={<Eye size={16} />} title="Xem chi tiết" onClick={() => navigate(`/devices/${encodeURIComponent(device.id)}`)} className="btn-icon-only" />
                       {isAdmin && <Button variant="secondary" size="sm" icon={<Edit2 size={16} />} title="Sửa" onClick={() => openEditModal(device)} className="btn-icon-only" />}
@@ -293,94 +317,81 @@ const DeviceList: React.FC = () => {
       )}
 
       {/* Modal Thêm / Sửa thiết bị */}
-      {showModal && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
-        }}>
-          <div style={{ background: 'white', borderRadius: '12px', width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-            {/* Modal Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid var(--border)', background: 'var(--primary)', borderRadius: '12px 12px 0 0' }}>
-              <h2 style={{ margin: 0, color: 'white', fontSize: '1.1rem' }}>
-                {modalMode === 'add' ? '➕ Thêm thiết bị mới' : '✏️ Sửa thông tin thiết bị'}
-              </h2>
-              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '4px' }}>
-                <X size={22} />
-              </button>
-            </div>
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={modalMode === 'add' ? '➕ Thêm thiết bị mới' : '✏️ Sửa thông tin thiết bị'}
+        size="md"
+      >
+        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-            {/* Modal Body */}
-            <form onSubmit={handleSave} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-              <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.9rem', color: 'var(--text-primary)' }}>Tên thiết bị *</label>
-                <input
-                  name="name" value={formData.name} onChange={handleFormChange}
-                  placeholder="VD: Máy siêu âm màu Doppler 4D"
-                  required
-                  style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '0.95rem', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.9rem', color: 'var(--text-primary)' }}>Seri / Mã thiết bị</label>
-                <input
-                  name="serial" value={formData.serial} onChange={handleFormChange}
-                  placeholder="VD: TB-001 (để trống hệ thống tự tạo)"
-                  readOnly={modalMode === 'edit'}
-                  style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '0.95rem', background: modalMode === 'edit' ? '#f5f5f5' : 'white', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.9rem', color: 'var(--text-primary)' }}>Khoa/Phòng sử dụng *</label>
-                <input
-                  name="department" value={formData.department} onChange={handleFormChange}
-                  placeholder="VD: Khoa Chẩn đoán hình ảnh"
-                  list="dept-list"
-                  required
-                  style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '0.95rem', boxSizing: 'border-box' }}
-                />
-                <datalist id="dept-list">
-                  {uniqueDepartments.map(d => <option key={d} value={d} />)}
-                </datalist>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.9rem', color: 'var(--text-primary)' }}>Ngày nhập / Đăng kiểm</label>
-                <input
-                  name="dateAdded" value={formData.dateAdded} onChange={handleFormChange}
-                  placeholder="VD: 15/03/2025"
-                  style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '0.95rem', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.9rem', color: 'var(--text-primary)' }}>Ghi chú thêm</label>
-                <textarea
-                  name="notes" value={formData.notes} onChange={handleFormChange}
-                  placeholder="Nguồn vốn, nhà cung cấp, ghi chú kỹ thuật..."
-                  rows={3}
-                  style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '0.95rem', resize: 'vertical', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              {saveMsg && (
-                <div style={{ padding: '10px 14px', borderRadius: '8px', background: saveMsg.startsWith('✅') ? '#d4edda' : '#f8d7da', color: saveMsg.startsWith('✅') ? '#155724' : '#721c24', fontSize: '0.9rem' }}>
-                  {saveMsg}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '4px' }}>
-                <Button type="button" variant="secondary" onClick={() => setShowModal(false)}>Hủy</Button>
-                <Button type="submit" variant="primary" icon={isSaving ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={16} />} disabled={isSaving}>
-                  {isSaving ? 'Đang lưu...' : (modalMode === 'add' ? 'Thêm thiết bị' : 'Lưu thay đổi')}
-                </Button>
-              </div>
-            </form>
+          <div>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.9rem', color: 'var(--text-primary)' }}>Tên thiết bị *</label>
+            <input
+              name="name" value={formData.name} onChange={handleFormChange}
+              placeholder="VD: Máy siêu âm màu Doppler 4D"
+              required
+              style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '0.95rem', boxSizing: 'border-box' }}
+            />
           </div>
-        </div>
-      )}
+
+          <div>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.9rem', color: 'var(--text-primary)' }}>Seri / Mã thiết bị</label>
+            <input
+              name="serial" value={formData.serial} onChange={handleFormChange}
+              placeholder="VD: TB-001 (để trống hệ thống tự tạo)"
+              readOnly={modalMode === 'edit'}
+              style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '0.95rem', background: modalMode === 'edit' ? 'var(--surface-50)' : 'white', boxSizing: 'border-box' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.9rem', color: 'var(--text-primary)' }}>Khoa/Phòng sử dụng *</label>
+            <input
+              name="department" value={formData.department} onChange={handleFormChange}
+              placeholder="VD: Khoa Chẩn đoán hình ảnh"
+              list="dept-list"
+              required
+              style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '0.95rem', boxSizing: 'border-box' }}
+            />
+            <datalist id="dept-list">
+              {uniqueDepartments.map(d => <option key={d} value={d} />)}
+            </datalist>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.9rem', color: 'var(--text-primary)' }}>Ngày nhập / Đăng kiểm</label>
+            <input
+              name="dateAdded" value={formData.dateAdded} onChange={handleFormChange}
+              placeholder="VD: 15/03/2025"
+              style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '0.95rem', boxSizing: 'border-box' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.9rem', color: 'var(--text-primary)' }}>Ghi chú thêm</label>
+            <textarea
+              name="notes" value={formData.notes} onChange={handleFormChange}
+              placeholder="Nguồn vốn, nhà cung cấp, ghi chú kỹ thuật..."
+              rows={3}
+              style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '0.95rem', resize: 'vertical', boxSizing: 'border-box' }}
+            />
+          </div>
+
+          {saveMsg && (
+            <div style={{ padding: '10px 14px', borderRadius: '8px', background: saveMsg.startsWith('✅') ? 'var(--success-light)' : 'var(--danger-light)', color: saveMsg.startsWith('✅') ? 'var(--success)' : 'var(--danger)', fontSize: '0.9rem' }}>
+              {saveMsg}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '4px' }}>
+            <Button type="button" variant="secondary" onClick={() => setShowModal(false)}>Hủy</Button>
+            <Button type="submit" variant="primary" icon={isSaving ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={16} />} disabled={isSaving}>
+              {isSaving ? 'Đang lưu...' : (modalMode === 'add' ? 'Thêm thiết bị' : 'Lưu thay đổi')}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

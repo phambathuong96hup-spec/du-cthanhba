@@ -25,8 +25,9 @@ function switchView(view, btn) {
 function renderKanban() {
     const today = getToday();
     const columns = { Todo: [], Doing: [], Waiting: [], Done: [] };
+    const sourceData = typeof getFilteredData === 'function' ? getFilteredData() : globalData;
 
-    globalData.forEach(r => {
+    sourceData.forEach(r => {
         const rawSt = String(r[2]).trim();
         const status = getEffectiveStatus(rawSt, r[6]);
         const dlRaw = r[9] || r[4];
@@ -59,7 +60,9 @@ function renderKanban() {
             const id = r[0], name = r[1], assignee = r[7], prog = parseProgress(r[8]);
             const dlRaw = r[9] || r[4];
             const difficulty = r[12] || '2';
-            const assignees = String(assignee).split(',').map(s => s.trim()).filter(Boolean);
+            const assignees = typeof getTaskAssignees === 'function'
+                ? getTaskAssignees(r)
+                : String(assignee).split(',').map(s => s.trim()).filter(Boolean);
             const firstAssignee = assignees[0] || 'N/A';
             const color = getRandomColor(firstAssignee);
             const initials = getInitials(firstAssignee);
@@ -98,6 +101,8 @@ function renderKanban() {
 
 function setupDragDrop() {
     document.querySelectorAll('.kanban-col-body').forEach(zone => {
+        if (zone.dataset.dropBound === 'true') return;
+        zone.dataset.dropBound = 'true';
         zone.addEventListener('dragover', e => {
             e.preventDefault();
             zone.classList.add('drop-highlight');

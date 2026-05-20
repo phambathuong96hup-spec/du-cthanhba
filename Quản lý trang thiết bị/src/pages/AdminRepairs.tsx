@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { fetchRepairs, approveRepair, type RepairData } from '../services/api';
-import { Card, CardHeader, CardBody, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge } from '../components/ui';
+import { Card, CardHeader, CardBody, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge, useToast, ConfirmDialog } from '../components/ui';
 import { CheckCircle, Clock, Search, Wrench, Edit } from 'lucide-react';
 import { useAuth } from '../authContext';
+import { getRepairStatusVariant } from '../utils/statusUtils';
+import './AdminRepairs.css';
 
 const AdminRepairs: React.FC = () => {
   const { name } = useAuth();
+  const toast = useToast();
   const [repairs, setRepairs] = useState<RepairData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Confirm dialog state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{ rowId: string; deviceId: string; newStatus: string } | null>(null);
   
   const loadData = async () => {
     setIsLoading(true);
@@ -20,13 +27,19 @@ const AdminRepairs: React.FC = () => {
     loadData();
   }, []);
 
-  const handleStatusChange = async (rowId: string, deviceId: string, newStatus: string) => {
+  const requestStatusChange = (rowId: string, deviceId: string, newStatus: string) => {
     if (!newStatus || newStatus === '') return;
-    if (!window.confirm(`Xác nhận cập nhật trạng thái thiết bị ${deviceId} thành "${newStatus}"?`)) {
-      return;
-    }
-    
-    // Cập nhật UI tạm thời
+    setPendingAction({ rowId, deviceId, newStatus });
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmStatusChange = async () => {
+    if (!pendingAction) return;
+    const { rowId, deviceId, newStatus } = pendingAction;
+    setConfirmOpen(false);
+    setPendingAction(null);
+
+    // Optimistic update
     setRepairs(prev => prev.map(r => 
       r.rowId === rowId ? { ...r, status: newStatus } : r
     ));
@@ -39,24 +52,18 @@ const AdminRepairs: React.FC = () => {
     });
 
     if (!res.success) {
-      alert("Lỗi khi cập nhật trên máy chủ: " + res.message);
+      toast.error('Lỗi khi cập nhật: ' + res.message);
       loadData();
+    } else {
+      toast.success(`Đã cập nhật trạng thái "${deviceId}" thành "${newStatus}"`);
     }
-  };
-
-  const getStatusBadgeVariant = (status: string) => {
-    const s = status.toLowerCase();
-    if (s.includes('hoàn thành')) return 'success';
-    if (s.includes('sửa')) return 'primary';
-    if (s.includes('kiểm tra') || s.includes('chờ')) return 'warning';
-    return 'neutral';
   };
 
   const statusOptions = ['Đang kiểm tra', 'Đang sửa chữa', 'Đã hoàn thành'];
 
   return (
-    <div style={{ padding: '24px' }}>
-      <div className="page-header" style={{ marginBottom: '24px' }}>
+    <div className="admin-repairs-page">
+      <div className="page-header">
         <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Edit size={28} style={{ color: 'var(--primary)' }} />
           Cập nhật Tiến độ Sửa chữa
@@ -89,45 +96,32 @@ const AdminRepairs: React.FC = () => {
                   return (
                     <TableRow key={index} className={isCompleted ? 'completed-row' : ''}>
                       <TableCell>
-                        <span style={{ opacity: isCompleted ? 0.7 : 1, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{rp.rowId}</span>
+                        <span className="repair-time">{rp.rowId}</span>
                       </TableCell>
                       <TableCell>
-                        <span style={{ opacity: isCompleted ? 0.7 : 1, fontWeight: '600' }}>{rp.deviceId}</span>
+                        <span className="repair-device-id">{rp.deviceId}</span>
                       </TableCell>
                       <TableCell>
-                        <div style={{ opacity: isCompleted ? 0.7 : 1, display: 'flex', flexDirection: 'column' }}>
+                        <div className="repair-reporter">
                           <span>{rp.userName}</span>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{rp.userEmail}</span>
+                          <span className="repair-reporter-email">{rp.userEmail}</span>
                         </div>
                       </TableCell>
                       <TableCell>
-                         <span style={{ opacity: isCompleted ? 0.7 : 1, maxWidth: '300px', whiteSpace: 'normal', display: 'inline-block' }}>{rp.description}</span>
+                        <span className="repair-description">{rp.description}</span>
                       </TableCell>
                       <TableCell>
-                        <div style={{ opacity: isCompleted ? 0.7 : 1 }}>
-                          <Badge variant={getStatusBadgeVariant(rp.status)}>
-                            {isCompleted ? <CheckCircle size={12}/> : (rp.status.toLowerCase().includes('sửa') ? <Wrench size={12}/> : (rp.status.toLowerCase().includes('trạng thái') ? <Clock size={12}/> : <Search size={12}/>))}
-                            <span style={{marginLeft: '4px'}}>{rp.status}</span>
-                          </Badge>
-                        </div>
+                        <Badge variant={getRepairStatusVariant(rp.status)}>
+                          {isCompleted ? <CheckCircle size={12}/> : (rp.status.toLowerCase().includes('sửa') ? <Wrench size={12}/> : (rp.status.toLowerCase().includes('chờ') ? <Clock size={12}/> : <Search size={12}/>))}
+                          <span style={{marginLeft: '4px'}}>{rp.status}</span>
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <select 
+                          className="status-select"
                           value={statusOptions.includes(rp.status) ? rp.status : (isCompleted ? "Đã hoàn thành" : "")}
-                          onChange={(e) => handleStatusChange(rp.rowId, rp.deviceId, e.target.value)}
+                          onChange={(e) => requestStatusChange(rp.rowId, rp.deviceId, e.target.value)}
                           disabled={isCompleted}
-                          style={{
-                            padding: '8px 12px',
-                            borderRadius: '8px',
-                            border: '1.5px solid var(--border)',
-                            background: isCompleted ? 'var(--surface-50)' : '#fff',
-                            cursor: isCompleted ? 'not-allowed' : 'pointer',
-                            fontSize: '0.85rem',
-                            outline: 'none',
-                            color: 'var(--text-primary)',
-                            minWidth: '140px',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                          }}
                         >
                           <option value="" disabled>-- Chọn trạng thái --</option>
                           {statusOptions.map(opt => (
@@ -143,6 +137,16 @@ const AdminRepairs: React.FC = () => {
           </Table>
         </CardBody>
       </Card>
+
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        onClose={() => { setConfirmOpen(false); setPendingAction(null); }}
+        onConfirm={handleConfirmStatusChange}
+        title="Xác nhận cập nhật"
+        message={pendingAction ? `Bạn có chắc muốn cập nhật trạng thái thiết bị "${pendingAction.deviceId}" thành "${pendingAction.newStatus}"?` : ''}
+        confirmText="Cập nhật"
+        variant="primary"
+      />
     </div>
   );
 };

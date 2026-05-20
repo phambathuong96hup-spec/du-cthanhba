@@ -7,6 +7,10 @@ let currentPage = 1;
 const PAGE_SIZE = 15;
 let currentStatusFilter = 'all';
 
+function getTaskAssignees(row) {
+    return String(row?.[7] || '').split(',').map(s => s.trim()).filter(Boolean);
+}
+
 async function loadTaskList(silent = false) {
     try {
         const res = await apiFetch(null);
@@ -48,6 +52,7 @@ function getFilteredData() {
         }
 
         // Month filter
+        if (monthVal && !dlRaw) return false;
         if (monthVal && dlRaw) {
             const dl = new Date(dlRaw);
             const dlMonth = `${dl.getFullYear()}-${String(dl.getMonth() + 1).padStart(2, '0')}`;
@@ -76,7 +81,7 @@ function getFilteredData() {
 
         // Dropdown filters
         if (groupVal && String(r[11]) !== groupVal) return false;
-        if (assigneeVal && !String(r[7]).includes(assigneeVal)) return false;
+        if (assigneeVal && !getTaskAssignees(r).includes(assigneeVal)) return false;
         if (diffVal && String(r[12]) !== diffVal) return false;
 
         return true;
@@ -191,7 +196,7 @@ function renderTasks() {
         else if (prog < 70) progColor = '#f59e0b';
 
         // Assignee avatars
-        const assignees = String(assignee).split(',').map(s => s.trim()).filter(Boolean);
+        const assignees = getTaskAssignees(r);
         const avatarHtml = assignees.slice(0, 3).map(n => {
             const c = getRandomColor(n);
             return `<div title="${escapeHtml(n)}" style="width:26px;height:26px;border-radius:8px;background:${c};color:white;display:inline-flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:700;margin-right:-6px;border:2px solid var(--surface)">${escapeHtml(getInitials(n))}</div>`;
@@ -227,7 +232,6 @@ function renderTasks() {
             } else {
                 actionBtns = `<div style="${disableControl}">
                     <button class="btn btn-sm btn-primary-custom py-1 px-2" style="font-size:0.8rem" onclick="event.stopPropagation();openReportModal(${jsArg(id)})" title="Báo cáo"><i class="bi bi-send-fill"></i></button>
-                    <button class="btn btn-sm btn-white border text-warning ms-1 py-1 px-2" style="font-size:0.8rem" onclick="event.stopPropagation();triggerTaskEmail(${jsArg(id)})" title="Nhắc"><i class="bi bi-envelope-fill"></i></button>
                 </div>`;
             }
         }
@@ -465,7 +469,7 @@ function openEditTask(id) {
 async function startTask(id) {
     const task = globalData.find(r => r[0] == id);
     if (!task) return;
-    const assignees = String(task[7]).split(',').map(s => s.trim()).filter(Boolean);
+    const assignees = getTaskAssignees(task);
     if (currentUser && !isAdminUser(currentUser) && !assignees.includes(currentUser.name)) {
         return showToast('⛔ Không phải việc của bạn!', 'warning');
     }

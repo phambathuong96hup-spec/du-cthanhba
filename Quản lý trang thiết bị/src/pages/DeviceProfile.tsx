@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, AlertTriangle, RefreshCw, FileText, X, Save } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Card, CardBody, Button, Badge, Tabs, Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/ui';
-import { createTransfer, fetchDevices, fetchTransfers, type DeviceData, type TransferData } from '../services/api';
+import { createTransfer, fetchDevices, fetchTransfers, fetchRepairs, type DeviceData, type TransferData, type RepairData } from '../services/api';
 import { useAuth } from '../authContext';
 import './Devices.css';
 
@@ -12,6 +13,7 @@ const DeviceProfile: React.FC = () => {
   const { isAuthenticated, username } = useAuth();
   const [device, setDevice] = useState<DeviceData | null>(null);
   const [transfers, setTransfers] = useState<TransferData[]>([]);
+  const [repairs, setRepairs] = useState<RepairData[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -23,12 +25,13 @@ const DeviceProfile: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
-      const [data, transferData] = await Promise.all([fetchDevices(), fetchTransfers()]);
+      const [data, transferData, repairData] = await Promise.all([fetchDevices(), fetchTransfers(), fetchRepairs()]);
       const decodedId = decodeURIComponent(id || '');
       const found = data.find(d => d.id === decodedId);
       if (found) setDevice(found);
       setDepartments(Array.from(new Set(data.map(d => d.department).filter(Boolean))).sort());
       setTransfers(transferData.filter(t => t.deviceId === decodedId).reverse());
+      setRepairs(repairData.filter(r => r.deviceId === decodedId));
       setIsLoading(false);
     };
     if (id) loadData();
@@ -109,26 +112,38 @@ const DeviceProfile: React.FC = () => {
       <TableHead>
         <TableRow>
           <TableHeader>Ngày</TableHeader>
-          <TableHeader>Loại công việc</TableHeader>
-          <TableHeader>Đơn vị thực hiện</TableHeader>
-          <TableHeader>Chi phí (VNĐ)</TableHeader>
+          <TableHeader>Mô tả lỗi</TableHeader>
+          <TableHeader>Trạng thái</TableHeader>
+          <TableHeader>Người báo</TableHeader>
         </TableRow>
       </TableHead>
       <TableBody>
-        <TableRow>
-          <TableCell colSpan={4} style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
-            Chưa có lịch sử bảo dưỡng. Dữ liệu sẽ được cập nhật từ Google Sheet.
-          </TableCell>
-        </TableRow>
+        {repairs.length === 0 ? (
+          <TableRow>
+            <TableCell colSpan={4} style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
+              Chưa có lịch sử sửa chữa cho thiết bị này.
+            </TableCell>
+          </TableRow>
+        ) : repairs.map((repair, idx) => (
+          <TableRow key={repair.rowId || idx}>
+            <TableCell>{repair.rowId || '—'}</TableCell>
+            <TableCell>{repair.description || '—'}</TableCell>
+            <TableCell>
+              <Badge variant={repair.status === 'Đã xử lý' ? 'success' : repair.status === 'Từ chối' ? 'danger' : 'warning'}>
+                {repair.status}
+              </Badge>
+            </TableCell>
+            <TableCell>{repair.userName || '—'}</TableCell>
+          </TableRow>
+        ))}
       </TableBody>
     </Table>
   );
 
   const documentsTab = (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <Button variant="secondary" icon={<FileText size={16} />} style={{ justifyContent: 'flex-start' }}>Hướng dẫn sử dụng (PDF)</Button>
-      <Button variant="secondary" icon={<FileText size={16} />} style={{ justifyContent: 'flex-start' }}>Hợp đồng mua bán (PDF)</Button>
-      <Button variant="secondary" icon={<FileText size={16} />} style={{ justifyContent: 'flex-start' }}>Giấy chứng nhận CO/CQ (PDF)</Button>
+    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+      <FileText size={48} style={{ opacity: 0.3, marginBottom: '12px' }} />
+      <p>Tính năng quản lý tài liệu sẽ được cập nhật trong phiên bản tới.</p>
     </div>
   );
 
@@ -158,9 +173,11 @@ const DeviceProfile: React.FC = () => {
               <div className="profile-header">
                 <div className="device-main-info">
                   <div className="qr-code-box">
-                    <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(device.id)}`}
-                      alt="QR Code"
+                    <QRCodeSVG
+                      value={`${window.location.origin}${import.meta.env.BASE_URL}devices/${encodeURIComponent(device.id)}`}
+                      size={160}
+                      level="M"
+                      includeMargin
                     />
                   </div>
                   <div className="device-details">

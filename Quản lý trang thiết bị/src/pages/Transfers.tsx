@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { CheckCircle, Download, FileText, Loader2, RefreshCw, Repeat2, Send, XCircle, X, Camera } from 'lucide-react';
-import { Card, CardBody, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge, type BadgeVariant } from '../components/ui';
+import { Card, CardBody, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge, useToast } from '../components/ui';
 import {
   createTransfer,
   fetchDevices,
@@ -17,19 +17,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const statusText: Record<string, string> = {
-  PENDING_RECEIVE: 'Chờ khoa nhận',
-  COMPLETED: 'Đã nhận',
-  REJECTED: 'Từ chối',
-  CANCELLED: 'Đã hủy',
-};
-
-const statusVariant = (status: string): BadgeVariant => {
-  if (status === 'COMPLETED') return 'success';
-  if (status === 'REJECTED' || status === 'CANCELLED') return 'danger';
-  if (status === 'PENDING_RECEIVE') return 'warning';
-  return 'neutral';
-};
+import { transferStatusText, getTransferStatusVariant } from '../utils/statusUtils';
 
 interface TransfersProps {
   defaultTab?: 'create' | 'requests' | 'history';
@@ -52,6 +40,7 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
   const scannerContainerId = 'qr-scanner-region';
 
   const { username, department: userDepartment, name: userName, isAdmin } = useAuth();
+  const toast = useToast();
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -174,7 +163,7 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
   const handleReceive = async (transfer: TransferData) => {
     const note = window.prompt('Ghi chú nhận thiết bị (nếu có):') || '';
     const response = await receiveTransfer({ transferId: transfer.transferId, actorUsername: username, note });
-    alert(response.message || (response.success ? 'Đã nhận.' : 'Có lỗi xảy ra.'));
+    toast.info(response.message || (response.success ? 'Đã nhận.' : 'Có lỗi xảy ra.'));
     await loadData();
   };
 
@@ -182,14 +171,14 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
     const reasonText = window.prompt('Lý do từ chối nhận thiết bị:') || '';
     if (!reasonText.trim()) return;
     const response = await rejectTransfer({ transferId: transfer.transferId, actorUsername: username, reason: reasonText });
-    alert(response.message || (response.success ? 'Đã từ chối.' : 'Có lỗi xảy ra.'));
+    toast.info(response.message || (response.success ? 'Đã từ chối.' : 'Có lỗi xảy ra.'));
     await loadData();
   };
 
   const handleCancel = async (transfer: TransferData) => {
     if (!window.confirm('Hủy yêu cầu luân chuyển này?')) return;
     const response = await cancelTransfer({ transferId: transfer.transferId, actorUsername: username, reason: 'Người tạo yêu cầu hủy' });
-    alert(response.message || (response.success ? 'Đã hủy.' : 'Có lỗi xảy ra.'));
+    toast.info(response.message || (response.success ? 'Đã hủy.' : 'Có lỗi xảy ra.'));
     await loadData();
   };
 
@@ -201,14 +190,14 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
     'Tên thiết bị': t.deviceName,
     'Từ khoa/phòng': t.fromDepartment,
     'Đến khoa/phòng': t.toDepartment,
-    'Trạng thái': statusText[t.status] || t.status,
+    'Trạng thái': transferStatusText[t.status] || t.status,
     'Người chuyển': t.requestedByName,
     'Người nhận': t.receivedByName,
     'Lý do/Ghi chú': t.requestedNote || t.receivedNote || t.rejectReason,
   }));
 
   const exportCsvFile = () => {
-    if (exportRows.length === 0) return alert('Không có dữ liệu để xuất.');
+    if (exportRows.length === 0) { toast.warning('Không có dữ liệu để xuất.'); return; }
     exportCsv(exportRows, `LuanChuyenThietBi_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.csv`);
   };
 
@@ -375,7 +364,7 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
                     <TableCell><strong>{transfer.deviceName || transfer.deviceId}</strong><br /><small>{transfer.deviceId}</small></TableCell>
                     <TableCell>{transfer.fromDepartment}<br /><strong>→ {transfer.toDepartment}</strong></TableCell>
                     <TableCell>{transfer.requestedByName || transfer.requestedBy}<br /><small>{transfer.requestedNote}</small></TableCell>
-                    <TableCell><Badge variant={statusVariant(transfer.status)}>{statusText[transfer.status] || transfer.status}</Badge></TableCell>
+                    <TableCell><Badge variant={getTransferStatusVariant(transfer.status)}>{transferStatusText[transfer.status] || transfer.status}</Badge></TableCell>
                     <TableCell>
                       {transfer.status === 'PENDING_RECEIVE' && (activeTab === 'requests' || isAdmin) ? (
                         <div style={{ display: 'flex', gap: '8px' }}>

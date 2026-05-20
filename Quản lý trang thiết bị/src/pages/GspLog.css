@@ -1,0 +1,253 @@
+/* ===== GSP Temperature/Humidity Log Page ===== */
+
+.gsp-layout {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* Form */
+.gsp-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.gsp-form-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text-secondary);
+}
+
+.gsp-form-label .label-icon {
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.gsp-form-label .label-limit {
+  color: var(--warning);
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.gsp-form-input,
+.gsp-form-select,
+.gsp-form-textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.gsp-form-input:focus,
+.gsp-form-select:focus,
+.gsp-form-textarea:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+}
+
+.gsp-form-textarea {
+  resize: vertical;
+}
+
+.gsp-violation-hint {
+  color: var(--danger);
+  font-size: 0.75rem;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* Standards info box */
+.gsp-standards-box {
+  margin-top: 1.5rem;
+  padding: 12px;
+  background: var(--background);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.gsp-standards-box ul {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  line-height: 1.8;
+  list-style: disc;
+}
+
+/* Chart area */
+.gsp-chart-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.gsp-period-select {
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.gsp-period-select:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
+.gsp-view-toggle button {
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+}
+
+.gsp-view-toggle button.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.gsp-view-toggle button:not(.active) {
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.gsp-view-toggle button:not(.active):hover {
+  background: var(--background);
+}
+
+.gsp-chart-container {
+  height: 380px;
+  position: relative;
+}
+
+/* Table view */
+.gsp-table-container {
+  overflow-x: auto;
+  max-height: 420px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gsp-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.gsp-table th {
+  padding: 10px 14px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  background: var(--background);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.gsp-table td {
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.gsp-table td.td-small,
+.gsp-note-cell {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.gsp-table tr.has-violation {
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.gsp-table td.violation-value {
+  color: var(--danger);
+  font-weight: bold;
+}
+
+.gsp-table tbody tr {
+  transition: background var(--transition-fast);
+}
+
+.gsp-table tbody tr:hover {
+  background: var(--background);
+}
+
+/* Violation alert cards */
+.gsp-violation-card {
+  padding: 12px 16px;
+  background: rgba(239, 68, 68, 0.05);
+  border-radius: 10px;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  font-size: 0.85rem;
+}
+
+.gsp-violation-card .violation-detail {
+  margin-left: 8px;
+  color: var(--danger);
+}
+
+.gsp-violation-card .violation-note {
+  margin-left: 8px;
+  color: var(--text-secondary);
+}
+
+.gsp-violations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gsp-violations-more {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.gsp-empty-message {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-secondary);
+}
+
+.gsp-chart-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .gsp-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .gsp-chart-header-actions {
+    flex-wrap: wrap;
+  }
+
+  .gsp-chart-container {
+    height: 280px;
+  }
+}

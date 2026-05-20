@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  Camera, AlertCircle, Clock, Send, X, ShieldAlert, ChevronDown, ScanLine,
+  AlertCircle, Clock, Send, ShieldAlert, ChevronDown, ScanLine,
   CheckCircle, XCircle, Download, FileText, Loader2, RefreshCw, Wrench, Search
 } from 'lucide-react';
-import { Card, CardBody, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge, type BadgeVariant } from '../components/ui';
+import { Card, CardBody, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge, useToast, ConfirmDialog } from '../components/ui';
 import { reportRepair, fetchDevices, fetchRepairs, approveRepair, type DeviceData, type RepairData } from '../services/api';
 import { useAuth } from '../authContext';
 import { exportCsv } from '../utils/exportCsv';
@@ -11,24 +11,9 @@ import { Html5QrcodeScanner } from 'html5-qrcode';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import './RepairRequest.css';
+import { repairStatusText, getRepairStatusVariant } from '../utils/statusUtils';
 
-const repairStatusText: Record<string, string> = {
-  'Chờ duyệt': 'Chờ duyệt',
-  'Đã duyệt': 'Đã duyệt',
-  'Từ chối': 'Từ chối',
-  'Đang kiểm tra': 'Đang kiểm tra',
-  'Đang sửa chữa': 'Đang sửa chữa',
-  'Đã hoàn thành': 'Đã hoàn thành',
-};
 
-const repairStatusVariant = (status: string): BadgeVariant => {
-  const s = status.toLowerCase();
-  if (s.includes('hoàn thành') || s.includes('đã duyệt')) return 'success';
-  if (s.includes('từ chối')) return 'danger';
-  if (s.includes('chờ') || s.includes('kiểm tra')) return 'warning';
-  if (s.includes('sửa')) return 'primary';
-  return 'neutral';
-};
 
 interface RepairRequestProps {
   defaultTab?: 'create' | 'requests' | 'history';
@@ -39,9 +24,7 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
   const [activeTab, setActiveTab] = useState<'create' | 'requests' | 'history'>(defaultTab);
 
   // ===== Create form state =====
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [devices, setDevices] = useState<DeviceData[]>([]);
   const [deviceId, setDeviceId] = useState('');
   const [description, setDescription] = useState('');
@@ -55,6 +38,11 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
 
   // ===== Auth =====
   const { name, email, department, isAdmin } = useAuth();
+  const toast = useToast();
+
+  // Confirm dialog state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{ repair: RepairData; newStatus: string } | null>(null);
   const userName = name || 'Nhân viên vô danh';
   const userDepartment = department || '';
   const [userEmail, setUserEmail] = useState(email);
@@ -131,7 +119,7 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
           setDeviceId(newId);
           setIsScanning(false);
           scanner.clear();
-          alert(`Đã nhận diện thiết bị: ${newId}`);
+          toast.success(`Đã nhận diện thiết bị: ${newId}`);
         }
       }, () => { /* ignore */ });
 
@@ -140,21 +128,6 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
       };
     }
   }, [isScanning]);
-
-  // ===== Image upload =====
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setSelectedImage(reader.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleRemoveImage = () => {
-    setSelectedImage(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
 
   // ===== Submit repair =====
   const handleSubmit = async (e: React.FormEvent) => {
@@ -175,22 +148,20 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
     setIsSubmitting(false);
 
     if (response.success) {
-      setMessage('✅ Yêu cầu báo hỏng đã được gửi thành công!');
+      toast.success('Yêu cầu báo hỏng đã được gửi thành công!');
       setDescription('');
-      setSelectedImage(null);
       setPriority('normal');
       if (devices.length > 0) setDeviceId(devices[0].id);
-      if (fileInputRef.current) fileInputRef.current.value = '';
       await loadData();
       setTimeout(() => setActiveTab('requests'), 1500);
     } else {
-      setMessage('❌ Có lỗi xảy ra: ' + (response.message || 'Lỗi không xác định'));
+      toast.error('Có lỗi xảy ra: ' + (response.message || 'Lỗi không xác định'));
     }
   };
 
   // ===== Approve/Reject repair =====
   const handleApproveRepair = async (repair: RepairData) => {
-    if (!isAdmin) return alert('Bạn không có quyền duyệt yêu cầu sửa chữa.');
+    if (!isAdmin) { toast.warning('Bạn không có quyền duyệt yêu cầu sửa chữa.'); return; }
     const note = window.prompt('Ghi chú duyệt (nếu có):') || '';
     const res = await approveRepair({
       rowId: repair.rowId,
@@ -199,12 +170,12 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
       approver: userName,
       note,
     });
-    alert(res.message || (res.success ? 'Đã đồng ý xử lý.' : 'Có lỗi xảy ra.'));
+    toast.info(res.message || (res.success ? 'Đã đồng ý xử lý.' : 'Có lỗi xảy ra.'));
     await loadData();
   };
 
   const handleRejectRepair = async (repair: RepairData) => {
-    if (!isAdmin) return alert('Bạn không có quyền từ chối yêu cầu sửa chữa.');
+    if (!isAdmin) { toast.warning('Bạn không có quyền từ chối yêu cầu sửa chữa.'); return; }
     const reasonText = window.prompt('Lý do từ chối báo hỏng/sửa chữa:') || '';
     if (!reasonText.trim()) return;
     const res = await approveRepair({
@@ -214,14 +185,22 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
       approver: userName,
       note: reasonText,
     });
-    alert(res.message || (res.success ? 'Đã từ chối.' : 'Có lỗi xảy ra.'));
+    toast.info(res.message || (res.success ? 'Đã từ chối.' : 'Có lỗi xảy ra.'));
     await loadData();
   };
 
   const handleStatusChange = async (repair: RepairData, newStatus: string) => {
-    if (!isAdmin) return alert('Bạn không có quyền cập nhật tiến độ sửa chữa.');
+    if (!isAdmin) { toast.warning('Bạn không có quyền cập nhật tiến độ sửa chữa.'); return; }
     if (!newStatus) return;
-    if (!window.confirm(`Xác nhận cập nhật trạng thái "${repair.deviceId}" thành "${newStatus}"?`)) return;
+    setPendingStatusChange({ repair, newStatus });
+    setConfirmOpen(true);
+  };
+
+  const executeStatusChange = async () => {
+    if (!pendingStatusChange) return;
+    const { repair, newStatus } = pendingStatusChange;
+    setConfirmOpen(false);
+    setPendingStatusChange(null);
 
     // Optimistic update
     setRepairs(prev => prev.map(r =>
@@ -237,8 +216,10 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
     });
 
     if (!res.success) {
-      alert("Lỗi khi cập nhật: " + res.message);
+      toast.error('Lỗi khi cập nhật: ' + res.message);
       await loadData();
+    } else {
+      toast.success(`Đã cập nhật trạng thái "${repair.deviceId}" thành "${newStatus}"`);
     }
   };
 
@@ -254,7 +235,7 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
   }));
 
   const exportCsvFile = () => {
-    if (exportRows.length === 0) return alert('Không có dữ liệu để xuất.');
+    if (exportRows.length === 0) { toast.warning('Không có dữ liệu để xuất.'); return; }
     exportCsv(exportRows, `BaoHong_SuaChua_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.csv`);
   };
 
@@ -423,28 +404,6 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
                 }
               </div>
 
-              <div className="input-group">
-                <label className="input-label">Hình ảnh đính kèm (tùy chọn)</label>
-                {!selectedImage ? (
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    style={{ cursor: 'pointer', border: '2px dashed #c2dbe9', borderRadius: '8px', padding: '24px', textAlign: 'center', background: '#f8fbff' }}
-                  >
-                    <Camera size={32} style={{ color: 'var(--primary)', margin: '0 auto 8px' }} />
-                    <span style={{ color: 'var(--text-secondary)' }}>Nhấn để chọn ảnh tình trạng máy</span>
-                  </div>
-                ) : (
-                  <div style={{ position: 'relative', width: '100%', maxWidth: '300px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                    <img src={selectedImage} alt="Preview" style={{ width: '100%', height: 'auto', display: 'block' }} />
-                    <button type="button" onClick={handleRemoveImage}
-                      style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                      <X size={16} />
-                    </button>
-                  </div>
-                )}
-                <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageUpload} style={{ display: 'none' }} />
-              </div>
-
               {message && (
                 <div style={{
                   color: message.startsWith('✅') ? 'var(--success)' : 'var(--danger)',
@@ -516,7 +475,7 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
                         </span>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={repairStatusVariant(repair.status)}>
+                        <Badge variant={getRepairStatusVariant(repair.status)}>
                           {isCompleted ? <CheckCircle size={12} /> :
                             isRejected ? <XCircle size={12} /> :
                             repair.status.toLowerCase().includes('sửa') ? <Wrench size={12} /> :
@@ -545,18 +504,7 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
                               <select
                                 value={statusOptions.includes(repair.status) ? repair.status : ''}
                                 onChange={(e) => handleStatusChange(repair, e.target.value)}
-                                style={{
-                                  padding: '6px 10px',
-                                  borderRadius: '8px',
-                                  border: '1.5px solid var(--border)',
-                                  background: '#fff',
-                                  cursor: 'pointer',
-                                  fontSize: '0.82rem',
-                                  outline: 'none',
-                                  color: 'var(--text-primary)',
-                                  minWidth: '130px',
-                                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                                }}
+                                className="status-select"
                               >
                                 <option value="" disabled>-- Cập nhật --</option>
                                 {statusOptions.map(opt => (
@@ -579,6 +527,16 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
           </CardBody>
         </Card>
       )}
+
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        onClose={() => { setConfirmOpen(false); setPendingStatusChange(null); }}
+        onConfirm={executeStatusChange}
+        title="Xác nhận cập nhật"
+        message={pendingStatusChange ? `Xác nhận cập nhật trạng thái "${pendingStatusChange.repair.deviceId}" thành "${pendingStatusChange.newStatus}"?` : ''}
+        confirmText="Cập nhật"
+        variant="primary"
+      />
     </div>
   );
 };
