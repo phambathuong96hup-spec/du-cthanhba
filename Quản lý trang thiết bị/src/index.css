@@ -1,25 +1,34 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* Colors - Modern Medical Theme (Teal & Navy) */
-  --primary: #0d9488; /* Medical Teal */
-  --primary-light: #5eead4;
-  --primary-dark: #0f766e;
+  /* Colors - Premium Medical & Analytics Theme */
+  --primary: #0077b6; /* Ocean Blue */
+  --primary-gradient: linear-gradient(135deg, #0077b6 0%, #00b4d8 100%);
+  --primary-light: #90e0ef;
+  --primary-dark: #03045e;
   
-  --secondary: #64748b; /* Slate */
+  --secondary: #64748b;
   --secondary-light: #e2e8f0;
   
-  --background: #f8fafc; /* Rất nhạt, sáng, sạch */
+  --background: #f1f5f9; /* Fallback */
+  --background-gradient: linear-gradient(120deg, #f0f4f8 0%, #e2e8f0 100%);
+  
   --surface: #ffffff;
   --surface-50: #f8fafc;
   --surface-100: #f1f5f9;
-  --bg-primary: #ffffff;
-  --bg-secondary: #f1f5f9;
   
-  --text-primary: #0f172a; /* Navy đậm */
+  /* Glassmorphism Tokens */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-bg-hover: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  --glass-blur: blur(12px);
+
+  --text-primary: #1e293b;
   --text-secondary: #475569;
   --text-inverse: #ffffff;
   
+  /* Vibrant Status Colors */
   --success: #10b981;
   --success-light: #d1fae5;
   --warning: #f59e0b;
@@ -34,25 +43,29 @@
   
   /* Layout */
   --sidebar-width: 260px;
-  --sidebar-collapsed-width: 76px;
-  --header-height: 64px;
+  --sidebar-collapsed-width: 80px;
+  --header-height: 72px;
   
   /* Typography */
   --font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   
-  /* Shadows - Soft & Modern */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-  --shadow-lg: 0 10px 25px -3px rgba(13, 148, 136, 0.1), 0 4px 6px -4px rgba(13, 148, 136, 0.05);
+  /* Premium Shadows */
+  --shadow-sm: 0 2px 4px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.1);
+  --shadow-primary: 0 8px 20px rgba(0, 119, 182, 0.25);
   
-  /* Radius - Pill & Rounded corners */
-  --radius-sm: 8px;
+  /* Radius - Smoother rounded corners */
+  --radius-sm: 10px;
   --radius-md: 16px;
   --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-pill: 999px;
   
   /* Transitions */
-  --transition-fast: 0.2s ease-out;
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 * {
