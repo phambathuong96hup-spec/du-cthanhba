@@ -16,6 +16,7 @@ import { exportCsv } from '../utils/exportCsv';
 import { Html5Qrcode } from 'html5-qrcode';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import './Transfers.css';
 
 import { transferStatusText, getTransferStatusVariant } from '../utils/statusUtils';
 
@@ -226,7 +227,7 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
   };
 
   return (
-    <div className="reports-page">
+    <div className="transfers-page">
       <div className="page-header">
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -253,10 +254,20 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
       {activeTab === 'create' ? (
         <Card>
           <CardBody>
-            <form onSubmit={submitTransfer} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="transfer-summary">
+              <div className="transfer-summary-icon">
+                <Repeat2 size={28} style={{ color: 'white' }} />
+              </div>
+              <div className="transfer-summary-info" style={{ flex: 1 }}>
+                <h3>Luân chuyển / Mượn thiết bị</h3>
+                <p>Tạo yêu cầu chuyển thiết bị giữa các khoa phòng.</p>
+              </div>
+            </div>
+
+            <form className="form-section" onSubmit={submitTransfer}>
               <div>
                 <label className="input-label">Loại yêu cầu</label>
-                <select className="filter-select" style={{ width: '100%', marginBottom: '8px' }} value={transferType} onChange={e => {
+                <select className="filter-select" style={{ marginBottom: '8px' }} value={transferType} onChange={e => {
                   setTransferType(e.target.value as 'Cho mượn' | 'Mượn' | 'Trả');
                   setToDepartment('');
                 }}>
@@ -306,7 +317,7 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
                   </div>
                 )}
                 {/* ===== End Scanner Modal ===== */}
-                <select className="filter-select" style={{ width: '100%' }} value={deviceId} onChange={e => setDeviceId(e.target.value)} required>
+                <select className="filter-select" value={deviceId} onChange={e => setDeviceId(e.target.value)} required>
                   <option value="" disabled>-- Chọn thiết bị --</option>
                   {transferableDevices.map(device => (
                     <option key={device.id} value={device.id}>{device.id} - {device.name}</option>
@@ -330,10 +341,20 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
               </div>
               <div>
                 <label className="input-label">Lý do</label>
-                <textarea className="input-field" rows={4} value={reason} onChange={e => setReason(e.target.value)} placeholder="Lý do, tình trạng bàn giao, phụ kiện đi kèm..." />
+                <textarea className="input-field" value={reason} onChange={e => setReason(e.target.value)} placeholder="Lý do, tình trạng bàn giao, phụ kiện đi kèm..." />
               </div>
-              {message && <div style={{ color: message.startsWith('Đã') ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>{message}</div>}
-              <Button type="submit" variant="primary" icon={isSaving ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={16} />} disabled={isSaving}>
+              {message && (
+                <div style={{
+                  color: message.startsWith('Đã') ? 'var(--success)' : 'var(--danger)',
+                  fontWeight: 600,
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  background: message.startsWith('Đã') ? 'var(--success-light)' : 'var(--danger-light)',
+                }}>
+                  {message}
+                </div>
+              )}
+              <Button type="submit" variant="primary" className="submit-btn" icon={isSaving ? <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={20} />} disabled={isSaving}>
                 {isSaving ? 'Đang gửi...' : 'Gửi yêu cầu sang khoa nhận'}
               </Button>
             </form>

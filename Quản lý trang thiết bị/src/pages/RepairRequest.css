@@ -1,47 +1,51 @@
-/* ===== Repair Request Page — Full-width layout matching Transfers ===== */
-
+/* Premium Glassmorphism for Repair Request */
 .repair-request-page {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.mobile-friendly-card {
-  border-radius: var(--radius-lg);
-  overflow: hidden;
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .device-summary {
   display: flex;
   align-items: flex-start;
   gap: 16px;
-  padding: 20px;
-  background-color: rgba(239, 68, 68, 0.05);
-  border-radius: var(--radius-md);
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.02));
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-xl);
   margin-bottom: 24px;
+  box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.05);
+  backdrop-filter: blur(10px);
 }
 
 .device-summary-icon {
-  width: 48px;
-  height: 48px;
-  background-color: white;
-  border-radius: var(--radius-sm);
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--danger);
-  border: 1px solid var(--border);
+  color: white;
   flex-shrink: 0;
+  box-shadow: 0 8px 16px rgba(239, 68, 68, 0.3);
 }
 
 .device-summary-info h3 {
-  font-size: 1.1rem;
+  font-size: 1.25rem;
   color: var(--text-primary);
   margin: 0 0 8px 0;
+  font-weight: 700;
 }
 
 .device-summary-info p {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--text-secondary);
   margin: 0;
 }
@@ -49,7 +53,7 @@
 .form-section {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
 .priority-options {
@@ -73,54 +77,57 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 16px;
+  gap: 12px;
+  padding: 20px;
   border: 2px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: center;
-  font-weight: 500;
+  font-weight: 600;
+  background: var(--surface);
+}
+
+.radio-card:hover .radio-label {
+  border-color: rgba(13, 148, 136, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+}
+
+.radio-card.urgent:hover .radio-label {
+  border-color: rgba(239, 68, 68, 0.5);
 }
 
 .radio-card input:checked + .radio-label {
   border-color: var(--primary);
-  background-color: rgba(13, 148, 136, 0.05);
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.1), rgba(13, 148, 136, 0.02));
   color: var(--primary-dark);
+  box-shadow: 0 8px 24px rgba(13, 148, 136, 0.15);
 }
 
 .radio-card.urgent input:checked + .radio-label {
   border-color: var(--danger);
-  background-color: rgba(220, 53, 69, 0.05);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.02));
   color: var(--danger);
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.15);
 }
 
 textarea.input-field {
   resize: vertical;
-  min-height: 120px;
+  min-height: 140px;
   font-family: inherit;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  transition: all 0.3s ease;
+  font-size: 1rem;
 }
 
-.photo-upload-btn {
-  width: 100%;
-  padding: 24px;
-  border: 2px dashed var(--border);
-  border-radius: var(--radius-md);
-  background: transparent;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.photo-upload-btn:hover {
-  background-color: var(--background);
+textarea.input-field:focus {
   border-color: var(--primary);
-  color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.1);
+  outline: none;
 }
 
 .submit-btn {
@@ -128,57 +135,79 @@ textarea.input-field {
   padding: 16px;
   font-size: 1.1rem;
   margin-top: 16px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  box-shadow: 0 8px 20px rgba(13, 148, 136, 0.3);
+  transition: all 0.3s ease;
 }
 
-/* Info grid - 2 columns */
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(13, 148, 136, 0.4);
+}
+
 .info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  padding: 12px 0;
+  gap: 16px;
+  padding: 16px;
+  background: var(--surface-50);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
 }
 
 .info-item {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .info-label {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
   font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .info-value {
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 600;
   color: var(--text-primary);
 }
 
-/* Spin animation for loader */
+/* Status Select Styling */
+.status-select {
+  padding: 8px 32px 8px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  background-color: var(--surface);
+  color: var(--text-primary);
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: all var(--transition-fast);
+}
+
+.status-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+}
+
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-/* Mobile specific styling */
 @media (max-width: 768px) {
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
   .priority-options {
     flex-direction: column;
   }
-
   .info-grid {
     grid-template-columns: 1fr;
-  }
-
-  .reports-tabs-container {
-    flex-wrap: wrap;
   }
 }
