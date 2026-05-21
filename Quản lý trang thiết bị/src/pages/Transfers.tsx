@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { CheckCircle, Download, FileText, Loader2, RefreshCw, Repeat2, Send, XCircle, X, Camera, Search } from 'lucide-react';
-import { Card, CardBody, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge, useToast } from '../components/ui';
+import { Card, CardBody, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge, useToast, FileUploader, Modal } from '../components/ui';
 import { matchSmartSearch } from '../utils/stringUtils';
 import {
   createTransfer,
@@ -40,6 +40,28 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
   const [scanResult, setScanResult] = useState('');
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const scannerContainerId = 'qr-scanner-region';
+
+  // File states
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  
+  // Receive Modal states
+  const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
+  const [pendingReceiveTransfer, setPendingReceiveTransfer] = useState<TransferData | null>(null);
+  const [receiveFile, setReceiveFile] = useState<File | null>(null);
+  const [receiveNote, setReceiveNote] = useState('');
+  const [isReceiving, setIsReceiving] = useState(false);
+
+  const readFileAsBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64String = (reader.result as string).split(',')[1];
+        resolve(base64String);
+      };
+      reader.onerror = error => reject(error);
+      reader.readAsDataURL(file);
+    });
+  };
 
   // Smart Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -186,6 +208,12 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
 
   const selectedDevice = devices.find(device => device.id === deviceId);
 
+  useEffect(() => {
+    if (transferType === 'Trả' && selectedDevice?.department) {
+      setToDepartment(selectedDevice.department);
+    }
+  }, [transferType, selectedDevice]);
+
   const submitTransfer = async (event: React.FormEvent) => {
     event.preventDefault();
     const actualToDepartment = transferType === 'Mượn' ? userDepartment : toDepartment;
@@ -195,21 +223,85 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
       return;
     }
     setIsSaving(true);
+    
+    let imageContent = '';
+    let imageName = '';
+    let imageMimeType = '';
+
+    if (selectedFile) {
+      try {
+        imageContent = await readFileAsBase64(selectedFile);
+        imageName = selectedFile.name;
+        imageMimeType = selectedFile.type;
+      } catch (err) {
+        toast.error('Lỗi khi đọc file đính kèm.');
+        setIsSaving(false);
+        return;
+      }
+    }
+    
     const finalReason = `[${transferType}] ${reason}`;
-    const response = await createTransfer({ deviceId, toDepartment: actualToDepartment, reason: finalReason, actorUsername: username });
+    const response = await createTransfer({ 
+      deviceId, 
+      toDepartment: actualToDepartment, 
+      reason: finalReason, 
+      actorUsername: username,
+      imageContent,
+      imageName,
+      imageMimeType
+    });
     setIsSaving(false);
     setMessage(response.message || '');
     if (response.success) {
       setReason('');
+      setSelectedFile(null);
       if (transferType === 'Cho mượn' || transferType === 'Trả') setToDepartment('');
       await loadData();
       setActiveTab('requests');
     }
   };
 
-  const handleReceive = async (transfer: TransferData) => {
-    const note = window.prompt('Ghi chú nhận thiết bị (nếu có):') || '';
-    const response = await receiveTransfer({ transferId: transfer.transferId, actorUsername: username, note });
+  const handleReceiveClick = (transfer: TransferData) => {
+    setPendingReceiveTransfer(transfer);
+    setReceiveNote('');
+    setReceiveFile(null);
+    setIsReceiveModalOpen(true);
+  };
+
+  const executeReceive = async () => {
+    if (!pendingReceiveTransfer) return;
+    setIsReceiving(true);
+    
+    let imageContent = '';
+    let imageName = '';
+    let imageMimeType = '';
+
+    if (receiveFile) {
+      try {
+        imageContent = await readFileAsBase64(receiveFile);
+        imageName = receiveFile.name;
+        imageMimeType = receiveFile.type;
+      } catch (err) {
+        toast.error('Lỗi khi đọc file đính kèm.');
+        setIsReceiving(false);
+        return;
+      }
+    }
+    
+    const response = await receiveTransfer({ 
+      transferId: pendingReceiveTransfer.transferId, 
+      actorUsername: username, 
+      note: receiveNote,
+      imageContent,
+      imageName,
+      imageMimeType
+    });
+    
+    setIsReceiving(false);
+    setIsReceiveModalOpen(false);
+    setPendingReceiveTransfer(null);
+    setReceiveFile(null);
+    
     toast.info(response.message || (response.success ? 'Đã nhận.' : 'Có lỗi xảy ra.'));
     await loadData();
   };
@@ -376,10 +468,12 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
               </div>
               <div>
                 <label className="input-label">{transferType === 'Cho mượn' || transferType === 'Trả' ? 'Khoa/phòng nhận' : 'Chuyển về khoa (Khoa của bạn)'}</label>
-                {transferType === 'Cho mượn' || transferType === 'Trả' ? (
+                {transferType === 'Trả' ? (
+                  <Input value={toDepartment} readOnly disabled required style={{ backgroundColor: 'var(--surface-50)' }} />
+                ) : transferType === 'Cho mượn' ? (
                   <Input value={toDepartment} onChange={e => setToDepartment(e.target.value)} list="transfer-depts" placeholder="Nhập hoặc chọn khoa/phòng nhận" required />
                 ) : (
-                  <Input value={userDepartment} readOnly disabled required style={{ backgroundColor: 'var(--background)' }} />
+                  <Input value={userDepartment} readOnly disabled required style={{ backgroundColor: 'var(--surface-50)' }} />
                 )}
                 <datalist id="transfer-depts">
                   {departments.filter(dept => dept !== selectedDevice?.department).map(dept => <option key={dept} value={dept} />)}
@@ -388,6 +482,14 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
               <div>
                 <label className="input-label">Lý do</label>
                 <textarea className="input-field" value={reason} onChange={e => setReason(e.target.value)} placeholder="Lý do, tình trạng bàn giao, phụ kiện đi kèm..." />
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <FileUploader 
+                  selectedFile={selectedFile}
+                  onFileSelect={setSelectedFile}
+                  label="Ảnh minh chứng tình trạng bàn giao (Tùy chọn)"
+                  maxSizeMB={5}
+                />
               </div>
               {message && (
                 <div style={{
@@ -519,7 +621,7 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
                       {transfer.status === 'PENDING_RECEIVE' && (activeTab === 'requests' || isAdmin) ? (
                         <div style={{ display: 'flex', gap: '8px' }}>
                           {(isAdmin || transfer.toDepartment === userDepartment) && (
-                            <Button size="sm" variant="success" icon={<CheckCircle size={14} />} onClick={() => handleReceive(transfer)}>Nhận</Button>
+                            <Button size="sm" variant="success" icon={<CheckCircle size={14} />} onClick={() => handleReceiveClick(transfer)}>Nhận</Button>
                           )}
                           {(isAdmin || transfer.toDepartment === userDepartment) && (
                             <Button size="sm" variant="danger" icon={<XCircle size={14} />} onClick={() => handleReject(transfer)}>Từ chối</Button>
@@ -539,6 +641,43 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
           </CardBody>
         </Card>
       )}
+
+      <Modal 
+        isOpen={isReceiveModalOpen} 
+        onClose={() => { if (!isReceiving) setIsReceiveModalOpen(false); }}
+        title="Xác nhận nhận thiết bị"
+      >
+        {pendingReceiveTransfer && (
+          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <p style={{ margin: 0 }}>Xác nhận nhận thiết bị <strong>{pendingReceiveTransfer.deviceName || pendingReceiveTransfer.deviceId}</strong> từ khoa <strong>{pendingReceiveTransfer.fromDepartment}</strong>?</p>
+            
+            <div>
+              <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', fontSize: '0.85rem' }}>Ghi chú nhận (Tùy chọn)</label>
+              <textarea 
+                className="input-field" 
+                value={receiveNote} 
+                onChange={e => setReceiveNote(e.target.value)} 
+                placeholder="Tình trạng lúc nhận, phụ kiện..." 
+                style={{ width: '100%' }}
+              />
+            </div>
+            
+            <FileUploader 
+              selectedFile={receiveFile}
+              onFileSelect={setReceiveFile}
+              label="Ảnh minh chứng lúc nhận (Tùy chọn)"
+              maxSizeMB={5}
+            />
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+              <Button variant="secondary" onClick={() => setIsReceiveModalOpen(false)} disabled={isReceiving}>Hủy</Button>
+              <Button variant="success" onClick={executeReceive} disabled={isReceiving} icon={isReceiving ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle size={16} />}>
+                {isReceiving ? 'Đang xử lý...' : 'Xác nhận nhận'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

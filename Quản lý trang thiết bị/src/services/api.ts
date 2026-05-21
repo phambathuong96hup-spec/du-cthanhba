@@ -269,7 +269,7 @@ export const reportRepair = async (payload: Record<string, unknown>) => {
   return postAction('reportRepair', payload);
 };
 
-export const approveRepair = async (payload: { rowId: string; deviceId: string; newStatus: string; approver?: string; note?: string }) => {
+export const approveRepair = async (payload: { rowId: string; deviceId: string; newStatus: string; approver?: string; note?: string; imageContent?: string; imageName?: string; imageMimeType?: string }) => {
   return postAction('approveRepair', payload);
 };
 
@@ -334,11 +334,14 @@ export const createTransfer = async (payload: {
   quantity?: string;
   reason?: string;
   actorUsername: string;
+  imageContent?: string;
+  imageName?: string;
+  imageMimeType?: string;
 }) => {
   return postAction('createTransfer', payload);
 };
 
-export const receiveTransfer = async (payload: { transferId: string; actorUsername: string; note?: string }) => {
+export const receiveTransfer = async (payload: { transferId: string; actorUsername: string; note?: string; imageContent?: string; imageName?: string; imageMimeType?: string }) => {
   return postAction('receiveTransfer', payload);
 };
 

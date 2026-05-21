@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, AlertTriangle, RefreshCw, FileText, X, Save, Plus, Upload, Eye, Edit } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, RefreshCw, FileText, X, Save, Plus, Eye, Edit } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Card, CardBody, Button, Badge, type BadgeVariant, Tabs, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Modal } from '../components/ui';
+import { Card, CardBody, Button, Badge, type BadgeVariant, Tabs, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Modal, FileUploader } from '../components/ui';
 import { createTransfer, fetchDevices, fetchTransfers, fetchRepairs, addDocument, type DeviceData, type TransferData, type RepairData, type DeviceDocument } from '../services/api';
 import { useAuth } from '../authContext';
 import './Devices.css';
@@ -616,63 +616,11 @@ const DeviceProfile: React.FC = () => {
                 />
               </div>
               <div style={{ gridColumn: '1 / -1', marginTop: '8px' }}>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  {docModalMode === 'edit' ? 'Thay thế file tài liệu (Để trống nếu giữ nguyên file cũ)' : 'File tài liệu đính kèm'}
-                </label>
-                <div 
-                  style={{ 
-                    border: '2px dashed var(--border)', 
-                    borderRadius: '12px', 
-                    padding: '20px', 
-                    textAlign: 'center', 
-                    cursor: 'pointer',
-                    background: 'var(--surface-50)',
-                    position: 'relative',
-                    transition: 'all 0.2s ease-in-out'
-                  }}
-                  onClick={() => document.getElementById('doc-file-input')?.click()}
-                >
-                  <input 
-                    type="file" 
-                    id="doc-file-input" 
-                    style={{ display: 'none' }} 
-                    onChange={e => {
-                      if (e.target.files && e.target.files[0]) {
-                        setSelectedFile(e.target.files[0]);
-                      }
-                    }}
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-                  />
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
-                    <Upload size={28} style={{ color: 'var(--primary)' }} />
-                    {selectedFile ? (
-                      <div>
-                        <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{selectedFile.name}</span>
-                        <span style={{ fontSize: '0.8rem', display: 'block', marginTop: '2px' }}>
-                          ({(selectedFile.size / (1024 * 1024)).toFixed(2)} MB)
-                        </span>
-                      </div>
-                    ) : (
-                      <div>
-                        <span style={{ fontWeight: '600', color: 'var(--primary)' }}>Nhấp để chọn file</span> hoặc kéo thả file vào đây
-                        <span style={{ fontSize: '0.8rem', display: 'block', marginTop: '2px', color: 'var(--text-secondary)' }}>
-                          Hỗ trợ PDF, Word, Excel, JPG, PNG (Tối đa 10MB)
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {selectedFile && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
-                    <button 
-                      type="button" 
-                      onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}
-                      style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.85rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                    >
-                      <X size={14} /> Xóa file đã chọn
-                    </button>
-                  </div>
-                )}
+                <FileUploader 
+                  selectedFile={selectedFile}
+                  onFileSelect={setSelectedFile}
+                  label={docModalMode === 'edit' ? 'Thay thế file tài liệu (Để trống nếu giữ nguyên file cũ)' : 'File tài liệu đính kèm'}
+                />
               </div>
             </div>
 

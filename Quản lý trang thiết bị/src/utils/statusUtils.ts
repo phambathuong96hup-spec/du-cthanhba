@@ -15,6 +15,7 @@ export const REPAIR_STATUS = {
   REJECTED: 'Từ chối',
   CHECKING: 'Đang kiểm tra',
   REPAIRING: 'Đang sửa chữa',
+  FIXED: 'Đã sửa xong',
   COMPLETED: 'Đã hoàn thành',
 } as const;
 
@@ -27,13 +28,14 @@ export const repairStatusText: Record<string, string> = {
   [REPAIR_STATUS.REJECTED]: 'Từ chối',
   [REPAIR_STATUS.CHECKING]: 'Đang kiểm tra',
   [REPAIR_STATUS.REPAIRING]: 'Đang sửa chữa',
+  [REPAIR_STATUS.FIXED]: 'Đã sửa xong',
   [REPAIR_STATUS.COMPLETED]: 'Đã hoàn thành',
 };
 
 /** Map a repair status string to a Badge variant for consistent color coding. */
 export const getRepairStatusVariant = (status: string): BadgeVariant => {
   const s = status.toLowerCase();
-  if (s.includes('hoàn thành') || s.includes('đã duyệt')) return 'success';
+  if (s.includes('hoàn thành') || s.includes('đã duyệt') || s.includes('sửa xong')) return 'success';
   if (s.includes('từ chối')) return 'danger';
   if (s.includes('chờ') || s.includes('kiểm tra')) return 'warning';
   if (s.includes('sửa')) return 'primary';

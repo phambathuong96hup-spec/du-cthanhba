@@ -3,7 +3,7 @@ import {
   AlertCircle, Clock, Send, ShieldAlert, ChevronDown, ScanLine,
   CheckCircle, XCircle, Download, FileText, Loader2, RefreshCw, Wrench, Search, X
 } from 'lucide-react';
-import { Card, CardBody, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge, useToast, ConfirmDialog } from '../components/ui';
+import { Card, CardBody, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge, useToast, FileUploader, Modal } from '../components/ui';
 import { reportRepair, fetchDevices, fetchRepairs, approveRepair, type DeviceData, type RepairData } from '../services/api';
 import { useAuth } from '../authContext';
 import { exportCsv } from '../utils/exportCsv';
@@ -32,6 +32,21 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
   const [priority, setPriority] = useState<'normal' | 'urgent'>('normal');
   const [isScanning, setIsScanning] = useState(false);
   const [message, setMessage] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [statusFile, setStatusFile] = useState<File | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+  const readFileAsBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64String = (reader.result as string).split(',')[1];
+        resolve(base64String);
+      };
+      reader.onerror = error => reject(error);
+      reader.readAsDataURL(file);
+    });
+  };
 
   // ===== Repairs data =====
   const [repairs, setRepairs] = useState<RepairData[]>([]);
@@ -175,11 +190,30 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
     }
     setIsSubmitting(true);
 
+    let imageContent = '';
+    let imageName = '';
+    let imageMimeType = '';
+
+    if (selectedFile) {
+      try {
+        imageContent = await readFileAsBase64(selectedFile);
+        imageName = selectedFile.name;
+        imageMimeType = selectedFile.type;
+      } catch (err) {
+        toast.error('Lỗi khi đọc file đính kèm.');
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     const response = await reportRepair({
       deviceId: priority === 'urgent' ? `[KHẨN] ${deviceId}` : deviceId,
       userName,
       userEmail,
       description,
+      imageContent,
+      imageName,
+      imageMimeType,
     });
 
     setIsSubmitting(false);
@@ -188,6 +222,7 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
       toast.success('Yêu cầu báo hỏng đã được gửi thành công!');
       setDescription('');
       setPriority('normal');
+      setSelectedFile(null);
       if (devices.length > 0) setDeviceId(devices[0].id);
       await loadData();
       setTimeout(() => setActiveTab('requests'), 1500);
@@ -236,13 +271,23 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
   const executeStatusChange = async () => {
     if (!pendingStatusChange) return;
     const { repair, newStatus } = pendingStatusChange;
-    setConfirmOpen(false);
-    setPendingStatusChange(null);
+    setIsUpdatingStatus(true);
+    
+    let imageContent = '';
+    let imageName = '';
+    let imageMimeType = '';
 
-    // Optimistic update
-    setRepairs(prev => prev.map(r =>
-      r.rowId === repair.rowId ? { ...r, status: newStatus } : r
-    ));
+    if (statusFile) {
+      try {
+        imageContent = await readFileAsBase64(statusFile);
+        imageName = statusFile.name;
+        imageMimeType = statusFile.type;
+      } catch (err) {
+        toast.error('Lỗi khi đọc file đính kèm.');
+        setIsUpdatingStatus(false);
+        return;
+      }
+    }
 
     const res = await approveRepair({
       rowId: repair.rowId,
@@ -250,14 +295,26 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
       newStatus,
       approver: userName,
       note: '',
+      imageContent,
+      imageName,
+      imageMimeType,
     });
+
+    setIsUpdatingStatus(false);
+    setConfirmOpen(false);
+    setPendingStatusChange(null);
+    setStatusFile(null);
 
     if (!res.success) {
       toast.error('Lỗi khi cập nhật: ' + res.message);
-      await loadData();
     } else {
+      // Optimistic update after success
+      setRepairs(prev => prev.map(r =>
+        r.rowId === repair.rowId ? { ...r, status: newStatus } : r
+      ));
       toast.success(`Đã cập nhật trạng thái "${repair.deviceId}" thành "${newStatus}"`);
     }
+    await loadData();
   };
 
   // ===== Export =====
@@ -293,7 +350,7 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
     doc.save(`BaoHong_SuaChua_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.pdf`);
   };
 
-  const statusOptions = ['Chờ duyệt', 'Đã duyệt', 'Đang kiểm tra', 'Đang sửa chữa', 'Đã hoàn thành', 'Từ chối'];
+  const statusOptions = ['Chờ duyệt', 'Đã duyệt', 'Đang kiểm tra', 'Đang sửa chữa', 'Đã sửa xong', 'Đã hoàn thành', 'Từ chối'];
 
   return (
     <div className="reports-page">
@@ -422,6 +479,15 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
                     required
                   />
                 </div>
+              </div>
+
+              <div className="input-group">
+                <FileUploader 
+                  selectedFile={selectedFile}
+                  onFileSelect={setSelectedFile}
+                  label="Ảnh minh chứng hỏng hóc (Tùy chọn)"
+                  maxSizeMB={5}
+                />
               </div>
 
               <div className="input-group">
@@ -633,15 +699,33 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
         </Card>
       )}
 
-      <ConfirmDialog
-        isOpen={confirmOpen}
-        onClose={() => { setConfirmOpen(false); setPendingStatusChange(null); }}
-        onConfirm={executeStatusChange}
-        title="Xác nhận cập nhật"
-        message={pendingStatusChange ? `Xác nhận cập nhật trạng thái "${pendingStatusChange.repair.deviceId}" thành "${pendingStatusChange.newStatus}"?` : ''}
-        confirmText="Cập nhật"
-        variant="primary"
-      />
+      <Modal 
+        isOpen={confirmOpen} 
+        onClose={() => { if (!isUpdatingStatus) { setConfirmOpen(false); setPendingStatusChange(null); setStatusFile(null); } }}
+        title="Xác nhận cập nhật tiến độ"
+      >
+        {pendingStatusChange && (
+          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <p style={{ margin: 0 }}>Xác nhận cập nhật trạng thái thiết bị <strong>{pendingStatusChange.repair.deviceId}</strong> thành <Badge variant="primary">{pendingStatusChange.newStatus}</Badge>?</p>
+            
+            {(pendingStatusChange.newStatus.includes('sửa xong') || pendingStatusChange.newStatus.includes('hoàn thành')) && (
+              <FileUploader 
+                selectedFile={statusFile}
+                onFileSelect={setStatusFile}
+                label="Ảnh minh chứng (Tùy chọn)"
+                maxSizeMB={5}
+              />
+            )}
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+              <Button variant="secondary" onClick={() => { setConfirmOpen(false); setPendingStatusChange(null); setStatusFile(null); }} disabled={isUpdatingStatus}>Hủy</Button>
+              <Button variant="primary" onClick={executeStatusChange} disabled={isUpdatingStatus} icon={isUpdatingStatus ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : undefined}>
+                {isUpdatingStatus ? 'Đang cập nhật...' : 'Cập nhật'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
