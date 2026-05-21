@@ -192,6 +192,10 @@ function route_(action, payload) {
       actor = requireAdmin_(payload);
       if (!actor) return authError_('Chỉ Admin được chạy migrate dữ liệu.');
       return migrateLegacyDevices_();
+    case 'editUser':
+      actor = requireAuthenticated_(payload);
+      if (!actor) return authError_();
+      return editUser_(payload);
     default:
       return { success: false, message: 'Action không hợp lệ: ' + action };
   }
@@ -1504,4 +1508,115 @@ function createDailyTrigger() {
   
   console.log('Đã tạo trigger hàng ngày cho checkComplianceDeadlines lúc 7:00 AM.');
   return { success: true, message: 'Đã tạo trigger quét đăng kiểm hàng ngày lúc 7:00 sáng.' };
+}
+
+function findUserRowIndex_(username) {
+  const sheet = userSheet_();
+  if (!sheet) return -1;
+  const values = sheet.getDataRange().getValues();
+  if (values.length < 2) return -1;
+  const headers = values[0];
+  
+  const keys = ['Tên đăng nhập', 'Ten dang nhap', 'Username', 'Tài khoản', 'Tai khoan', 'username'];
+  let usernameIndex = -1;
+  for (let i = 0; i < headers.length; i++) {
+    const normHeader = normalizeHeader_(headers[i]);
+    if (keys.some(k => normalizeHeader_(k) === normHeader)) {
+      usernameIndex = i;
+      break;
+    }
+  }
+  if (usernameIndex === -1) return -1;
+  
+  const normalized = normalize_(username);
+  for (let i = 1; i < values.length; i++) {
+    if (normalize_(values[i][usernameIndex]) === normalized) {
+      return i + 1;
+    }
+  }
+  return -1;
+}
+
+function updateUserRowByObject_(rowIndex, object) {
+  const sheet = userSheet_();
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const range = sheet.getRange(rowIndex, 1, 1, headers.length);
+  const row = range.getValues()[0];
+  headers.forEach((header, index) => {
+    const normHeader = normalizeHeader_(header);
+    const objKeys = Object.keys(object);
+    const matchingKey = objKeys.find(k => normalizeHeader_(k) === normHeader);
+    if (matchingKey !== undefined && object[matchingKey] !== undefined) {
+      row[index] = object[matchingKey];
+    }
+  });
+  range.setValues([row]);
+}
+
+function editUser_(payload) {
+  const actor = requireAuthenticated_(payload);
+  if (!actor) return authError_();
+  
+  const targetUsername = String(payload.username || userUsername_(actor)).trim();
+  const isEditingSelf = normalize_(userUsername_(actor)) === normalize_(targetUsername);
+  
+  if (!isEditingSelf && !isAdmin_(actor)) {
+    return { success: false, message: 'Bạn không có quyền chỉnh sửa thông tin của người dùng này.' };
+  }
+  
+  const rowIndex = findUserRowIndex_(targetUsername);
+  if (rowIndex < 2) {
+    return { success: false, message: 'Không tìm thấy tài khoản người dùng cần chỉnh sửa.' };
+  }
+  
+  // PIN update verification
+  const newPin = String(payload.newPin || payload.pin || '').trim();
+  if (newPin !== '') {
+    if (isEditingSelf) {
+      const currentPinInput = String(payload.currentPin || '').trim();
+      const targetUser = findUser_(targetUsername);
+      if (!targetUser) {
+        return { success: false, message: 'Không tìm thấy tài khoản người dùng.' };
+      }
+      const actualPin = String(getUserField_(targetUser, ['Mã PIN', 'Ma PIN', 'PIN', 'pin', 'Mật khẩu', 'Mat khau', 'Password', 'password', 'Mã pin', 'MÃ PIN']) || '').trim();
+      if (actualPin !== currentPinInput) {
+        return { success: false, message: 'Mã PIN hiện tại không chính xác.' };
+      }
+    }
+  }
+  
+  const updateData = {};
+  const setIfDefined = (targetKey, sourceKeys) => {
+    for (let k of sourceKeys) {
+      if (payload[k] !== undefined) {
+        updateData[targetKey] = String(payload[k]).trim();
+        break;
+      }
+    }
+  };
+
+  setIfDefined('Họ và Tên', ['fullName', 'Họ và Tên', 'Họ và tên', 'name']);
+  setIfDefined('Email', ['email', 'Email']);
+  setIfDefined('Khoa/Phòng', ['department', 'Khoa/Phòng', 'Khoa/Phong']);
+  
+  if (newPin !== '') {
+    updateData['Mã PIN'] = newPin;
+  }
+  
+  if (isAdmin_(actor)) {
+    setIfDefined('Quyền hạn', ['role', 'Quyền hạn', 'Quyen han']);
+    setIfDefined('Trạng thái', ['status', 'Trạng thái', 'Trang thai']);
+  }
+  
+  updateUserRowByObject_(rowIndex, updateData);
+  
+  // Return the updated user object (without sensitive fields)
+  const updatedUser = findUser_(targetUsername);
+  if (updatedUser) {
+    const safeUser = { ...updatedUser };
+    ['Mã PIN', 'Ma PIN', 'PIN', 'pin', 'Mật khẩu', 'Mat khau', 'Password', 'password', 'Mã pin', 'MÃ PIN'].forEach(k => delete safeUser[k]);
+    return { success: true, message: 'Cập nhật thông tin người dùng thành công.', user: safeUser };
+  }
+  
+  return { success: true, message: 'Cập nhật thông tin người dùng thành công.' };
 }

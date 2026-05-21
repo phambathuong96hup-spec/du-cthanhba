@@ -397,3 +397,33 @@ export const addDocument = async (payload: {
 }) => {
   return postAction('addDocument', payload);
 };
+
+export const fetchDepartments = async (): Promise<string[]> => {
+  const data = await safeFetch(`${GOOGLE_SHEETS_API_URL}?action=getDepartments`);
+  if (!data || !Array.isArray(data)) return [];
+  return data as string[];
+};
+
+export const editUser = async (payload: {
+  username?: string;
+  fullName?: string;
+  email?: string;
+  department?: string;
+  currentPin?: string;
+  newPin?: string;
+  role?: string;
+  status?: string;
+}): Promise<{ success: boolean; message: string; user?: UserData }> => {
+  const data = await postAction('editUser', payload);
+  if (data && data.success && data.user) {
+    const item = data.user as ApiRow;
+    data.user = {
+      username: getText(item, ['Tên đăng nhập', 'Username', 'username']),
+      role: getText(item, ['Quyền hạn', 'Quyền', 'Role'], 'User'),
+      name: getText(item, ['Họ và Tên', 'Họ và tên', 'Name'], 'Người dùng'),
+      email: getText(item, ['Email', 'email']),
+      department: getText(item, ['Khoa/Phòng', 'Khoa/Phong', 'Khoa/ Phòng', 'Khoa', 'Department', 'department']),
+    } as UserData;
+  }
+  return data;
+};

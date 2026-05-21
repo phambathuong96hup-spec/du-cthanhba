@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Menu, Search, Bell, ChevronDown, LogOut, LogIn, Info } from 'lucide-react';
+import { Menu, Search, Bell, ChevronDown, LogOut, LogIn, Info, User, Edit, Lock, Shield, Building2, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../authContext';
 import { useRepairs } from '../../hooks/useRepairs';
 import { useTransfers } from '../../hooks/useTransfers';
 import { useDevices } from '../../hooks/useDevices';
+import { Modal, Input, Button, useToast } from '../ui';
+import { fetchDepartments, editUser } from '../../services/api';
 import './TopNav.css';
 
 interface TopNavProps {
@@ -22,12 +24,97 @@ interface NotificationItem {
 
 const TopNav: React.FC<TopNavProps> = ({ toggleSidebar }) => {
   const navigate = useNavigate();
-  const { isAuthenticated, name, role, email, department, logout } = useAuth();
+  const { isAuthenticated, username, name, role, email, department, token, expiresAt, login, logout } = useAuth();
+  const toast = useToast();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const profileRef = useRef<HTMLDivElement>(null);
   const bellRef = useRef<HTMLDivElement>(null);
+
+  // Profile View & Edit states
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Form states for profile edit
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editDept, setEditDept] = useState('');
+  const [changePin, setChangePin] = useState(false);
+  const [currentPin, setCurrentPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+
+  // Department choices autocomplete
+  const [departments, setDepartments] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (showEditModal) {
+      fetchDepartments()
+        .then((depts) => {
+          if (Array.isArray(depts)) {
+            setDepartments(depts);
+          }
+        })
+        .catch((err) => {
+          console.error('Lỗi tải danh sách khoa phòng:', err);
+        });
+    }
+  }, [showEditModal]);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!editName.trim()) {
+      toast.error('Vui lòng nhập họ và tên.');
+      return;
+    }
+
+    if (changePin) {
+      if (!currentPin) {
+        toast.error('Vui lòng nhập mã PIN hiện tại.');
+        return;
+      }
+      if (!newPin) {
+        toast.error('Vui lòng nhập mã PIN mới.');
+        return;
+      }
+      if (newPin !== confirmPin) {
+        toast.error('Mã PIN mới và xác nhận mã PIN không khớp.');
+        return;
+      }
+    }
+
+    setIsSaving(true);
+    try {
+      const res = await editUser({
+        username: username,
+        fullName: editName.trim(),
+        email: editEmail.trim(),
+        department: editDept.trim(),
+        currentPin: changePin ? currentPin : undefined,
+        newPin: changePin ? newPin : undefined,
+      });
+
+      if (res.success && res.user) {
+        login({
+          ...res.user,
+          token,
+          expiresAt,
+        });
+        toast.success(res.message || 'Cập nhật thông tin thành công.');
+        setShowEditModal(false);
+      } else {
+        toast.error(res.message || 'Cập nhật thông tin thất bại.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Không thể kết nối đến máy chủ.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const { repairs } = useRepairs();
   const { transfers } = useTransfers();
@@ -277,13 +364,38 @@ const TopNav: React.FC<TopNavProps> = ({ toggleSidebar }) => {
             <ChevronDown size={16} color="var(--text-secondary)" />
 
             {showDropdown && (
-              <div className="user-dropdown">
+              <div className="user-dropdown" onClick={(e) => e.stopPropagation()}>
                 <div className="user-dropdown-info">
                   <div className="dropdown-name">{name}</div>
                   <div className="dropdown-dept">
                     {department || (role?.toLowerCase() === 'admin' ? 'Quản trị viên' : 'Nhân viên')}
                   </div>
                 </div>
+                <button
+                  onClick={() => {
+                    setShowDropdown(false);
+                    setShowViewModal(true);
+                  }}
+                  className="user-dropdown-item"
+                >
+                  <User size={16} /> Xem thông tin
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDropdown(false);
+                    setEditName(name || '');
+                    setEditEmail(email || '');
+                    setEditDept(department || '');
+                    setChangePin(false);
+                    setCurrentPin('');
+                    setNewPin('');
+                    setConfirmPin('');
+                    setShowEditModal(true);
+                  }}
+                  className="user-dropdown-item"
+                >
+                  <Edit size={16} /> Sửa thông tin
+                </button>
                 <button
                   onClick={handleLogout}
                   className="user-dropdown-item danger"
@@ -304,6 +416,177 @@ const TopNav: React.FC<TopNavProps> = ({ toggleSidebar }) => {
           </button>
         )}
       </div>
+
+      {/* Modal Xem thông tin */}
+      <Modal
+        isOpen={showViewModal}
+        onClose={() => setShowViewModal(false)}
+        title="Thông tin cá nhân"
+        size="md"
+        footer={
+          <Button variant="secondary" onClick={() => setShowViewModal(false)}>
+            Đóng
+          </Button>
+        }
+      >
+        <div className="profile-view-container">
+          <div className="profile-view-header">
+            <div className="profile-view-avatar">{initial}</div>
+            <h3 className="profile-view-name">{name}</h3>
+            <span className="profile-view-badge">
+              {role?.toLowerCase() === 'admin' ? 'Quản trị viên' : 'Nhân viên'}
+            </span>
+          </div>
+
+          <div className="profile-view-details">
+            <div className="profile-detail-row">
+              <div className="profile-detail-label">
+                <User size={16} />
+                <span>Tên đăng nhập</span>
+              </div>
+              <div className="profile-detail-value">{username}</div>
+            </div>
+
+            <div className="profile-detail-row">
+              <div className="profile-detail-label">
+                <Mail size={16} />
+                <span>Email</span>
+              </div>
+              <div className="profile-detail-value">{email || '(Chưa cập nhật)'}</div>
+            </div>
+
+            <div className="profile-detail-row">
+              <div className="profile-detail-label">
+                <Building2 size={16} />
+                <span>Khoa / Phòng</span>
+              </div>
+              <div className="profile-detail-value">{department || '(Chưa cập nhật)'}</div>
+            </div>
+
+            <div className="profile-detail-row">
+              <div className="profile-detail-label">
+                <Shield size={16} />
+                <span>Vai trò hệ thống</span>
+              </div>
+              <div className="profile-detail-value">
+                {role?.toLowerCase() === 'admin' ? 'Quản trị viên (Admin)' : 'Nhân viên (User)'}
+              </div>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal Sửa thông tin */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => !isSaving && setShowEditModal(false)}
+        title="Cập nhật thông tin cá nhân"
+        size="md"
+      >
+        <form onSubmit={handleSaveProfile} className="profile-edit-form">
+          <Input
+            label="Họ và Tên"
+            type="text"
+            placeholder="Nhập họ và tên..."
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            disabled={isSaving}
+            required
+            icon={<User size={16} />}
+          />
+
+          <Input
+            label="Email"
+            type="email"
+            placeholder="Nhập email..."
+            value={editEmail}
+            onChange={(e) => setEditEmail(e.target.value)}
+            disabled={isSaving}
+            icon={<Mail size={16} />}
+          />
+
+          <Input
+            label="Khoa / Phòng"
+            type="text"
+            list="edit-profile-depts"
+            placeholder="Chọn hoặc nhập khoa phòng..."
+            value={editDept}
+            onChange={(e) => setEditDept(e.target.value)}
+            disabled={isSaving}
+            icon={<Building2 size={16} />}
+          />
+          <datalist id="edit-profile-depts">
+            {departments.map((dept) => (
+              <option key={dept} value={dept} />
+            ))}
+          </datalist>
+
+          <div className="change-pin-section">
+            <label className="checkbox-container">
+              <input
+                type="checkbox"
+                checked={changePin}
+                onChange={(e) => setChangePin(e.target.checked)}
+                disabled={isSaving}
+              />
+              <span className="checkbox-checkmark"></span>
+              <span className="checkbox-label">Thay đổi mã PIN đăng nhập</span>
+            </label>
+
+            {changePin && (
+              <div className="pin-fields-grid">
+                <Input
+                  label="Mã PIN hiện tại"
+                  type="password"
+                  placeholder="Nhập mã PIN cũ..."
+                  value={currentPin}
+                  onChange={(e) => setCurrentPin(e.target.value)}
+                  disabled={isSaving}
+                  required={changePin}
+                  icon={<Lock size={16} />}
+                />
+                
+                <div className="pin-new-fields">
+                  <Input
+                    label="Mã PIN mới"
+                    type="password"
+                    placeholder="Mã PIN mới..."
+                    value={newPin}
+                    onChange={(e) => setNewPin(e.target.value)}
+                    disabled={isSaving}
+                    required={changePin}
+                    icon={<Lock size={16} />}
+                  />
+                  <Input
+                    label="Xác nhận mã PIN mới"
+                    type="password"
+                    placeholder="Nhập lại mã PIN mới..."
+                    value={confirmPin}
+                    onChange={(e) => setConfirmPin(e.target.value)}
+                    disabled={isSaving}
+                    required={changePin}
+                    icon={<Lock size={16} />}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="profile-edit-footer">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowEditModal(false)}
+              disabled={isSaving}
+            >
+              Hủy
+            </Button>
+            <Button type="submit" variant="primary" disabled={isSaving}>
+              {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </header>
   );
 };
