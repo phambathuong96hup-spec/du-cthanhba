@@ -120,6 +120,7 @@
 }
 
 .user-profile {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -193,7 +194,7 @@
 /* User Dropdown Menu */
 .user-dropdown {
   position: absolute;
-  top: calc(100% + 12px);
+  top: calc(100% + 4px);
   right: 0;
   min-width: 240px;
   background: var(--surface);
@@ -279,7 +280,7 @@
 
 .notification-dropdown {
   position: absolute;
-  top: calc(100% + 12px);
+  top: calc(100% + 4px);
   right: 0;
   width: 340px;
   max-height: 420px;
