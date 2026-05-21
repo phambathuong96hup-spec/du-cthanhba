@@ -132,7 +132,7 @@ const DeviceList: React.FC = () => {
       'Mã thiết bị': d.id,
       'Tên thiết bị': d.name,
       'Khoa/Phòng': d.department,
-      'Trạng thái': (d['Hiện trạng thực tế'] || d.status) === 'O' ? 'Hoạt động tốt' : 'Báo hỏng/Khác',
+      'Trạng thái': d.status || 'Đang sử dụng',
       'Ngày nhập / Đăng kiểm': d.dateAdded,
     }));
     exportCsv(exportData, 'DanhSachThietBi_ThanhBa.csv');
@@ -212,7 +212,7 @@ const DeviceList: React.FC = () => {
         <Card className="stat-card success-gradient">
           <div className="stat-icon-wrapper"><CheckCircle size={28} /></div>
           <div className="stat-content">
-            <h3>{devices.filter(d => !d['Hiện trạng thực tế'] || String(d['Hiện trạng thực tế']).includes('Hoạt động') || d.status === 'O').length}</h3>
+            <h3>{devices.filter(d => { const s = d.status.toLowerCase(); return !s.includes('hỏng') && !s.includes('sửa chữa'); }).length}</h3>
             <p>Đang hoạt động</p>
           </div>
         </Card>

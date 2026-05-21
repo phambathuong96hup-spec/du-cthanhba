@@ -201,7 +201,7 @@ export const fetchDevices = async (): Promise<DeviceData[]> => {
       id: isOldFormat ? getText(item, ['id', 'Seri Máy'], `TB-${String(index + 1).padStart(3, '0')}`) : getText(item, ['serial'], `TB-${String(index + 1).padStart(3, '0')}`),
       name: isOldFormat ? getText(item, ['Tên Thiết bị']) : getText(item, ['name']),
       department: isOldFormat ? getText(item, ['Nơi đặt thiết bị'], 'Chưa phân bổ') : getText(item, ['location'], 'Chưa phân bổ'),
-      status: 'O',
+      status: isOldFormat ? getText(item, ['Hiện trạng thực tế'], 'Đang sử dụng') : getText(item, ['status'], 'Đang sử dụng'),
       dateAdded: isOldFormat ? getText(item, ['Ngày cấp/ Ngày Đăng kiểm'], 'N/A') : (documents[0]?.issuedDate || 'N/A'),
       documents,
       alertLevel,

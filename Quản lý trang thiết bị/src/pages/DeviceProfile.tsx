@@ -253,9 +253,15 @@ const DeviceProfile: React.FC = () => {
                     <h1>{device.name}</h1>
                     <div className="device-id">{device.id}</div>
                     <div>
-                      <Badge variant={device.status === 'O' ? 'success' : 'warning'}>
-                        {device.status === 'O' ? 'Đang hoạt động tốt' : 'Báo hỏng / Khác'}
-                      </Badge>
+                      {(() => {
+                        const s = device.status.toLowerCase();
+                        const isBroken = s.includes('hỏng') || s.includes('sửa chữa');
+                        return (
+                          <Badge variant={isBroken ? 'danger' : 'success'}>
+                            {device.status}
+                          </Badge>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
