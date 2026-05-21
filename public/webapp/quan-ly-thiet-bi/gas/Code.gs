@@ -49,7 +49,8 @@ const DOCUMENT_HEADERS = [
   'Phối hợp thực hiện',
   'Giao quản lý tại khoa',
   'Ngày tạo',
-  'Ngày cập nhật'
+  'Ngày cập nhật',
+  'Link tài liệu'
 ];
 
 const USER_HEADERS = ['Tên đăng nhập', 'Mã PIN', 'Quyền hạn', 'Họ và Tên', 'Email', 'Khoa/Phòng', 'Trạng thái'];
@@ -153,6 +154,10 @@ function route_(action, payload) {
       actor = requireAdmin_(payload);
       if (!actor) return authError_('Chỉ Admin được cập nhật trạng thái hồ sơ.');
       return updateDocStatus_(payload);
+    case 'addDocument':
+      actor = requireAdmin_(payload);
+      if (!actor) return authError_('Chỉ Admin được thêm hoặc cập nhật tài liệu.');
+      return addDocument_(payload);
     case 'createTransfer':
       actor = requireAuthenticated_(payload);
       if (!actor) return authError_();
@@ -894,6 +899,94 @@ function updateDocStatus_(payload) {
   });
   
   return { success: true, message: 'Đã cập nhật trạng thái tài liệu ' + docType + ' của thiết bị ' + deviceId + ' thành "' + status + '".' };
+}
+
+function addDocument_(payload) {
+  const deviceId = String(payload.serial || '').trim();
+  const docType = String(payload.docType || '').trim();
+  
+  if (!deviceId || !docType) {
+    return { success: false, message: 'Thiếu DeviceId hoặc Loại tài liệu.' };
+  }
+  
+  let fileUrl = payload.fileUrl || '';
+  
+  // Nếu có file đính kèm dạng Base64
+  if (payload.fileContent && payload.fileName) {
+    try {
+      let folder;
+      try {
+        const ss = SpreadsheetApp.openById(DEVICE_SPREADSHEET_ID);
+        const parentFolder = DriveApp.getFileById(ss.getId()).getParents().next();
+        const folders = parentFolder.getFoldersByName('Tài liệu kiểm định');
+        if (folders.hasNext()) {
+          folder = folders.next();
+        } else {
+          folder = parentFolder.createFolder('Tài liệu kiểm định');
+        }
+      } catch (e) {
+        folder = DriveApp.getRootFolder();
+      }
+      
+      const decoded = Utilities.base64Decode(payload.fileContent);
+      const blob = Utilities.newBlob(decoded, payload.mimeType || 'application/pdf', payload.fileName);
+      const file = folder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      fileUrl = file.getUrl();
+    } catch (err) {
+      return { success: false, message: 'Không thể tải file lên Google Drive: ' + err.toString() };
+    }
+  }
+  
+  // Kiểm tra xem đã tồn tại loại tài liệu này cho thiết bị chưa
+  const rows = getRows_(SHEETS.documents);
+  let foundIndex = -1;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (String(row.DeviceId || '').trim() === deviceId && String(row['Loại tài liệu'] || '').trim() === docType) {
+      foundIndex = i + 2;
+      break;
+    }
+  }
+  
+  const existingLink = foundIndex >= 2 ? rows[foundIndex - 2]['Link tài liệu'] || '' : '';
+  const finalFileUrl = fileUrl || existingLink;
+  
+  const docData = {
+    'DeviceId': deviceId,
+    'Loại tài liệu': docType,
+    'Số văn bản / Số Đăng kiểm': payload.licenseNo || '',
+    'Ngày cấp / Ngày Đăng kiểm': payload.issuedDate || '',
+    'Hạn đăng kiểm / Hạn hiệu lực': payload.expiryDate || '',
+    'Thời gian chuẩn bị hồ sơ (ngày)': payload.prepTime || '',
+    'Trạng thái Hồ sơ': payload.status || 'Chưa gửi',
+    'Người chịu trách nhiệm': payload.responsible || '',
+    'Phối hợp thực hiện': payload.collaborator || '',
+    'Giao quản lý tại khoa': payload.deptManager || '',
+    'Link tài liệu': finalFileUrl,
+    'Ngày cập nhật': new Date()
+  };
+  
+  if (foundIndex >= 2) {
+    // Cập nhật tài liệu cũ
+    updateRowByObject_(SHEETS.documents, foundIndex, docData);
+    return { success: true, message: 'Đã cập nhật thông tin tài liệu và file.', fileUrl: finalFileUrl };
+  } else {
+    // Tạo mới tài liệu
+    docData['Ngày tạo'] = new Date();
+    
+    // Lấy tên thiết bị để ghi vào sheet documents cho dễ theo dõi
+    let deviceName = '';
+    const devRows = getRows_(SHEETS.devices);
+    const dev = devRows.find(d => String(d.id || '').trim() === deviceId);
+    if (dev) {
+      deviceName = dev['Tên Thiết bị'] || dev.name || '';
+    }
+    docData['Tên Thiết bị'] = deviceName;
+    
+    appendObject_(SHEETS.documents, docData);
+    return { success: true, message: 'Đã thêm mới tài liệu và file thành công.', fileUrl: finalFileUrl };
+  }
 }
 
 function addGSP_(payload) {

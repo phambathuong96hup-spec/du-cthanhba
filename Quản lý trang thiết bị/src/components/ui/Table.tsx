@@ -26,8 +26,8 @@ export const TableRow: React.FC<{ children: React.ReactNode; className?: string 
   return <tr className={className}>{children}</tr>;
 };
 
-export const TableHeader: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => {
-  return <th className={className}>{children}</th>;
+export const TableHeader: React.FC<{ children: React.ReactNode; className?: string; style?: React.CSSProperties }> = ({ children, className = '', style }) => {
+  return <th className={className} style={style}>{children}</th>;
 };
 
 export const TableCell: React.FC<{ children: React.ReactNode; className?: string; colSpan?: number; style?: React.CSSProperties }> = ({ children, className = '', colSpan, style }) => {

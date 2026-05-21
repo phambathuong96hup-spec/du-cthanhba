@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, AlertTriangle, RefreshCw, FileText, X, Save } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, RefreshCw, FileText, X, Save, Plus, Upload, Eye, Edit } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Card, CardBody, Button, Badge, type BadgeVariant, Tabs, Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/ui';
-import { createTransfer, fetchDevices, fetchTransfers, fetchRepairs, type DeviceData, type TransferData, type RepairData } from '../services/api';
+import { Card, CardBody, Button, Badge, type BadgeVariant, Tabs, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Modal } from '../components/ui';
+import { createTransfer, fetchDevices, fetchTransfers, fetchRepairs, addDocument, type DeviceData, type TransferData, type RepairData, type DeviceDocument } from '../services/api';
 import { useAuth } from '../authContext';
 import './Devices.css';
 
 const DeviceProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAuthenticated, username } = useAuth();
+  const { isAuthenticated, username, isAdmin } = useAuth();
   const [device, setDevice] = useState<DeviceData | null>(null);
   const [transfers, setTransfers] = useState<TransferData[]>([]);
   const [repairs, setRepairs] = useState<RepairData[]>([]);
@@ -21,6 +21,25 @@ const DeviceProfile: React.FC = () => {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [newDept, setNewDept] = useState('');
   const [transferNote, setTransferNote] = useState('');
+
+  // State quản lý tài liệu
+  const [showDocModal, setShowDocModal] = useState(false);
+  const [docModalMode, setDocModalMode] = useState<'add' | 'edit'>('add');
+  const [isUploading, setIsUploading] = useState(false);
+  
+  // File upload
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  
+  // Form tài liệu
+  const [docType, setDocType] = useState('');
+  const [licenseNo, setLicenseNo] = useState('');
+  const [issuedDate, setIssuedDate] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [prepTime, setPrepTime] = useState('');
+  const [docStatus, setDocStatus] = useState('Chưa gửi');
+  const [responsible, setResponsible] = useState('');
+  const [collaborator, setCollaborator] = useState('');
+  const [deptManager, setDeptManager] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
@@ -158,61 +177,234 @@ const DeviceProfile: React.FC = () => {
     </Table>
   );
 
+  // Helpers chuyển đổi định dạng ngày
+  const formatDateToDDMMYYYY = (dateStr: string) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  };
+
+  const formatDateToYYYYMMDD = (dateStr: string) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+    try {
+      const d = new Date(dateStr);
+      if (!isNaN(d.getTime())) {
+        return d.toISOString().split('T')[0];
+      }
+    } catch (e) {}
+    return dateStr;
+  };
+
+  // Helper chuyển đổi file sang Base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  // Mở modal thêm/sửa tài liệu
+  const handleOpenDocModal = (mode: 'add' | 'edit', doc?: DeviceDocument) => {
+    setDocModalMode(mode);
+    setSelectedFile(null);
+    
+    if (mode === 'edit' && doc) {
+      setDocType(doc.docType || '');
+      setLicenseNo(doc.licenseNo || '');
+      setIssuedDate(formatDateToYYYYMMDD(doc.issuedDate || ''));
+      setExpiryDate(formatDateToYYYYMMDD(doc.expiryDate || ''));
+      setPrepTime(doc.prepTime || '');
+      setDocStatus(doc.status || 'Chưa gửi');
+      setResponsible(doc.responsible || '');
+      setCollaborator(doc.collaborator || '');
+      setDeptManager(doc.deptManager || '');
+    } else {
+      setDocType('');
+      setLicenseNo('');
+      setIssuedDate('');
+      setExpiryDate('');
+      setPrepTime('');
+      setDocStatus('Chưa gửi');
+      setResponsible('');
+      setCollaborator('');
+      setDeptManager('');
+    }
+    setShowDocModal(true);
+  };
+
+  // Submit tài liệu (lưu & upload)
+  const handleSubmitDoc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!device) return;
+    if (!docType.trim()) {
+      alert('Vui lòng chọn hoặc nhập Loại tài liệu.');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      let fileContent = '';
+      let fileName = '';
+      let mimeType = '';
+
+      if (selectedFile) {
+        if (selectedFile.size > 10 * 1024 * 1024) {
+          alert('Kích thước file quá lớn (tối đa 10MB).');
+          setIsUploading(false);
+          return;
+        }
+        fileContent = await fileToBase64(selectedFile);
+        fileName = selectedFile.name;
+        mimeType = selectedFile.type;
+      }
+
+      const res = await addDocument({
+        serial: device.id,
+        docType: docType.trim(),
+        licenseNo: licenseNo.trim(),
+        issuedDate: formatDateToDDMMYYYY(issuedDate),
+        expiryDate: formatDateToDDMMYYYY(expiryDate),
+        prepTime: prepTime.trim(),
+        status: docStatus,
+        responsible: responsible.trim(),
+        collaborator: collaborator.trim(),
+        deptManager: deptManager.trim(),
+        fileContent,
+        fileName,
+        mimeType,
+      });
+
+      alert((res.success ? '✅ ' : '❌ ') + (res.message || 'Có lỗi xảy ra.'));
+      if (res.success) {
+        const data = await fetchDevices();
+        const found = data.find(d => d.id === device.id);
+        if (found) setDevice(found);
+        setShowDocModal(false);
+        setSelectedFile(null);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('❌ Đã xảy ra lỗi trong quá trình lưu tài liệu.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const documentsTab = (() => {
     const docs = device?.documents || [];
-    if (docs.length === 0) {
-      return (
-        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          <FileText size={48} style={{ opacity: 0.3, marginBottom: '12px' }} />
-          <p>Thiết bị này chưa có tài liệu kiểm định / đăng kiểm nào.</p>
-        </div>
-      );
-    }
     return (
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableHeader>Loại tài liệu</TableHeader>
-            <TableHeader>Số văn bản</TableHeader>
-            <TableHeader>Ngày cấp</TableHeader>
-            <TableHeader>Hạn hiệu lực</TableHeader>
-            <TableHeader>Thời gian chuẩn bị</TableHeader>
-            <TableHeader>Trạng thái</TableHeader>
-            <TableHeader>Người chịu TN</TableHeader>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {docs.map((doc, idx) => {
-            const days = doc.daysUntilExpiry;
-            let badgeVariant: BadgeVariant = 'neutral';
-            let daysText = '';
-            if (days !== null) {
-              if (days < 0) { badgeVariant = 'danger'; daysText = `Quá hạn ${Math.abs(days)} ngày`; }
-              else if (days <= 7) { badgeVariant = 'danger'; daysText = `Còn ${days} ngày`; }
-              else if (days <= 30) { badgeVariant = 'warning'; daysText = `Còn ${days} ngày`; }
-              else { badgeVariant = 'success'; daysText = `Còn ${days} ngày`; }
-            }
-            return (
-              <TableRow key={idx}>
-                <TableCell><strong>{doc.docType || '—'}</strong></TableCell>
-                <TableCell>{doc.licenseNo || '—'}</TableCell>
-                <TableCell>{doc.issuedDate || '—'}</TableCell>
-                <TableCell>
-                  {doc.expiryDate || '—'}
-                  {daysText && <div><Badge variant={badgeVariant}>{daysText}</Badge></div>}
-                </TableCell>
-                <TableCell>{doc.prepTime ? `${doc.prepTime} ngày` : '—'}</TableCell>
-                <TableCell>
-                  <Badge variant={doc.status === 'Đã gửi' || doc.status === 'Đã phê duyệt' ? 'success' : doc.status === 'Đang xử lý' ? 'warning' : 'neutral'}>
-                    {doc.status || 'Chưa gửi'}
-                  </Badge>
-                </TableCell>
-                <TableCell>{doc.responsible || '—'}</TableCell>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {isAdmin && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<Plus size={16} />}
+              onClick={() => handleOpenDocModal('add')}
+            >
+              Thêm tài liệu mới
+            </Button>
+          </div>
+        )}
+        
+        {docs.length === 0 ? (
+          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            <FileText size={48} style={{ opacity: 0.3, marginBottom: '12px' }} />
+            <p>Thiết bị này chưa có tài liệu kiểm định / đăng kiểm nào.</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableHeader>Loại tài liệu</TableHeader>
+                <TableHeader>Số văn bản</TableHeader>
+                <TableHeader>Ngày cấp</TableHeader>
+                <TableHeader>Hạn hiệu lực</TableHeader>
+                <TableHeader>Thời gian chuẩn bị</TableHeader>
+                <TableHeader>Trạng thái</TableHeader>
+                <TableHeader>Người chịu TN</TableHeader>
+                <TableHeader>File đính kèm</TableHeader>
+                {isAdmin && <TableHeader style={{ textAlign: 'right' }}>Thao tác</TableHeader>}
               </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+            </TableHead>
+            <TableBody>
+              {docs.map((doc, idx) => {
+                const days = doc.daysUntilExpiry;
+                let badgeVariant: BadgeVariant = 'neutral';
+                let daysText = '';
+                if (days !== null) {
+                  if (days < 0) { badgeVariant = 'danger'; daysText = `Quá hạn ${Math.abs(days)} ngày`; }
+                  else if (days <= 7) { badgeVariant = 'danger'; daysText = `Còn ${days} ngày`; }
+                  else if (days <= 30) { badgeVariant = 'warning'; daysText = `Còn ${days} ngày`; }
+                  else { badgeVariant = 'success'; daysText = `Còn ${days} ngày`; }
+                }
+                return (
+                  <TableRow key={idx}>
+                    <TableCell><strong>{doc.docType || '—'}</strong></TableCell>
+                    <TableCell>{doc.licenseNo || '—'}</TableCell>
+                    <TableCell>{doc.issuedDate || '—'}</TableCell>
+                    <TableCell>
+                      {doc.expiryDate || '—'}
+                      {daysText && <div><Badge variant={badgeVariant}>{daysText}</Badge></div>}
+                    </TableCell>
+                    <TableCell>{doc.prepTime ? `${doc.prepTime} ngày` : '—'}</TableCell>
+                    <TableCell>
+                      <Badge variant={doc.status === 'Đã gửi' || doc.status === 'Đã phê duyệt' ? 'success' : doc.status === 'Đang xử lý' ? 'warning' : 'neutral'}>
+                        {doc.status || 'Chưa gửi'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{doc.responsible || '—'}</TableCell>
+                    <TableCell>
+                      {doc.fileUrl ? (
+                        <a
+                          href={doc.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="file-link"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--primary)', fontWeight: 600, textDecoration: 'none' }}
+                        >
+                          <Eye size={14} />
+                          Xem file
+                        </a>
+                      ) : (
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Không có file</span>
+                      )}
+                    </TableCell>
+                    {isAdmin && (
+                      <TableCell style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            style={{ padding: '4px 8px', minHeight: 'auto', height: '28px', fontSize: '0.8rem' }}
+                            icon={<Edit size={12} />}
+                            onClick={() => handleOpenDocModal('edit', doc)}
+                          >
+                            Sửa
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     );
   })();
 
@@ -309,6 +501,219 @@ const DeviceProfile: React.FC = () => {
                 <Button variant="primary" icon={<Save size={16} />} onClick={handleTransfer}>Ghi nhận điều chuyển</Button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal thêm/sửa tài liệu */}
+      {showDocModal && (
+        <Modal
+          isOpen={showDocModal}
+          onClose={() => setShowDocModal(false)}
+          title={docModalMode === 'add' ? '📄 Thêm tài liệu kiểm định mới' : '📝 Sửa thông tin tài liệu'}
+          size="lg"
+        >
+          <form onSubmit={handleSubmitDoc}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Loại tài liệu *</label>
+                <input 
+                  type="text" 
+                  value={docType} 
+                  onChange={e => setDocType(e.target.value)} 
+                  disabled={docModalMode === 'edit'}
+                  placeholder="VD: Kiểm định, Hiệu chuẩn..."
+                  required
+                  list="doc-types-list"
+                  style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '0.95rem', boxSizing: 'border-box' }}
+                />
+                <datalist id="doc-types-list">
+                  <option value="Kiểm định" />
+                  <option value="Hiệu chuẩn" />
+                  <option value="Kiểm tra định kỳ" />
+                  <option value="Bảo dưỡng định kỳ" />
+                </datalist>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Số văn bản / Số Đăng kiểm</label>
+                <input 
+                  type="text" 
+                  value={licenseNo} 
+                  onChange={e => setLicenseNo(e.target.value)} 
+                  placeholder="VD: KD-12345"
+                  style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '0.95rem', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Ngày cấp / Ngày Đăng kiểm</label>
+                <input 
+                  type="date" 
+                  value={issuedDate} 
+                  onChange={e => setIssuedDate(e.target.value)} 
+                  style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '0.95rem', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Hạn đăng kiểm / Hạn hiệu lực</label>
+                <input 
+                  type="date" 
+                  value={expiryDate} 
+                  onChange={e => setExpiryDate(e.target.value)} 
+                  style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '0.95rem', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Thời gian chuẩn bị hồ sơ (ngày)</label>
+                <input 
+                  type="number" 
+                  value={prepTime} 
+                  onChange={e => setPrepTime(e.target.value)} 
+                  placeholder="VD: 30"
+                  style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '0.95rem', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Trạng thái Hồ sơ</label>
+                <select 
+                  value={docStatus} 
+                  onChange={e => setDocStatus(e.target.value)} 
+                  style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '0.95rem', boxSizing: 'border-box', background: 'var(--surface)', color: 'var(--text-primary)' }}
+                >
+                  <option value="Chưa gửi">Chưa gửi</option>
+                  <option value="Đang xử lý">Đang xử lý</option>
+                  <option value="Đã gửi">Đã gửi</option>
+                  <option value="Đã phê duyệt">Đã phê duyệt</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Người chịu trách nhiệm</label>
+                <input 
+                  type="text" 
+                  value={responsible} 
+                  onChange={e => setResponsible(e.target.value)} 
+                  placeholder="VD: Nguyễn Văn A"
+                  style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '0.95rem', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Phối hợp thực hiện</label>
+                <input 
+                  type="text" 
+                  value={collaborator} 
+                  onChange={e => setCollaborator(e.target.value)} 
+                  placeholder="VD: Trần Thị B"
+                  style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '0.95rem', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Giao quản lý tại khoa</label>
+                <input 
+                  type="text" 
+                  value={deptManager} 
+                  onChange={e => setDeptManager(e.target.value)} 
+                  placeholder="VD: Khoa Cấp cứu"
+                  style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '0.95rem', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div style={{ gridColumn: '1 / -1', marginTop: '8px' }}>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  {docModalMode === 'edit' ? 'Thay thế file tài liệu (Để trống nếu giữ nguyên file cũ)' : 'File tài liệu đính kèm'}
+                </label>
+                <div 
+                  style={{ 
+                    border: '2px dashed var(--border)', 
+                    borderRadius: '12px', 
+                    padding: '20px', 
+                    textAlign: 'center', 
+                    cursor: 'pointer',
+                    background: 'var(--surface-50)',
+                    position: 'relative',
+                    transition: 'all 0.2s ease-in-out'
+                  }}
+                  onClick={() => document.getElementById('doc-file-input')?.click()}
+                >
+                  <input 
+                    type="file" 
+                    id="doc-file-input" 
+                    style={{ display: 'none' }} 
+                    onChange={e => {
+                      if (e.target.files && e.target.files[0]) {
+                        setSelectedFile(e.target.files[0]);
+                      }
+                    }}
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
+                    <Upload size={28} style={{ color: 'var(--primary)' }} />
+                    {selectedFile ? (
+                      <div>
+                        <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{selectedFile.name}</span>
+                        <span style={{ fontSize: '0.8rem', display: 'block', marginTop: '2px' }}>
+                          ({(selectedFile.size / (1024 * 1024)).toFixed(2)} MB)
+                        </span>
+                      </div>
+                    ) : (
+                      <div>
+                        <span style={{ fontWeight: '600', color: 'var(--primary)' }}>Nhấp để chọn file</span> hoặc kéo thả file vào đây
+                        <span style={{ fontSize: '0.8rem', display: 'block', marginTop: '2px', color: 'var(--text-secondary)' }}>
+                          Hỗ trợ PDF, Word, Excel, JPG, PNG (Tối đa 10MB)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {selectedFile && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
+                    <button 
+                      type="button" 
+                      onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}
+                      style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.85rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <X size={14} /> Xóa file đã chọn
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+              <Button variant="secondary" type="button" onClick={() => setShowDocModal(false)}>Hủy</Button>
+              <Button variant="primary" type="submit" icon={<Save size={16} />}>Lưu tài liệu</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Loading Overlay cho upload */}
+      {isUploading && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.4)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          zIndex: 9999,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '16px',
+          color: 'white',
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div style={{
+            width: '50px',
+            height: '50px',
+            borderRadius: '50%',
+            border: '4px solid rgba(255, 255, 255, 0.3)',
+            borderTopColor: 'white',
+            animation: 'spin 1s linear infinite'
+          }} />
+          <div style={{ fontWeight: '700', fontSize: '1.1rem', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+            Đang lưu thông tin và tải tài liệu lên Google Drive...
+          </div>
+          <div style={{ fontSize: '0.85rem', opacity: 0.8, textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>
+            Vui lòng không đóng hoặc tải lại trang web.
           </div>
         </div>
       )}

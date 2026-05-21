@@ -30,6 +30,7 @@ export interface DeviceDocument {
   responsible?: string;
   collaborator?: string;
   deptManager?: string;
+  fileUrl?: string;
 }
 
 export interface DeviceData {
@@ -166,6 +167,7 @@ const parseDocuments = (rawDocs: unknown[]): DeviceDocument[] => {
       responsible: getText(d, ['Người chịu trách nhiệm', 'responsible']),
       collaborator: getText(d, ['Phối hợp thực hiện', 'collaborator']),
       deptManager: getText(d, ['Giao quản lý tại khoa', 'deptManager']),
+      fileUrl: getText(d, ['Link tài liệu', 'fileUrl']),
     };
   });
 };
@@ -376,4 +378,22 @@ export const fetchGspRecords = async (): Promise<GspRecord[]> => {
 
 export const addGspRecord = async (payload: Omit<GspRecord, 'date'>) => {
   return postAction('addGSP', payload);
+};
+
+export const addDocument = async (payload: {
+  serial: string;
+  docType: string;
+  licenseNo?: string;
+  issuedDate?: string;
+  expiryDate?: string;
+  prepTime?: string;
+  status?: string;
+  responsible?: string;
+  collaborator?: string;
+  deptManager?: string;
+  fileName?: string;
+  fileContent?: string;
+  mimeType?: string;
+}) => {
+  return postAction('addDocument', payload);
 };
