@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { HeartPulse, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { Input, Button } from '../components/ui';
 import { loginUser } from '../services/api';
@@ -8,11 +8,14 @@ import './Login.css';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const from = (location.state as any)?.from?.pathname || '/dashboard';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +32,7 @@ const Login: React.FC = () => {
 
       if (result.success && result.user) {
         login(result.user);
-        navigate('/dashboard');
+        navigate(from, { replace: true });
       } else {
         setError(result.message || 'Tên đăng nhập hoặc mã PIN không chính xác.');
       }

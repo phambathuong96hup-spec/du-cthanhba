@@ -2,6 +2,8 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { AuthContext } from './authContext';
 import { clearAuthSession, emptyAuth, readAuthSession, writeAuthSession, type AuthState, type AuthUser } from './authSession';
 
+import { clearApiResourceCache } from './hooks/useApiResource';
+
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [auth, setAuth] = useState<AuthState>(() => readAuthSession());
 
@@ -11,6 +13,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     clearAuthSession();
+    clearApiResourceCache();
     setAuth(emptyAuth);
   }, []);
 

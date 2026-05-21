@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, AlertTriangle, RefreshCw, FileText, X, Save } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Card, CardBody, Button, Badge, Tabs, Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/ui';
+import { Card, CardBody, Button, Badge, type BadgeVariant, Tabs, Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/ui';
 import { createTransfer, fetchDevices, fetchTransfers, fetchRepairs, type DeviceData, type TransferData, type RepairData } from '../services/api';
 import { useAuth } from '../authContext';
 import './Devices.css';
@@ -140,18 +140,69 @@ const DeviceProfile: React.FC = () => {
     </Table>
   );
 
-  const documentsTab = (
-    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-      <FileText size={48} style={{ opacity: 0.3, marginBottom: '12px' }} />
-      <p>Tính năng quản lý tài liệu sẽ được cập nhật trong phiên bản tới.</p>
-    </div>
-  );
+  const documentsTab = (() => {
+    const docs = device?.documents || [];
+    if (docs.length === 0) {
+      return (
+        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+          <FileText size={48} style={{ opacity: 0.3, marginBottom: '12px' }} />
+          <p>Thiết bị này chưa có tài liệu kiểm định / đăng kiểm nào.</p>
+        </div>
+      );
+    }
+    return (
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableHeader>Loại tài liệu</TableHeader>
+            <TableHeader>Số văn bản</TableHeader>
+            <TableHeader>Ngày cấp</TableHeader>
+            <TableHeader>Hạn hiệu lực</TableHeader>
+            <TableHeader>Thời gian chuẩn bị</TableHeader>
+            <TableHeader>Trạng thái</TableHeader>
+            <TableHeader>Người chịu TN</TableHeader>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {docs.map((doc, idx) => {
+            const days = doc.daysUntilExpiry;
+            let badgeVariant: BadgeVariant = 'neutral';
+            let daysText = '';
+            if (days !== null) {
+              if (days < 0) { badgeVariant = 'danger'; daysText = `Quá hạn ${Math.abs(days)} ngày`; }
+              else if (days <= 7) { badgeVariant = 'danger'; daysText = `Còn ${days} ngày`; }
+              else if (days <= 30) { badgeVariant = 'warning'; daysText = `Còn ${days} ngày`; }
+              else { badgeVariant = 'success'; daysText = `Còn ${days} ngày`; }
+            }
+            return (
+              <TableRow key={idx}>
+                <TableCell><strong>{doc.docType || '—'}</strong></TableCell>
+                <TableCell>{doc.licenseNo || '—'}</TableCell>
+                <TableCell>{doc.issuedDate || '—'}</TableCell>
+                <TableCell>
+                  {doc.expiryDate || '—'}
+                  {daysText && <div><Badge variant={badgeVariant}>{daysText}</Badge></div>}
+                </TableCell>
+                <TableCell>{doc.prepTime ? `${doc.prepTime} ngày` : '—'}</TableCell>
+                <TableCell>
+                  <Badge variant={doc.status === 'Đã gửi' || doc.status === 'Đã phê duyệt' ? 'success' : doc.status === 'Đang xử lý' ? 'warning' : 'neutral'}>
+                    {doc.status || 'Chưa gửi'}
+                  </Badge>
+                </TableCell>
+                <TableCell>{doc.responsible || '—'}</TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    );
+  })();
 
   const tabsData = [
     { id: 'general', label: 'Thông tin chung', content: generalInfoTab },
     { id: 'movement', label: 'Lịch sử luân chuyển', content: movementHistoryTab },
     { id: 'maintenance', label: 'Sửa chữa & Bảo dưỡng', content: maintenanceHistoryTab },
-    { id: 'docs', label: 'Tài liệu đính kèm', content: documentsTab },
+    { id: 'docs', label: `Tài liệu kiểm định (${device?.documents?.length || 0})`, content: documentsTab },
   ];
 
   return (

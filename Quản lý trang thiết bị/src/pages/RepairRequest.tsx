@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   AlertCircle, Clock, Send, ShieldAlert, ChevronDown, ScanLine,
-  CheckCircle, XCircle, Download, FileText, Loader2, RefreshCw, Wrench, Search
+  CheckCircle, XCircle, Download, FileText, Loader2, RefreshCw, Wrench, Search, X
 } from 'lucide-react';
 import { Card, CardBody, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge, useToast, ConfirmDialog } from '../components/ui';
 import { reportRepair, fetchDevices, fetchRepairs, approveRepair, type DeviceData, type RepairData } from '../services/api';
@@ -10,6 +10,7 @@ import { exportCsv } from '../utils/exportCsv';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { matchSmartSearch } from '../utils/stringUtils';
 import './RepairRequest.css';
 import { repairStatusText, getRepairStatusVariant } from '../utils/statusUtils';
 
@@ -47,6 +48,11 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
   const userDepartment = department || '';
   const [userEmail, setUserEmail] = useState(email);
 
+  // Smart Filter States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [deptFilter, setDeptFilter] = useState('all');
+
   // ===== Load data =====
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -72,6 +78,12 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
     if (email) setUserEmail(email);
   }, [email]);
 
+  useEffect(() => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setDeptFilter('all');
+  }, [activeTab]);
+
   // ===== Pending repairs (chờ duyệt) =====
   const pendingRepairs = useMemo(() =>
     repairs.filter(r => {
@@ -81,7 +93,32 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
     [repairs]
   );
 
-  const visibleRepairs = activeTab === 'requests' ? pendingRepairs : repairs;
+  const filteredRepairs = useMemo(() => {
+    let list = activeTab === 'requests' ? pendingRepairs : repairs;
+    
+    // 1. Smart Search (multi-keyword, diacritics-insensitive matching ID, name, description, status)
+    if (searchQuery.trim() !== '') {
+      list = list.filter(r => matchSmartSearch(r, ['deviceId', 'userName', 'description', 'status', 'userEmail'], searchQuery));
+    }
+    
+    // 2. Status filter
+    if (statusFilter !== 'all') {
+      list = list.filter(r => r.status === statusFilter);
+    }
+    
+    // 3. Department filter
+    if (deptFilter !== 'all') {
+      list = list.filter(r => {
+        const cleanId = r.deviceId?.replace('[KHẨN] ', '') || '';
+        const dev = devices.find(d => d.id === cleanId || d.id === r.deviceId);
+        return dev?.department === deptFilter;
+      });
+    }
+    
+    return list;
+  }, [activeTab, pendingRepairs, repairs, searchQuery, statusFilter, deptFilter, devices]);
+
+  const visibleRepairs = filteredRepairs;
 
   // ===== QR Scanner =====
   useEffect(() => {
@@ -425,6 +462,74 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
       ) : (
         /* ===== Tab: Tiếp nhận yêu cầu / Lịch sử ===== */
         <Card>
+          <div className="toolbar" style={{ padding: '20px', paddingBottom: '12px', borderBottom: '1px solid var(--border)', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ flex: 1, minWidth: '260px', position: 'relative' }}>
+              <Input 
+                placeholder="Tìm kiếm mã thiết bị, người báo, mô tả lỗi..." 
+                icon={<Search size={18} />} 
+                value={searchQuery} 
+                onChange={e => setSearchQuery(e.target.value)} 
+                style={{ paddingRight: searchQuery ? '32px' : '12px' }}
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')} 
+                  style={{ 
+                    position: 'absolute', 
+                    right: '10px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    background: 'none', 
+                    border: 'none', 
+                    cursor: 'pointer',
+                    color: 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '4px'
+                  }}
+                  title="Xóa tìm kiếm"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+            {activeTab === 'history' && (
+              <select 
+                className="filter-select" 
+                value={statusFilter} 
+                onChange={e => setStatusFilter(e.target.value)}
+                style={{ minWidth: '160px', padding: '10px 14px', border: '1px solid var(--border)', borderRadius: '8px', background: 'white' }}
+              >
+                <option value="all">Tất cả trạng thái</option>
+                {statusOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
+            )}
+            <select 
+              className="filter-select" 
+              value={deptFilter} 
+              onChange={e => setDeptFilter(e.target.value)}
+              style={{ minWidth: '180px', padding: '10px 14px', border: '1px solid var(--border)', borderRadius: '8px', background: 'white' }}
+            >
+              <option value="all">Tất cả Khoa/Phòng</option>
+              {Array.from(new Set(devices.map(d => d.department))).filter(Boolean).sort().map(dept => (
+                <option key={dept} value={dept}>{dept}</option>
+              ))}
+            </select>
+            {(searchQuery || statusFilter !== 'all' || deptFilter !== 'all') && (
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => {
+                  setSearchQuery('');
+                  setStatusFilter('all');
+                  setDeptFilter('all');
+                }}
+                icon={<X size={14} />}
+              >
+                Xóa lọc
+              </Button>
+            )}
+          </div>
           <CardBody style={{ padding: 0 }}>
             <Table>
               <TableHead>

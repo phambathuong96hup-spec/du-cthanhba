@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
-import { CheckCircle, Download, FileText, Loader2, RefreshCw, Repeat2, Send, XCircle, X, Camera } from 'lucide-react';
+import { CheckCircle, Download, FileText, Loader2, RefreshCw, Repeat2, Send, XCircle, X, Camera, Search } from 'lucide-react';
 import { Card, CardBody, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge, useToast } from '../components/ui';
+import { matchSmartSearch } from '../utils/stringUtils';
 import {
   createTransfer,
   fetchDevices,
@@ -40,6 +41,12 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const scannerContainerId = 'qr-scanner-region';
 
+  // Smart Filter States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [deptFilter, setDeptFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+
   const { username, department: userDepartment, name: userName, isAdmin } = useAuth();
   const toast = useToast();
 
@@ -59,6 +66,13 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setDeptFilter('all');
+    setTypeFilter('all');
+  }, [activeTab]);
 
   const departments = useMemo(() => {
     return Array.from(new Set(devices.map(d => d.department).filter(Boolean))).sort();
@@ -136,7 +150,39 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
 
   const pendingRequests = transfers.filter(t => t.status === 'PENDING_RECEIVE' && (isAdmin || t.toDepartment === userDepartment || t.requestedBy === username || t.fromDepartment === userDepartment));
 
-  const visibleTransfers = activeTab === 'requests' ? pendingRequests : transfers;
+  const filteredTransfers = useMemo(() => {
+    let list = activeTab === 'requests' ? pendingRequests : transfers;
+    
+    // 1. Smart Search (multi-keyword, diacritics-insensitive matching ID, name, note, status, requester)
+    if (searchQuery.trim() !== '') {
+      list = list.filter(t => matchSmartSearch(t, ['transferId', 'deviceId', 'deviceName', 'requestedBy', 'requestedByName', 'requestedNote', 'receivedByName', 'receivedNote', 'rejectReason'], searchQuery));
+    }
+    
+    // 2. Status filter
+    if (statusFilter !== 'all') {
+      list = list.filter(t => t.status === statusFilter);
+    }
+    
+    // 3. Department filter
+    if (deptFilter !== 'all') {
+      list = list.filter(t => t.fromDepartment === deptFilter || t.toDepartment === deptFilter);
+    }
+
+    // 4. Type filter (extract type from note like `[Cho mượn]`, `[Mượn]`, `[Trả]`)
+    if (typeFilter !== 'all') {
+      list = list.filter(t => {
+        const note = String(t.requestedNote || '').toLowerCase();
+        if (typeFilter === 'Cho mượn') return note.includes('[cho mượn]');
+        if (typeFilter === 'Mượn') return note.includes('[mượn]');
+        if (typeFilter === 'Trả') return note.includes('[trả]');
+        return true;
+      });
+    }
+    
+    return list;
+  }, [activeTab, pendingRequests, transfers, searchQuery, statusFilter, deptFilter, typeFilter]);
+
+  const visibleTransfers = filteredTransfers;
 
   const selectedDevice = devices.find(device => device.id === deviceId);
 
@@ -362,6 +408,89 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
         </Card>
       ) : (
         <Card>
+          <div className="toolbar" style={{ padding: '20px', paddingBottom: '12px', borderBottom: '1px solid var(--border)', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ flex: 1, minWidth: '260px', position: 'relative' }}>
+              <Input 
+                placeholder="Tìm kiếm thiết bị, người chuyển, ghi chú..." 
+                icon={<Search size={18} />} 
+                value={searchQuery} 
+                onChange={e => setSearchQuery(e.target.value)} 
+                style={{ paddingRight: searchQuery ? '32px' : '12px' }}
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')} 
+                  style={{ 
+                    position: 'absolute', 
+                    right: '10px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    background: 'none', 
+                    border: 'none', 
+                    cursor: 'pointer',
+                    color: 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '4px'
+                  }}
+                  title="Xóa tìm kiếm"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+            {activeTab === 'history' && (
+              <select 
+                className="filter-select" 
+                value={statusFilter} 
+                onChange={e => setStatusFilter(e.target.value)}
+                style={{ minWidth: '160px', padding: '10px 14px', border: '1px solid var(--border)', borderRadius: '8px', background: 'white' }}
+              >
+                <option value="all">Tất cả trạng thái</option>
+                <option value="PENDING_RECEIVE">Chờ khoa nhận</option>
+                <option value="COMPLETED">Đã nhận</option>
+                <option value="REJECTED">Từ chối</option>
+                <option value="CANCELLED">Đã hủy</option>
+              </select>
+            )}
+            <select 
+              className="filter-select" 
+              value={typeFilter} 
+              onChange={e => setTypeFilter(e.target.value)}
+              style={{ minWidth: '150px', padding: '10px 14px', border: '1px solid var(--border)', borderRadius: '8px', background: 'white' }}
+            >
+              <option value="all">Tất cả loại YC</option>
+              <option value="Cho mượn">Cho mượn</option>
+              <option value="Mượn">Mượn thiết bị</option>
+              <option value="Trả">Trả thiết bị</option>
+            </select>
+            <select 
+              className="filter-select" 
+              value={deptFilter} 
+              onChange={e => setDeptFilter(e.target.value)}
+              style={{ minWidth: '180px', padding: '10px 14px', border: '1px solid var(--border)', borderRadius: '8px', background: 'white' }}
+            >
+              <option value="all">Tất cả Khoa/Phòng</option>
+              {departments.map(dept => (
+                <option key={dept} value={dept}>{dept}</option>
+              ))}
+            </select>
+            {(searchQuery || statusFilter !== 'all' || deptFilter !== 'all' || typeFilter !== 'all') && (
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => {
+                  setSearchQuery('');
+                  setStatusFilter('all');
+                  setDeptFilter('all');
+                  setTypeFilter('all');
+                }}
+                icon={<X size={14} />}
+              >
+                Xóa lọc
+              </Button>
+            )}
+          </div>
           <CardBody style={{ padding: 0 }}>
             <Table>
               <TableHead>

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Download, Printer, Search, Eye, Edit2, Save, Loader2, CheckCircle, AlertTriangle, Monitor } from 'lucide-react';
+import { Plus, Download, Printer, Search, Eye, Edit2, Save, Loader2, CheckCircle, AlertTriangle, Monitor, X } from 'lucide-react';
 import { Card, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Modal, useToast } from '../components/ui';
 import { fetchDevices, addDevice, editDevice, type DeviceData } from '../services/api';
 import { useAuth } from '../authContext';
 import { exportCsv } from '../utils/exportCsv';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
+import { matchSmartSearch } from '../utils/stringUtils';
 import './Devices.css';
 
 interface DeviceFormData {
@@ -36,6 +37,7 @@ const DeviceList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [quickFilter, setQuickFilter] = useState<'all' | 'good' | 'broken' | 'unassigned' | 'recent'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
 
@@ -65,7 +67,7 @@ const DeviceList: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, departmentFilter, statusFilter]);
+  }, [searchTerm, departmentFilter, statusFilter, quickFilter]);
 
   useEffect(() => {
     if (printingDevices.length > 0) {
@@ -79,17 +81,40 @@ const DeviceList: React.FC = () => {
   const uniqueDepartments = Array.from(new Set(devices.map(d => d.department))).filter(Boolean).sort();
 
   const filteredDevices = devices.filter(device => {
-    const sTerm = searchTerm.toLowerCase();
-    const idStr = String(device.id || '').toLowerCase();
-    const nameStr = String(device.name || '').toLowerCase();
-    
-    const searchMatch = idStr.includes(sTerm) || nameStr.includes(sTerm);
+    // Smart search (multi-keyword, diacritics-insensitive matching id, name, department, notes)
+    const searchMatch = matchSmartSearch(device, ['id', 'name', 'department', 'Ghi chú'], searchTerm);
     const deptMatch = departmentFilter === 'all' || device.department === departmentFilter;
     
     const isBroken = String(device['Hiện trạng thực tế'] || '').toLowerCase().includes('hỏng') || String(device['Hiện trạng thực tế'] || '').toLowerCase().includes('sửa chữa');
-    const statusMatch = statusFilter === 'all' || (statusFilter === 'good' ? !isBroken : isBroken);
+    let statusMatch = statusFilter === 'all' || (statusFilter === 'good' ? !isBroken : isBroken);
     
-    return searchMatch && deptMatch && statusMatch;
+    // Quick filter chips
+    let quickMatch = true;
+    if (quickFilter === 'good') quickMatch = !isBroken;
+    else if (quickFilter === 'broken') quickMatch = isBroken;
+    else if (quickFilter === 'unassigned') {
+      quickMatch = !device.department || device.department === 'Chưa phân bổ' || device.department.trim() === '';
+    } else if (quickFilter === 'recent') {
+      if (device.dateAdded && device.dateAdded !== 'N/A') {
+        try {
+          const parts = device.dateAdded.split('/');
+          if (parts.length === 3) {
+            const date = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+            const diffTime = Math.abs(new Date().getTime() - date.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            quickMatch = diffDays <= 30;
+          } else {
+            quickMatch = false;
+          }
+        } catch {
+          quickMatch = false;
+        }
+      } else {
+        quickMatch = false;
+      }
+    }
+    
+    return searchMatch && deptMatch && statusMatch && quickMatch;
   });
 
   const totalPages = Math.ceil(filteredDevices.length / itemsPerPage);
@@ -202,7 +227,7 @@ const DeviceList: React.FC = () => {
       </div>
 
       <Card>
-        <div className="toolbar" style={{ padding: '20px', paddingBottom: 0 }}>
+        <div className="toolbar" style={{ padding: '20px', paddingBottom: '12px' }}>
           <div className="filter-group">
             <select className="filter-select" value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}>
               <option value="all">Tất cả Khoa/Phòng</option>
@@ -214,9 +239,95 @@ const DeviceList: React.FC = () => {
               <option value="broken">Báo hỏng</option>
             </select>
           </div>
-          <div className="search-box">
-            <Input placeholder="Tìm kiếm mã thiết bị, tên máy..." icon={<Search size={18} />} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+          <div className="search-box" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ flex: 1, position: 'relative' }}>
+              <Input 
+                placeholder="Tìm kiếm mã thiết bị, tên máy..." 
+                icon={<Search size={18} />} 
+                value={searchTerm} 
+                onChange={e => setSearchTerm(e.target.value)} 
+                style={{ paddingRight: searchTerm ? '32px' : '12px' }}
+              />
+              {searchTerm && (
+                <button 
+                  onClick={() => setSearchTerm('')} 
+                  style={{ 
+                    position: 'absolute', 
+                    right: '10px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    background: 'none', 
+                    border: 'none', 
+                    cursor: 'pointer',
+                    color: 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '4px'
+                  }}
+                  title="Xóa tìm kiếm"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+            {(searchTerm || departmentFilter !== 'all' || statusFilter !== 'all' || quickFilter !== 'all') && (
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => {
+                  setSearchTerm('');
+                  setDepartmentFilter('all');
+                  setStatusFilter('all');
+                  setQuickFilter('all');
+                }}
+                style={{ whiteSpace: 'nowrap' }}
+                icon={<X size={14} />}
+              >
+                Xóa lọc
+              </Button>
+            )}
           </div>
+        </div>
+
+        {/* Quick Filter Chips */}
+        <div className="quick-filters-chips">
+          <button
+            className={`chip ${quickFilter === 'all' ? 'active' : ''}`}
+            onClick={() => setQuickFilter('all')}
+          >
+            Tất cả ({devices.length})
+          </button>
+          <button
+            className={`chip chip-success ${quickFilter === 'good' ? 'active' : ''}`}
+            onClick={() => setQuickFilter('good')}
+          >
+            Hoạt động tốt ({devices.filter(d => {
+              const isBroken = String(d['Hiện trạng thực tế'] || '').toLowerCase().includes('hỏng') || String(d['Hiện trạng thực tế'] || '').toLowerCase().includes('sửa chữa');
+              return !isBroken;
+            }).length})
+          </button>
+          <button
+            className={`chip chip-warning ${quickFilter === 'broken' ? 'active' : ''}`}
+            onClick={() => setQuickFilter('broken')}
+          >
+            Báo hỏng ({devices.filter(d => {
+              const isBroken = String(d['Hiện trạng thực tế'] || '').toLowerCase().includes('hỏng') || String(d['Hiện trạng thực tế'] || '').toLowerCase().includes('sửa chữa');
+              return isBroken;
+            }).length})
+          </button>
+          <button
+            className={`chip chip-neutral ${quickFilter === 'unassigned' ? 'active' : ''}`}
+            onClick={() => setQuickFilter('unassigned')}
+          >
+            Chưa phân bổ ({devices.filter(d => !d.department || d.department === 'Chưa phân bổ' || d.department.trim() === '').length})
+          </button>
+          <button
+            className={`chip ${quickFilter === 'recent' ? 'active' : ''}`}
+            onClick={() => setQuickFilter('recent')}
+            title="Thêm mới trong vòng 30 ngày qua"
+          >
+            Mới nhập
+          </button>
         </div>
 
         <Table className="device-inventory-table">

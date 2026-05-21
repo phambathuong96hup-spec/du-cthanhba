@@ -1,6 +1,6 @@
 import { getAuthPayload } from '../authSession';
 
-const DEFAULT_GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbznJoCVhOyzoGQmqIMXxB3stCBQYCd_OQ76k6hR75VDYsCs0V9dhtzrFmJMZO11di0K_w/exec';
+const DEFAULT_GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbyf7IlLC-US2F7G5zfb9FKLIjktaN_FPMzRKsfBW9KPOjxt2p1B6Bf2VeHmGg7rtwVdlw/exec';
 
 export const GOOGLE_SHEETS_API_URL = import.meta.env.VITE_THIET_BI_API_URL || DEFAULT_GOOGLE_SHEETS_API_URL;
 
@@ -27,6 +27,9 @@ export interface DeviceDocument {
   prepTime: string;
   status: string;
   daysUntilExpiry: number | null;
+  responsible?: string;
+  collaborator?: string;
+  deptManager?: string;
 }
 
 export interface DeviceData {
@@ -132,6 +135,41 @@ const postReadAction = async (action: string) => safeFetch(GOOGLE_SHEETS_API_URL
   body: JSON.stringify({ action, payload: getAuthPayload() }),
 });
 
+const parseDocuments = (rawDocs: unknown[]): DeviceDocument[] => {
+  if (!Array.isArray(rawDocs)) return [];
+  return rawDocs.map((doc) => {
+    const d = doc as ApiRow;
+    const expiryStr = getText(d, ['Hạn đăng kiểm / Hạn hiệu lực', 'expiryDate']);
+    let daysUntilExpiry: number | null = null;
+    if (expiryStr && expiryStr !== 'N/A') {
+      const parts = expiryStr.split('/');
+      let expDate: Date;
+      if (parts.length === 3) {
+        expDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+      } else {
+        expDate = new Date(expiryStr);
+      }
+      if (!isNaN(expDate.getTime())) {
+        const now = new Date(); now.setHours(0, 0, 0, 0);
+        daysUntilExpiry = Math.ceil((expDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+      }
+    }
+    return {
+      docType: getText(d, ['Loại tài liệu', 'docType']),
+      licenseNo: getText(d, ['Số văn bản / Số Đăng kiểm', 'licenseNo']),
+      frequency: '',
+      issuedDate: getText(d, ['Ngày cấp / Ngày Đăng kiểm', 'issuedDate']),
+      expiryDate: expiryStr,
+      prepTime: getText(d, ['Thời gian chuẩn bị hồ sơ (ngày)', 'prepTime']),
+      status: getText(d, ['Trạng thái Hồ sơ', 'status'], 'Chưa gửi'),
+      daysUntilExpiry,
+      responsible: getText(d, ['Người chịu trách nhiệm', 'responsible']),
+      collaborator: getText(d, ['Phối hợp thực hiện', 'collaborator']),
+      deptManager: getText(d, ['Giao quản lý tại khoa', 'deptManager']),
+    };
+  });
+};
+
 export const fetchDevices = async (): Promise<DeviceData[]> => {
   const data = await safeFetch(`${GOOGLE_SHEETS_API_URL}?action=getDevices`);
   if (!data || !Array.isArray(data)) return [];
@@ -141,14 +179,33 @@ export const fetchDevices = async (): Promise<DeviceData[]> => {
 
   return validData.map((item, index: number) => {
     const isOldFormat = 'Tên Thiết bị' in item;
-    const documents = Array.isArray(item.documents) ? item.documents as DeviceDocument[] : [];
+    const documents = parseDocuments(item.documents as unknown[] || []);
+
+    // Tìm tài liệu khẩn cấp nhất
+    let alertLevel: DeviceData['alertLevel'] = 'ok';
+    let minDaysUntil: number | undefined;
+    documents.forEach(doc => {
+      if (doc.daysUntilExpiry !== null) {
+        if (minDaysUntil === undefined || doc.daysUntilExpiry < minDaysUntil) {
+          minDaysUntil = doc.daysUntilExpiry;
+        }
+      }
+    });
+    if (minDaysUntil !== undefined) {
+      if (minDaysUntil <= 7) alertLevel = 'danger';
+      else if (minDaysUntil <= 30) alertLevel = 'warning';
+    }
+
     return {
       ...item,
-      id: isOldFormat ? getText(item, ['Seri Máy'], `TB-${String(index + 1).padStart(3, '0')}`) : getText(item, ['serial'], `TB-${String(index + 1).padStart(3, '0')}`),
+      id: isOldFormat ? getText(item, ['id', 'Seri Máy'], `TB-${String(index + 1).padStart(3, '0')}`) : getText(item, ['serial'], `TB-${String(index + 1).padStart(3, '0')}`),
       name: isOldFormat ? getText(item, ['Tên Thiết bị']) : getText(item, ['name']),
       department: isOldFormat ? getText(item, ['Nơi đặt thiết bị'], 'Chưa phân bổ') : getText(item, ['location'], 'Chưa phân bổ'),
       status: 'O',
       dateAdded: isOldFormat ? getText(item, ['Ngày cấp/ Ngày Đăng kiểm'], 'N/A') : (documents[0]?.issuedDate || 'N/A'),
+      documents,
+      alertLevel,
+      minDaysUntil,
     };
   });
 };
@@ -234,8 +291,8 @@ export const editDevice = async (payload: {
   return postAction('editDevice', payload);
 };
 
-export const updateDocumentStatus = async (serial: string, status: string) => {
-  return postAction('updateDocStatus', { serial, status });
+export const updateDocumentStatus = async (serial: string, status: string, docType?: string) => {
+  return postAction('updateDocStatus', { serial, status, docType: docType || '' });
 };
 
 const mapTransfer = (item: ApiRow): TransferData => ({

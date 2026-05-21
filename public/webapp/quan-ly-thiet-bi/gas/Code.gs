@@ -4,7 +4,8 @@ const SHEETS = {
   repairs: 'Repairs',
   transfers: 'Transfers',
   gsp: 'GSP',
-  legacy: 'Trang thiết bị 2026'
+  legacy: 'Trang thiết bị 2026',
+  documents: 'Documents'
 };
 
 const DEVICE_SPREADSHEET_ID = '1fwwIwXpCqhCZzaitYs2__hzfuTNW7mcGAvKl3y_hqZ0';
@@ -21,9 +22,6 @@ const DEVICE_HEADERS = [
   'Seri Máy',
   'Nơi đặt thiết bị',
   'Hiện trạng thực tế',
-  'Số đăng kiểm',
-  'Ngày cấp/ Ngày Đăng kiểm',
-  'Hạn đăng kiểm',
   'Hãng SX',
   'Nước SX',
   'Năm SX',
@@ -32,7 +30,24 @@ const DEVICE_HEADERS = [
   'Nguồn',
   'Phân loại',
   'Công ty cung ứng',
+  'Nhóm',
   'Ghi chú',
+  'Ngày tạo',
+  'Ngày cập nhật'
+];
+
+const DOCUMENT_HEADERS = [
+  'DeviceId',
+  'Tên Thiết bị',
+  'Loại tài liệu',
+  'Số văn bản / Số Đăng kiểm',
+  'Ngày cấp / Ngày Đăng kiểm',
+  'Hạn đăng kiểm / Hạn hiệu lực',
+  'Thời gian chuẩn bị hồ sơ (ngày)',
+  'Trạng thái Hồ sơ',
+  'Người chịu trách nhiệm',
+  'Phối hợp thực hiện',
+  'Giao quản lý tại khoa',
   'Ngày tạo',
   'Ngày cập nhật'
 ];
@@ -87,7 +102,7 @@ function route_(action, payload) {
   let actor;
   switch (action) {
     case 'getDevices':
-      return getRows_(SHEETS.devices);
+      return getDevicesJoined_();
     case 'getDepartments':
       return getDepartments_();
     case 'login':
@@ -290,73 +305,281 @@ function setupSheets() {
   ensureSheet_(SHEETS.repairs, REPAIR_HEADERS);
   ensureSheet_(SHEETS.transfers, TRANSFER_HEADERS);
   ensureSheet_(SHEETS.gsp, GSP_HEADERS);
+  ensureSheet_(SHEETS.documents, DOCUMENT_HEADERS);
 }
 
 function migrateLegacyDevices() {
   return migrateLegacyDevices_();
 }
 
+function getDocType_(licenseNo, group, docIndex) {
+  const g = String(group || '').trim();
+  const match = g.match(/^(IV|III|II|I)\b/i) || g.match(/\b(IV|III|II|I)\b/i);
+  const roman = match ? match[1].toUpperCase() : '';
+
+  if (roman === 'I') {
+    if (docIndex === 0) return 'Giấy phép';
+    if (docIndex === 1) return 'Kiểm định';
+    if (docIndex === 2) return 'An toàn bức xạ';
+  }
+  if (roman === 'II') return 'Kiểm định';
+  if (roman === 'III') return 'Bảo dưỡng';
+  return 'Khác';
+}
+
+function parseDate_(dateStr) {
+  if (!dateStr) return new Date(NaN);
+  const parts = String(dateStr).split('/');
+  if (parts.length === 3) {
+    const d = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const y = parseInt(parts[2], 10);
+    return new Date(y, m, d);
+  }
+  return new Date(dateStr);
+}
+
+function getDevicesJoined_() {
+  const devices = getRows_(SHEETS.devices);
+  const documents = getRows_(SHEETS.documents);
+  
+  const docsByDevice = {};
+  documents.forEach(doc => {
+    const devId = String(doc.DeviceId || '').trim();
+    if (!docsByDevice[devId]) docsByDevice[devId] = [];
+    docsByDevice[devId].push(doc);
+  });
+  
+  return devices.map(device => {
+    const devId = String(device.id || '').trim();
+    const devDocs = docsByDevice[devId] || [];
+    device.documents = devDocs;
+    
+    // Tìm tài liệu khẩn cấp nhất cho tương thích ngược
+    let urgentDoc = null;
+    let minTime = Infinity;
+    
+    devDocs.forEach(doc => {
+      const expDateStr = doc['Hạn đăng kiểm / Hạn hiệu lực'];
+      if (expDateStr && expDateStr !== 'N/A') {
+        const time = parseDate_(expDateStr).getTime();
+        if (!isNaN(time) && time < minTime) {
+          minTime = time;
+          urgentDoc = doc;
+        }
+      }
+    });
+    
+    if (urgentDoc) {
+      device['Số đăng kiểm'] = urgentDoc['Số văn bản / Số Đăng kiểm'] || '';
+      device['Ngày cấp/ Ngày Đăng kiểm'] = urgentDoc['Ngày cấp / Ngày Đăng kiểm'] || '';
+      device['Hạn đăng kiểm'] = urgentDoc['Hạn đăng kiểm / Hạn hiệu lực'] || '';
+      device['Thời hạn cấp lại/ Hạn đăng kiểm'] = urgentDoc['Hạn đăng kiểm / Hạn hiệu lực'] || '';
+      device['Thời gian chuẩn bị Hồ sơ'] = urgentDoc['Thời gian chuẩn bị hồ sơ (ngày)'] || '';
+      device['Thời gian  chuẩn bị Hồ sơ'] = urgentDoc['Thời gian chuẩn bị hồ sơ (ngày)'] || '';
+      device['Trạng thái Hồ sơ'] = urgentDoc['Trạng thái Hồ sơ'] || 'Chưa gửi';
+      device['Loại tài liệu khẩn cấp'] = urgentDoc['Loại tài liệu'] || '';
+    } else {
+      device['Số đăng kiểm'] = '';
+      device['Ngày cấp/ Ngày Đăng kiểm'] = '';
+      device['Hạn đăng kiểm'] = '';
+      device['Thời hạn cấp lại/ Hạn đăng kiểm'] = '';
+      device['Thời gian chuẩn bị Hồ sơ'] = '';
+      device['Thời gian  chuẩn bị Hồ sơ'] = '';
+      device['Trạng thái Hồ sơ'] = '';
+      device['Loại tài liệu khẩn cấp'] = '';
+    }
+    
+    return device;
+  });
+}
+
 function migrateLegacyDevices_() {
   const ss = deviceSpreadsheet_();
-  const sheet = sheetByGid_(ss, LEGACY_DEVICE_SHEET_GID) || ss.getSheetByName(SHEETS.legacy) || ss.getSheets()[0];
-  const values = sheet.getDataRange().getDisplayValues();
+  const legacySheet = sheetByGid_(ss, LEGACY_DEVICE_SHEET_GID) || ss.getSheetByName(SHEETS.legacy) || ss.getSheets()[0];
+  const values = legacySheet.getDataRange().getDisplayValues();
   if (values.length < 5) return { success: false, message: 'Không tìm thấy dữ liệu Excel nguồn.' };
 
-  const current = getRows_(SHEETS.devices);
-  if (current.length > 0) return { success: false, message: 'Sheet Devices đã có dữ liệu. Xóa dữ liệu nếu muốn import lại.' };
+  setupSheets();
 
-  let department = '';
-  let imported = 0;
-  const statusMap = {
-    18: '1 - Mới chưa sử dụng',
-    19: '2 - Mới mang ra sử dụng',
-    20: '3 - Sửa chữa nhỏ',
-    21: '4 - Sửa chữa lớn',
-    22: '5 - Hỏng'
-  };
+  const devicesSheet = ss.getSheetByName(SHEETS.devices);
+  const documentsSheet = ss.getSheetByName(SHEETS.documents);
+  
+  if (devicesSheet.getLastRow() > 1) {
+    devicesSheet.getRange(2, 1, devicesSheet.getLastRow() - 1, devicesSheet.getLastColumn()).clearContent();
+  }
+  if (documentsSheet.getLastRow() > 1) {
+    documentsSheet.getRange(2, 1, documentsSheet.getLastRow() - 1, documentsSheet.getLastColumn()).clearContent();
+  }
 
-  values.slice(5).forEach(row => {
-    const stt = String(row[0] || '').trim();
-    const name = String(row[1] || '').trim();
-    if (stt && !/^\d+(\.\d+)?$/.test(stt)) {
-      department = stt;
-      return;
+  let currentGroup = '';
+  const parsedDevices = [];
+  const parsedDocs = [];
+  
+  let currentDevice = null;
+  const statusCols = ["Mới chưa sử dụng", "Mới mang ra sử dụng", "Sửa chữa nhỏ", "Sửa chữa lớn", "Hỏng"];
+
+  for (let r = 2; r < values.length; r++) {
+    const row = values[r];
+    const sttVal = String(row[0] || '').trim();
+    const nameVal = String(row[1] || '').trim();
+
+    // Bỏ qua dòng tiêu đề bảng nếu bị lặp lại trong Sheet
+    if (sttVal.toUpperCase() === 'STT' || nameVal.toUpperCase() === 'TÊN MÁY' || nameVal.toUpperCase() === 'TÊN THIẾT BỊ') {
+      continue;
     }
-    if (!/^\d+(\.\d+)?$/.test(stt) || !name) return;
 
+    // Kiểm tra tiêu đề nhóm
+    if (sttVal && !/^\d+(\.\d+)?$/.test(sttVal)) {
+      currentGroup = sttVal;
+      currentDevice = null;
+      continue;
+    }
+    if (!sttVal && nameVal && /^(IV|III|II|I)[:.\s]/i.test(nameVal)) {
+      currentGroup = nameVal;
+      currentDevice = null;
+      continue;
+    }
+
+    // Hàng phụ thuộc (STT và Tên rỗng) chứa tài liệu đăng kiểm bổ sung
+    if (!sttVal && !nameVal) {
+      if (currentDevice) {
+        const licenseNo = String(row[8] || '').trim();
+        const doc = {
+          DeviceId: currentDevice.id,
+          deviceRef: currentDevice,
+          'Tên Thiết bị': currentDevice['Tên Thiết bị'],
+          'Loại tài liệu': getDocType_(licenseNo, currentGroup, currentDevice.documents.length),
+          'Số văn bản / Số Đăng kiểm': licenseNo,
+          'Ngày cấp / Ngày Đăng kiểm': String(row[9] || '').trim(),
+          'Hạn đăng kiểm / Hạn hiệu lực': String(row[10] || '').trim(),
+          'Thời gian chuẩn bị hồ sơ (ngày)': String(row[17] || '').trim(),
+          'Trạng thái Hồ sơ': 'Chưa gửi',
+          'Người chịu trách nhiệm': '',
+          'Phối hợp thực hiện': '',
+          'Giao quản lý tại khoa': '',
+          'Ngày tạo': new Date(),
+          'Ngày cập nhật': new Date()
+        };
+
+        // Điền chi tiết thiết bị nếu có ở hàng phụ này
+        const modelVal = String(row[4] || '').trim();
+        const seriVal = String(row[5] || '').trim();
+        const mfgVal = String(row[11] || '').trim();
+        const countryVal = String(row[12] || '').trim();
+        const yMfg = String(row[13] || '').trim();
+        const yUse = String(row[14] || '').trim();
+        const price = String(row[15] || '').trim();
+        const source = String(row[16] || '').trim();
+
+        if (modelVal) currentDevice.Model = modelVal;
+        if (seriVal) {
+          currentDevice['Seri Máy'] = seriVal;
+          currentDevice.id = seriVal;
+        }
+        if (mfgVal) currentDevice['Hãng SX'] = mfgVal;
+        if (countryVal) currentDevice['Nước SX'] = countryVal;
+        if (yMfg) currentDevice['Năm SX'] = yMfg;
+        if (yUse) currentDevice['Năm SD'] = yUse;
+        if (price) currentDevice['Giá'] = price;
+        if (source) currentDevice['Nguồn'] = source;
+
+        if (doc['Số văn bản / Số Đăng kiểm']) {
+          currentDevice.documents.push(doc);
+          parsedDocs.push(doc);
+        }
+      }
+      continue;
+    }
+
+    // Thiết bị mới
+    const id = 'TTB-2026-' + String(parsedDevices.length + 1).padStart(4, '0');
+    
     let classify = '';
-    Object.keys(statusMap).forEach(idx => {
-      if (String(row[Number(idx)] || '').trim()) classify = statusMap[idx];
-    });
+    for (let i = 0; i < statusCols.length; i++) {
+      if (String(row[19 + i] || '').trim()) {
+        classify = (i + 1) + ' - ' + statusCols[i];
+        break;
+      }
+    }
 
-    appendObject_(SHEETS.devices, {
-      id: nextDeviceId_(imported + 1),
-      'Tên Thiết bị': name,
-      'Đơn vị tính': row[2],
-      'Số lượng': row[3] || 1,
-      'Model': row[4],
-      'Seri Máy': row[5] || nextDeviceId_(imported + 1),
-      'Nơi đặt thiết bị': department || row[23] || 'Chưa phân bổ',
-      'Hiện trạng thực tế': row[6],
-      'Số đăng kiểm': row[7],
-      'Ngày cấp/ Ngày Đăng kiểm': row[8],
-      'Hạn đăng kiểm': row[9],
-      'Hãng SX': row[10],
-      'Nước SX': row[11],
-      'Năm SX': row[12],
-      'Năm SD': row[13],
-      'Giá': row[14],
-      'Nguồn': row[15],
+    const isOxyGroup = currentGroup.toUpperCase().indexOf('BỒN OXY') >= 0 || currentGroup.toUpperCase().indexOf('OXY') >= 0;
+    const device = {
+      id: id,
+      'Tên Thiết bị': nameVal,
+      'Đơn vị tính': String(row[2] || '').trim(),
+      'Số lượng': String(row[3] || '').trim() || '1',
+      Model: String(row[4] || '').trim(),
+      'Seri Máy': String(row[5] || '').trim(),
+      'Nơi đặt thiết bị': isOxyGroup ? (String(row[11] || '').trim() || 'Nhà Oxy') : (String(row[6] || '').trim() || 'Chưa phân bổ'),
+      'Hiện trạng thực tế': String(row[7] || '').trim() || 'Đang sử dụng',
+      'Hãng SX': isOxyGroup ? '' : String(row[11] || '').trim(),
+      'Nước SX': isOxyGroup ? '' : String(row[12] || '').trim(),
+      'Năm SX': isOxyGroup ? '' : String(row[13] || '').trim(),
+      'Năm SD': isOxyGroup ? '' : String(row[14] || '').trim(),
+      'Giá': isOxyGroup ? '' : String(row[15] || '').trim(),
+      'Nguồn': isOxyGroup ? '' : String(row[16] || '').trim(),
       'Phân loại': classify,
-      'Công ty cung ứng': row[23],
-      'Ghi chú': row[24],
+      'Công ty cung ứng': String(row[24] || '').trim(),
+      'Nhóm': currentGroup,
+      'Ghi chú': String(row[25] || '').trim(),
       'Ngày tạo': new Date(),
-      'Ngày cập nhật': new Date()
-    });
-    imported += 1;
+      'Ngày cập nhật': new Date(),
+      documents: []
+    };
+
+    if (device['Seri Máy']) {
+      device.id = device['Seri Máy'];
+    }
+
+    currentDevice = device;
+    parsedDevices.push(device);
+
+    // Lưu tài liệu đầu tiên nếu có ở hàng chính
+    const licenseNo = String(row[8] || '').trim();
+    if (licenseNo) {
+      const doc = {
+        DeviceId: currentDevice.id,
+        deviceRef: currentDevice,
+        'Tên Thiết bị': currentDevice['Tên Thiết bị'],
+        'Loại tài liệu': getDocType_(licenseNo, currentGroup, 0),
+        'Số văn bản / Số Đăng kiểm': licenseNo,
+        'Ngày cấp / Ngày Đăng kiểm': String(row[9] || '').trim(),
+        'Hạn đăng kiểm / Hạn hiệu lực': String(row[10] || '').trim(),
+        'Thời gian chuẩn bị hồ sơ (ngày)': String(row[17] || '').trim(),
+        'Trạng thái Hồ sơ': 'Chưa gửi',
+        'Người chịu trách nhiệm': '',
+        'Phối hợp thực hiện': '',
+        'Giao quản lý tại khoa': '',
+        'Ngày tạo': new Date(),
+        'Ngày cập nhật': new Date()
+      };
+      currentDevice.documents.push(doc);
+      parsedDocs.push(doc);
+    }
+  }
+
+  // Đồng bộ DeviceId cho toàn bộ tài liệu dựa trên ID cuối cùng của thiết bị cha
+  parsedDocs.forEach(doc => {
+    if (doc.deviceRef) {
+      doc.DeviceId = doc.deviceRef.id;
+      delete doc.deviceRef;
+    }
   });
 
-  return { success: true, message: 'Đã import ' + imported + ' thiết bị từ sheet nguồn.' };
+  // Ghi thiết bị xuống Sheets
+  parsedDevices.forEach(dev => {
+    const devCopy = { ...dev };
+    delete devCopy.documents;
+    appendObject_(SHEETS.devices, devCopy);
+  });
+
+  // Ghi tài liệu xuống Sheets
+  parsedDocs.forEach(doc => {
+    appendObject_(SHEETS.documents, doc);
+  });
+
+  return { success: true, message: 'Đã import thành công ' + parsedDevices.length + ' thiết bị và ' + parsedDocs.length + ' tài liệu kiểm định.' };
 }
 
 function addDevice_(payload) {
@@ -540,14 +763,42 @@ function cancelTransfer_(payload) {
 }
 
 function reportRepair_(payload) {
+  const deviceId = payload.deviceId || payload.serial || '';
   appendObject_(SHEETS.repairs, {
     'Thời gian': new Date(),
-    'Mã Máy/Thiết bị': payload.deviceId || payload.serial || '',
+    'Mã Máy/Thiết bị': deviceId,
     'Người báo lỗi': payload.userName || payload.name || '',
     'Email người báo': payload.userEmail || payload.email || '',
     'Mô tả lỗi': payload.description || '',
     'Trạng Thái': 'Chờ duyệt'
   });
+
+  // Gửi email thông báo báo hỏng
+  try {
+    const device = findDeviceById_(deviceId);
+    if (device) {
+      const recipients = getDeviceRecipients_(device);
+      if (recipients.length > 0) {
+        sendNotificationMail_({
+          recipients: recipients,
+          subject: '[QLTTB] ⚠️ Báo hỏng thiết bị: ' + (device['Tên Thiết bị'] || deviceId),
+          body: [
+            '<h3 style="color:#d32f2f;">Thông báo Thiết bị Báo hỏng</h3>',
+            '<table style="border-collapse:collapse;width:100%;" border="1" cellpadding="8">',
+            '<tr><td style="background:#f5f5f5;width:180px;"><strong>Mã thiết bị</strong></td><td>' + deviceId + '</td></tr>',
+            '<tr><td style="background:#f5f5f5;"><strong>Tên thiết bị</strong></td><td>' + (device['Tên Thiết bị'] || '') + '</td></tr>',
+            '<tr><td style="background:#f5f5f5;"><strong>Model / Seri</strong></td><td>' + (device.Model || '') + ' / ' + (device['Seri Máy'] || '') + '</td></tr>',
+            '<tr><td style="background:#f5f5f5;"><strong>Nơi đặt</strong></td><td>' + (device['Nơi đặt thiết bị'] || '') + '</td></tr>',
+            '<tr><td style="background:#f5f5f5;"><strong>Người báo lỗi</strong></td><td>' + (payload.userName || '') + ' (' + (payload.userEmail || '') + ')</td></tr>',
+            '<tr><td style="background:#f5f5f5;"><strong>Mô tả lỗi</strong></td><td style="color:#d32f2f;">' + (payload.description || '') + '</td></tr>',
+            '</table>',
+            '<p style="margin-top:16px;">Vui lòng đăng nhập hệ thống <strong>Quản lý Trang thiết bị Y tế</strong> để xem chi tiết và xử lý.</p>'
+          ].join('')
+        });
+      }
+    }
+  } catch (err) { console.error('reportRepair_ email failed', err); }
+
   return { success: true, message: 'Đã ghi nhận báo hỏng.' };
 }
 
@@ -555,22 +806,94 @@ function approveRepair_(payload) {
   const rows = getRows_(SHEETS.repairs);
   const idx = rows.findIndex(row => String(row['Thời gian']) === String(payload.rowId));
   if (idx < 0) return { success: false, message: 'Không tìm thấy phiếu sửa chữa.' };
+  
+  const newStatus = payload.newStatus || payload.status || 'Đã duyệt';
   updateRowByObject_(SHEETS.repairs, idx + 2, {
-    'Trạng Thái': payload.newStatus || payload.status || 'Đã duyệt',
+    'Trạng Thái': newStatus,
     'Người duyệt': payload.approver || '',
     'Ghi chú xử lý': payload.note || ''
   });
+
+  // Đồng bộ hiện trạng thiết bị nếu trạng thái sửa chữa thay đổi
+  const repairRow = rows[idx];
+  const deviceId = String(repairRow['Mã Máy/Thiết bị'] || '').trim();
+  if (deviceId) {
+    const deviceRowIndex = findDeviceRow_(deviceId);
+    if (deviceRowIndex >= 2) {
+      let deviceStatus = '';
+      if (newStatus === 'Đang sửa') deviceStatus = 'Đang sửa chữa';
+      else if (newStatus === 'Đã sửa xong' || newStatus === 'Hoàn thành') deviceStatus = 'Đang sử dụng';
+      else if (newStatus === 'Hỏng - chờ thanh lý') deviceStatus = 'Hỏng';
+      if (deviceStatus) {
+        updateRowByObject_(SHEETS.devices, deviceRowIndex, {
+          'Hiện trạng thực tế': deviceStatus,
+          'Ngày cập nhật': new Date()
+        });
+      }
+    }
+  }
+
+  // Gửi email thông báo cập nhật sửa chữa
+  try {
+    const device = findDeviceById_(deviceId);
+    if (device) {
+      const recipients = getDeviceRecipients_(device);
+      // Thêm người báo lỗi vào danh sách nhận
+      const reporterEmail = String(repairRow['Email người báo'] || '').trim();
+      if (reporterEmail) recipients.push(reporterEmail);
+      const uniqueRecipients = Array.from(new Set(recipients));
+      if (uniqueRecipients.length > 0) {
+        sendNotificationMail_({
+          recipients: uniqueRecipients,
+          subject: '[QLTTB] 🔧 Cập nhật sửa chữa thiết bị: ' + (device['Tên Thiết bị'] || deviceId),
+          body: [
+            '<h3 style="color:#1565c0;">Cập nhật Tình trạng Sửa chữa Thiết bị</h3>',
+            '<table style="border-collapse:collapse;width:100%;" border="1" cellpadding="8">',
+            '<tr><td style="background:#f5f5f5;width:180px;"><strong>Mã thiết bị</strong></td><td>' + deviceId + '</td></tr>',
+            '<tr><td style="background:#f5f5f5;"><strong>Tên thiết bị</strong></td><td>' + (device['Tên Thiết bị'] || '') + '</td></tr>',
+            '<tr><td style="background:#f5f5f5;"><strong>Trạng thái mới</strong></td><td style="font-weight:bold;color:#1565c0;">' + newStatus + '</td></tr>',
+            '<tr><td style="background:#f5f5f5;"><strong>Người duyệt</strong></td><td>' + (payload.approver || '') + '</td></tr>',
+            payload.note ? '<tr><td style="background:#f5f5f5;"><strong>Ghi chú xử lý</strong></td><td>' + payload.note + '</td></tr>' : '',
+            '</table>',
+            '<p style="margin-top:16px;">Vui lòng đăng nhập hệ thống <strong>Quản lý Trang thiết bị Y tế</strong> để xem chi tiết.</p>'
+          ].join('')
+        });
+      }
+    }
+  } catch (err) { console.error('approveRepair_ email failed', err); }
+
   return { success: true, message: 'Đã cập nhật phiếu sửa chữa.' };
 }
 
 function updateDocStatus_(payload) {
-  const rowIndex = findDeviceRow_(payload.serial);
-  if (rowIndex < 2) return { success: false, message: 'Không tìm thấy thiết bị.' };
-  updateRowByObject_(SHEETS.devices, rowIndex, {
-    'Hiện trạng thực tế': payload.status,
+  const deviceId = String(payload.serial || '').trim();
+  const docType = String(payload.docType || '').trim();
+  const status = String(payload.status || '').trim();
+  
+  if (!deviceId) return { success: false, message: 'Thiếu DeviceId / Số Seri.' };
+  
+  const rows = getRows_(SHEETS.documents);
+  let foundIndex = -1;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (String(row.DeviceId || '').trim() === deviceId) {
+      if (!docType || String(row['Loại tài liệu'] || '').trim() === docType) {
+        foundIndex = i + 2;
+        break;
+      }
+    }
+  }
+  
+  if (foundIndex < 2) {
+    return { success: false, message: 'Không tìm thấy tài liệu đăng kiểm phù hợp cho thiết bị ' + deviceId + ' (Loại: ' + (docType || 'Bất kỳ') + ').' };
+  }
+  
+  updateRowByObject_(SHEETS.documents, foundIndex, {
+    'Trạng thái Hồ sơ': status,
     'Ngày cập nhật': new Date()
   });
-  return { success: true, message: 'Đã cập nhật trạng thái hồ sơ.' };
+  
+  return { success: true, message: 'Đã cập nhật trạng thái tài liệu ' + docType + ' của thiết bị ' + deviceId + ' thành "' + status + '".' };
 }
 
 function addGSP_(payload) {
@@ -756,27 +1079,37 @@ function sendTransferMail_(data) {
     let recipients = [];
 
     if (data.type === 'request') {
-      subject = '[QLTTB] Yêu cầu nhận luân chuyển thiết bị ' + deviceId;
+      subject = '[QLTTB] 🔄 Yêu cầu nhận luân chuyển thiết bị ' + deviceId;
       recipients = emailsByDepartment_(toDepartment);
     } else if (data.type === 'received') {
-      subject = '[QLTTB] Đã nhận luân chuyển thiết bị ' + deviceId;
+      subject = '[QLTTB] ✅ Đã nhận luân chuyển thiết bị ' + deviceId;
       recipients = emailsByDepartment_(fromDepartment).concat(emailsByDepartment_(toDepartment));
     } else if (data.type === 'rejected') {
-      subject = '[QLTTB] Từ chối nhận luân chuyển thiết bị ' + deviceId;
+      subject = '[QLTTB] ❌ Từ chối nhận luân chuyển thiết bị ' + deviceId;
       recipients = emailsByDepartment_(fromDepartment);
+    }
+
+    // Bổ sung người chịu trách nhiệm quản lý thiết bị vào danh sách nhận email
+    const fullDevice = findDeviceById_(deviceId);
+    if (fullDevice) {
+      const deviceRecipients = getDeviceRecipients_(fullDevice);
+      recipients = recipients.concat(deviceRecipients);
     }
 
     recipients = Array.from(new Set(recipients));
     if (recipients.length === 0) return;
 
     const htmlBody = [
-      '<p><strong>Mã yêu cầu:</strong> ' + transferId + '</p>',
-      '<p><strong>Thiết bị:</strong> ' + deviceName + ' (' + deviceId + ')</p>',
-      '<p><strong>Từ khoa/phòng:</strong> ' + fromDepartment + '</p>',
-      '<p><strong>Đến khoa/phòng:</strong> ' + toDepartment + '</p>',
-      '<p><strong>Người thực hiện:</strong> ' + actorName + '</p>',
-      note ? '<p><strong>Ghi chú/Lý do:</strong> ' + note + '</p>' : '',
-      '<p>Vui lòng đăng nhập hệ thống Quản lý trang thiết bị để xử lý.</p>'
+      '<h3 style="color:#1565c0;">Thông báo Luân chuyển Thiết bị Y tế</h3>',
+      '<table style="border-collapse:collapse;width:100%;" border="1" cellpadding="8">',
+      '<tr><td style="background:#f5f5f5;width:180px;"><strong>Mã yêu cầu</strong></td><td>' + transferId + '</td></tr>',
+      '<tr><td style="background:#f5f5f5;"><strong>Thiết bị</strong></td><td>' + deviceName + ' (' + deviceId + ')</td></tr>',
+      '<tr><td style="background:#f5f5f5;"><strong>Từ khoa/phòng</strong></td><td>' + fromDepartment + '</td></tr>',
+      '<tr><td style="background:#f5f5f5;"><strong>Đến khoa/phòng</strong></td><td>' + toDepartment + '</td></tr>',
+      '<tr><td style="background:#f5f5f5;"><strong>Người thực hiện</strong></td><td>' + actorName + '</td></tr>',
+      note ? '<tr><td style="background:#f5f5f5;"><strong>Ghi chú/Lý do</strong></td><td>' + note + '</td></tr>' : '',
+      '</table>',
+      '<p style="margin-top:16px;">Vui lòng đăng nhập hệ thống <strong>Quản lý Trang thiết bị Y tế</strong> để xử lý.</p>'
     ].join('');
 
     MailApp.sendEmail({
@@ -830,4 +1163,252 @@ function json_(data) {
   return ContentService
     .createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ============================
+// HỆ THỐNG GỬI EMAIL THÔNG BÁO
+// ============================
+
+function findDeviceById_(deviceId) {
+  const id = String(deviceId || '').trim();
+  if (!id) return null;
+  const devices = getRows_(SHEETS.devices);
+  return devices.find(d => String(d.id || '').trim() === id || String(d['Seri Máy'] || '').trim() === id) || null;
+}
+
+function emailsByNames_(namesStr) {
+  if (!namesStr) return [];
+  const names = String(namesStr).split(/[,;\n]+/).map(n => n.trim().toLowerCase()).filter(Boolean);
+  if (names.length === 0) return [];
+  const users = getUserRows_().filter(u => userStatus_(u) !== 'inactive');
+  const emails = [];
+  names.forEach(name => {
+    users.forEach(user => {
+      const fullName = String(getUserField_(user, ['Họ và Tên', 'hoVaTen', 'name']) || '').trim().toLowerCase();
+      if (fullName && fullName.indexOf(name) >= 0) {
+        const email = userEmail_(user);
+        if (email) emails.push(email);
+      }
+    });
+  });
+  return emails;
+}
+
+function getDeviceRecipients_(device) {
+  const recipients = [];
+  
+  // 1. Admins
+  const users = getUserRows_().filter(u => userStatus_(u) !== 'inactive');
+  users.forEach(user => {
+    if (isAdmin_(user)) {
+      const email = userEmail_(user);
+      if (email) recipients.push(email);
+    }
+  });
+  
+  // 2. Nhân sự khoa phòng nơi đặt thiết bị
+  const dept = String(device['Nơi đặt thiết bị'] || '').trim();
+  if (dept) {
+    const deptEmails = emailsByDepartment_(dept);
+    deptEmails.forEach(e => recipients.push(e));
+  }
+  
+  // 3. Tìm email từ documents (Người chịu trách nhiệm, Phối hợp, Giao quản lý)
+  const docs = getRows_(SHEETS.documents).filter(d => String(d.DeviceId || '').trim() === String(device.id || '').trim());
+  docs.forEach(doc => {
+    const responsible = String(doc['Người chịu trách nhiệm'] || '').trim();
+    const collaborator = String(doc['Phối hợp thực hiện'] || '').trim();
+    const deptManager = String(doc['Giao quản lý tại khoa'] || '').trim();
+    
+    emailsByNames_(responsible).forEach(e => recipients.push(e));
+    emailsByNames_(collaborator).forEach(e => recipients.push(e));
+    emailsByNames_(deptManager).forEach(e => recipients.push(e));
+  });
+  
+  return Array.from(new Set(recipients.filter(Boolean)));
+}
+
+function sendNotificationMail_(options) {
+  try {
+    const recipients = (options.recipients || []).filter(Boolean);
+    if (recipients.length === 0) return;
+    
+    const unique = Array.from(new Set(recipients));
+    const htmlBody = [
+      '<div style="font-family:Arial,sans-serif;max-width:650px;margin:0 auto;">',
+      '<div style="background:#1565c0;color:#fff;padding:16px 24px;border-radius:8px 8px 0 0;">',
+      '<h2 style="margin:0;font-size:18px;">🏥 Trung tâm Y tế Huyện Thanh Ba</h2>',
+      '<p style="margin:4px 0 0;font-size:13px;opacity:0.9;">Hệ thống Quản lý Trang thiết bị Y tế</p>',
+      '</div>',
+      '<div style="padding:24px;border:1px solid #e0e0e0;border-top:none;border-radius:0 0 8px 8px;">',
+      options.body || '',
+      '</div>',
+      '<p style="font-size:11px;color:#999;text-align:center;margin-top:12px;">',
+      'Email tự động từ hệ thống QLTTB - Vui lòng không trả lời email này.',
+      '</p>',
+      '</div>'
+    ].join('');
+    
+    MailApp.sendEmail({
+      to: unique.join(','),
+      subject: options.subject || '[QLTTB] Thông báo',
+      htmlBody: htmlBody
+    });
+  } catch (err) {
+    console.error('sendNotificationMail_ failed', err);
+  }
+}
+
+// ============================
+// QUÉT CẢNH BÁO ĐĂNG KIỂM HÀNG NGÀY
+// ============================
+
+function checkComplianceDeadlines() {
+  const documents = getRows_(SHEETS.documents);
+  const devices = getRows_(SHEETS.devices);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayMs = today.getTime();
+  
+  const deviceMap = {};
+  devices.forEach(d => { deviceMap[String(d.id || '').trim()] = d; });
+  
+  const alertGroups = {}; // key = deviceId, value = { device, alerts: [] }
+  
+  documents.forEach(doc => {
+    const expDateStr = String(doc['Hạn đăng kiểm / Hạn hiệu lực'] || '').trim();
+    if (!expDateStr || expDateStr === 'N/A') return;
+    
+    const expDate = parseDate_(expDateStr);
+    if (isNaN(expDate.getTime())) return;
+    
+    const expMs = expDate.getTime();
+    const daysLeft = Math.ceil((expMs - todayMs) / (24 * 60 * 60 * 1000));
+    const prepDays = parseInt(doc['Thời gian chuẩn bị hồ sơ (ngày)'] || '45', 10) || 45;
+    
+    let alertLevel = null;
+    let alertColor = '';
+    let alertIcon = '';
+    
+    if (daysLeft < 0) {
+      alertLevel = 'QUÁ HẠN (' + Math.abs(daysLeft) + ' ngày)';
+      alertColor = '#b71c1c';
+      alertIcon = '🚨';
+    } else if (daysLeft <= 1) {
+      alertLevel = 'KHẨN CẤP - Còn ' + daysLeft + ' ngày';
+      alertColor = '#d32f2f';
+      alertIcon = '🔴';
+    } else if (daysLeft <= 3) {
+      alertLevel = 'RẤT GẤP - Còn ' + daysLeft + ' ngày';
+      alertColor = '#e65100';
+      alertIcon = '🟠';
+    } else if (daysLeft <= 7) {
+      alertLevel = 'GẤP - Còn ' + daysLeft + ' ngày';
+      alertColor = '#ef6c00';
+      alertIcon = '🟡';
+    } else if (daysLeft <= 15) {
+      alertLevel = 'Cảnh báo - Còn ' + daysLeft + ' ngày';
+      alertColor = '#f9a825';
+      alertIcon = '⚠️';
+    } else if (daysLeft <= 30) {
+      alertLevel = 'Nhắc nhở - Còn ' + daysLeft + ' ngày';
+      alertColor = '#1565c0';
+      alertIcon = '📋';
+    } else if (daysLeft <= prepDays) {
+      alertLevel = 'Chuẩn bị hồ sơ - Còn ' + daysLeft + ' ngày (Hạn nộp trước ' + prepDays + ' ngày)';
+      alertColor = '#1565c0';
+      alertIcon = '📝';
+    } else {
+      return; // Chưa đến hạn cảnh báo
+    }
+    
+    const devId = String(doc.DeviceId || '').trim();
+    if (!alertGroups[devId]) {
+      alertGroups[devId] = { device: deviceMap[devId] || { id: devId }, alerts: [] };
+    }
+    alertGroups[devId].alerts.push({
+      doc: doc,
+      daysLeft: daysLeft,
+      alertLevel: alertLevel,
+      alertColor: alertColor,
+      alertIcon: alertIcon
+    });
+  });
+  
+  const groupKeys = Object.keys(alertGroups);
+  if (groupKeys.length === 0) {
+    console.log('checkComplianceDeadlines: Không có tài liệu nào sắp đến hạn.');
+    return;
+  }
+  
+  groupKeys.forEach(devId => {
+    const group = alertGroups[devId];
+    const device = group.device;
+    const alerts = group.alerts;
+    
+    const recipients = getDeviceRecipients_(device);
+    if (recipients.length === 0) return;
+    
+    const tableRows = alerts.map(a => {
+      return '<tr>' +
+        '<td style="padding:8px;border:1px solid #ddd;">' + a.alertIcon + ' ' + (a.doc['Loại tài liệu'] || '') + '</td>' +
+        '<td style="padding:8px;border:1px solid #ddd;">' + (a.doc['Số văn bản / Số Đăng kiểm'] || '') + '</td>' +
+        '<td style="padding:8px;border:1px solid #ddd;">' + (a.doc['Hạn đăng kiểm / Hạn hiệu lực'] || '') + '</td>' +
+        '<td style="padding:8px;border:1px solid #ddd;font-weight:bold;color:' + a.alertColor + ';">' + a.alertLevel + '</td>' +
+        '<td style="padding:8px;border:1px solid #ddd;">' + (a.doc['Trạng thái Hồ sơ'] || 'Chưa gửi') + '</td>' +
+        '<td style="padding:8px;border:1px solid #ddd;">' + (a.doc['Người chịu trách nhiệm'] || '') + '</td>' +
+        '</tr>';
+    }).join('');
+    
+    const mostUrgent = alerts.reduce((min, a) => a.daysLeft < min.daysLeft ? a : min, alerts[0]);
+    
+    sendNotificationMail_({
+      recipients: recipients,
+      subject: '[QLTTB] ' + mostUrgent.alertIcon + ' Cảnh báo đăng kiểm: ' + (device['Tên Thiết bị'] || devId),
+      body: [
+        '<h3 style="color:' + mostUrgent.alertColor + ';">Cảnh báo Hạn Đăng kiểm / Kiểm định Thiết bị Y tế</h3>',
+        '<table style="border-collapse:collapse;width:100%;margin-bottom:16px;" border="1" cellpadding="8">',
+        '<tr><td style="background:#f5f5f5;width:180px;"><strong>Mã thiết bị</strong></td><td>' + devId + '</td></tr>',
+        '<tr><td style="background:#f5f5f5;"><strong>Tên thiết bị</strong></td><td>' + (device['Tên Thiết bị'] || '') + '</td></tr>',
+        '<tr><td style="background:#f5f5f5;"><strong>Model / Seri</strong></td><td>' + (device.Model || '') + ' / ' + (device['Seri Máy'] || '') + '</td></tr>',
+        '<tr><td style="background:#f5f5f5;"><strong>Nơi đặt</strong></td><td>' + (device['Nơi đặt thiết bị'] || '') + '</td></tr>',
+        '</table>',
+        '<h4>Chi tiết tài liệu cần xử lý:</h4>',
+        '<table style="border-collapse:collapse;width:100%;" border="1">',
+        '<thead><tr style="background:#1565c0;color:#fff;">',
+        '<th style="padding:8px;">Loại tài liệu</th>',
+        '<th style="padding:8px;">Số văn bản</th>',
+        '<th style="padding:8px;">Hạn hiệu lực</th>',
+        '<th style="padding:8px;">Trạng thái</th>',
+        '<th style="padding:8px;">Hồ sơ</th>',
+        '<th style="padding:8px;">Người chịu TN</th>',
+        '</tr></thead>',
+        '<tbody>',
+        tableRows,
+        '</tbody></table>',
+        '<p style="margin-top:16px;">Vui lòng đăng nhập hệ thống <strong>Quản lý Trang thiết bị Y tế</strong> để cập nhật hồ sơ và xử lý kịp thời.</p>'
+      ].join('')
+    });
+  });
+  
+  console.log('checkComplianceDeadlines: Đã gửi cảnh báo cho ' + groupKeys.length + ' thiết bị.');
+}
+
+function createDailyTrigger() {
+  // Xóa trigger cũ nếu có
+  ScriptApp.getProjectTriggers().forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'checkComplianceDeadlines') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+  
+  // Tạo trigger mới chạy hàng ngày lúc 7:00 sáng
+  ScriptApp.newTrigger('checkComplianceDeadlines')
+    .timeBased()
+    .everyDays(1)
+    .atHour(7)
+    .create();
+  
+  console.log('Đã tạo trigger hàng ngày cho checkComplianceDeadlines lúc 7:00 AM.');
+  return { success: true, message: 'Đã tạo trigger quét đăng kiểm hàng ngày lúc 7:00 sáng.' };
 }

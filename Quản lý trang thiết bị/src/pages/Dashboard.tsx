@@ -67,36 +67,79 @@ const Dashboard: React.FC = () => {
   };
 
   const processedDevices = devices.map(d => {
-    const deadlineStr = String(d['Thời hạn cấp lại/ Hạn đăng kiểm'] || d['Ngày bảo dưỡng tiếp theo'] || '');
-    const prepDaysStr = String(d['Thời gian  chuẩn bị Hồ sơ'] || d['Thời gian chuẩn bị Hồ sơ'] || '');
-    
     let daysRemaining = 999;
     let warningLevel = 'safe'; // safe, warning, danger, critical
     let alertText = '';
-    const parsedDeadline = parseVietnameseDate(deadlineStr);
-    
-    if (parsedDeadline) {
-      const prepDays = parseInt(prepDaysStr) || 0;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const deadlineTime = parsedDeadline.getTime();
-      const prepStartTime = deadlineTime - (prepDays * 24 * 60 * 60 * 1000);
-      
-      const diffStart = Math.ceil((prepStartTime - today.getTime()) / (1000 * 60 * 60 * 24));
-      const diffDeadline = Math.ceil((deadlineTime - today.getTime()) / (1000 * 60 * 60 * 24));
+    let urgentDocType = '';
 
-      if (diffDeadline < 0) {
-        warningLevel = 'critical';
-        alertText = `Quá hạn Đăng kiểm ${Math.abs(diffDeadline)} ngày`;
-      } else if (diffStart <= 0) {
-        warningLevel = 'danger';
-        alertText = `Tới hạn chuẩn bị hồ sơ (còn ${diffDeadline} ngày đăng kiểm)`;
-      } else if (diffStart <= 5) {
-         warningLevel = 'warning';
-         alertText = `Còn ${diffStart} ngày bắt đầu làm hồ sơ`;
+    // Quét tất cả tài liệu, tìm tài liệu khẩn cấp nhất
+    const docs = d.documents || [];
+    if (docs.length > 0) {
+      let bestDeadline: Date | null = null;
+      let bestPrepDays = 45;
+      let bestDocType = '';
+
+      for (const doc of docs) {
+        if (doc.status === 'Đã gửi' || doc.status === 'Đã phê duyệt') continue;
+        const parsed = parseVietnameseDate(doc.expiryDate);
+        if (parsed) {
+          if (!bestDeadline || parsed.getTime() < bestDeadline.getTime()) {
+            bestDeadline = parsed;
+            const match = String(doc.prepTime || '').match(/\d+/);
+            bestPrepDays = match ? parseInt(match[0], 10) : 45;
+            bestDocType = doc.docType;
+          }
+        }
       }
-      daysRemaining = diffStart <= 5 ? diffStart : diffDeadline;
+
+      if (bestDeadline) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const deadlineTime = (bestDeadline as Date).getTime();
+        const prepStartTime = deadlineTime - (bestPrepDays * 24 * 60 * 60 * 1000);
+        const diffStart = Math.ceil((prepStartTime - today.getTime()) / (1000 * 60 * 60 * 24));
+        const diffDeadline = Math.ceil((deadlineTime - today.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (diffDeadline < 0) {
+          warningLevel = 'critical';
+          alertText = `Quá hạn ${bestDocType} ${Math.abs(diffDeadline)} ngày`;
+        } else if (diffStart <= 0) {
+          warningLevel = 'danger';
+          alertText = `Tới hạn chuẩn bị hồ sơ ${bestDocType} (còn ${diffDeadline} ngày)`;
+        } else if (diffStart <= 5) {
+          warningLevel = 'warning';
+          alertText = `Còn ${diffStart} ngày bắt đầu làm hồ sơ ${bestDocType}`;
+        }
+        daysRemaining = diffStart <= 5 ? diffStart : diffDeadline;
+        urgentDocType = bestDocType;
+      }
+    } else {
+      // Tương thích ngược với dữ liệu cũ (không có documents[])
+      const deadlineStr = String(d['Thời hạn cấp lại/ Hạn đăng kiểm'] || d['Ngày bảo dưỡng tiếp theo'] || '');
+      const prepDaysStr = String(d['Thời gian  chuẩn bị Hồ sơ'] || d['Thời gian chuẩn bị Hồ sơ'] || '');
+      const parsedDeadline = parseVietnameseDate(deadlineStr);
+      if (parsedDeadline) {
+        const match = prepDaysStr.match(/\d+/);
+        const prepDays = match ? parseInt(match[0], 10) : 45;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const deadlineTime = parsedDeadline.getTime();
+        const prepStartTime = deadlineTime - (prepDays * 24 * 60 * 60 * 1000);
+        const diffStart = Math.ceil((prepStartTime - today.getTime()) / (1000 * 60 * 60 * 24));
+        const diffDeadline = Math.ceil((deadlineTime - today.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (diffDeadline < 0) {
+          warningLevel = 'critical';
+          alertText = `Quá hạn Đăng kiểm ${Math.abs(diffDeadline)} ngày`;
+        } else if (diffStart <= 0) {
+          warningLevel = 'danger';
+          alertText = `Tới hạn chuẩn bị hồ sơ (còn ${diffDeadline} ngày đăng kiểm)`;
+        } else if (diffStart <= 5) {
+          warningLevel = 'warning';
+          alertText = `Còn ${diffStart} ngày bắt đầu làm hồ sơ`;
+        }
+        daysRemaining = diffStart <= 5 ? diffStart : diffDeadline;
+      }
     }
 
     const docStatus = d['Trạng thái Hồ sơ'] || '';
@@ -105,22 +148,26 @@ const Dashboard: React.FC = () => {
       alertText = 'Đã gửi hồ sơ';
     }
 
+    const deadlineStr2 = String(d['Thời hạn cấp lại/ Hạn đăng kiểm'] || d['Hạn đăng kiểm'] || '');
+    const parsedDeadline2 = parseVietnameseDate(deadlineStr2);
+
     return {
       ...d,
-      deadlineDate: parsedDeadline ? parsedDeadline.toLocaleDateString('vi-VN') : 'Không rõ',
+      deadlineDate: parsedDeadline2 ? parsedDeadline2.toLocaleDateString('vi-VN') : 'Không rõ',
       warningLevel,
       alertText,
-      daysRemaining
+      daysRemaining,
+      urgentDocType,
     };
   });
 
-  const handleDocStatusUpdate = async (serial: string) => {
+  const handleDocStatusUpdate = async (serial: string, docType?: string) => {
     if (!isAdmin) {
       alert('Chỉ tài khoản Admin được cập nhật trạng thái hồ sơ.');
       return;
     }
     setUpdatingId(serial);
-    const res = await updateDocumentStatus(serial, 'Đã gửi');
+    const res = await updateDocumentStatus(serial, 'Đã gửi', docType);
     if (res && res.success) {
       setDevices(prev => prev.map(d => d.id === serial ? { ...d, 'Trạng thái Hồ sơ': 'Đã gửi' } : d));
     } else {
@@ -330,43 +377,80 @@ const Dashboard: React.FC = () => {
             title={<div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>Cảnh báo Hồ sơ / Đăng kiểm {maintenanceAlerts.length > 0 && <Badge variant="danger">{maintenanceAlerts.length}</Badge>}</div>}
             action={<Button variant="secondary" size="sm" onClick={() => navigate('/devices')}>Tất cả thiết bị</Button>}
           />
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeader>Thiết bị</TableHeader>
-                <TableHeader>Hạn Đăng kiểm</TableHeader>
-                <TableHeader>Cảnh báo</TableHeader>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {isLoading
-                ? <TableRow><TableCell colSpan={3} style={{ textAlign: 'center', padding: '1rem' }}>Đang tải...</TableCell></TableRow>
-                : maintenanceAlerts.length === 0
-                  ? <TableRow><TableCell colSpan={3} style={{ textAlign: 'center', padding: '1rem', color: 'var(--success)', fontWeight:'bold' }}>Mọi thiết bị đều đang trong hạn an toàn.</TableCell></TableRow>
-                  : maintenanceAlerts.map((device) => (
-                    <TableRow key={`maint-${device.id}`} className={`alert-row-${device.warningLevel}`}>
-                      <TableCell><strong style={device.warningLevel === 'critical' ? {color:'white'}:{}}>{device.name}</strong><br/><small>{device.id}</small></TableCell>
-                      <TableCell>{device.deadlineDate}</TableCell>
-                      <TableCell>
-                        <strong style={device.warningLevel === 'critical' ? {color:'white'}:{}}>{device.alertText}</strong>
-                        {isAdmin && device.warningLevel !== 'success' && (
-                          <div style={{ marginTop: '8px' }}>
-                            <Button 
-                              size="sm" 
-                              variant={device.warningLevel === 'critical' ? 'secondary' : 'primary'} 
-                              onClick={() => handleDocStatusUpdate(device.id)} 
-                              disabled={updatingId === device.id}
-                            >
-                               {updatingId === device.id ? 'Đang gửi...' : 'Đã gửi hồ sơ'}
-                            </Button>
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))
-              }
-            </TableBody>
-          </Table>
+          <CardBody>
+            {isLoading
+              ? <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-secondary)' }}>Đang tải...</div>
+              : maintenanceAlerts.length === 0
+                ? <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--success)', fontWeight: 'bold' }}>Mọi thiết bị đều đang trong hạn an toàn.</div>
+                : (() => {
+                    const groups: Record<string, typeof maintenanceAlerts> = {};
+                    maintenanceAlerts.forEach(d => {
+                      const key = d.warningLevel;
+                      if (!groups[key]) groups[key] = [];
+                      groups[key].push(d);
+                    });
+                    const levelOrder = ['critical', 'danger', 'warning', 'success'];
+                    const levelConfig: Record<string, { label: string; icon: string; color: string; bg: string; border: string }> = {
+                      critical: { label: 'Quá hạn', icon: '🔴', color: '#fff', bg: '#7f1d1d', border: '#991b1b' },
+                      danger: { label: 'Tới hạn chuẩn bị hồ sơ', icon: '🟠', color: '#9a3412', bg: '#fee2e2', border: '#fca5a5' },
+                      warning: { label: 'Sắp tới hạn', icon: '🟡', color: '#92400e', bg: '#fef3c7', border: '#fcd34d' },
+                      success: { label: 'Đã gửi hồ sơ', icon: '🟢', color: '#166534', bg: '#dcfce7', border: '#86efac' },
+                    };
+                    return (
+                      <div className="alert-groups">
+                        {levelOrder.filter(lv => groups[lv]?.length).map(lv => {
+                          const cfg = levelConfig[lv];
+                          const items = groups[lv];
+                          return (
+                            <div key={lv} className="alert-group" style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: '12px', padding: '12px 16px', marginBottom: '12px' }}>
+                              <div className="alert-group-header" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: cfg.color }}>
+                                <span>{cfg.icon}</span>
+                                <strong style={{ fontSize: '0.95rem' }}>{cfg.label}</strong>
+                                <Badge variant={lv === 'critical' ? 'danger' : lv === 'danger' ? 'danger' : lv === 'warning' ? 'warning' : 'success'}>{items.length}</Badge>
+                              </div>
+                              <div className="alert-group-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                {items.map(device => (
+                                  <div
+                                    key={device.id}
+                                    className="alert-group-item"
+                                    style={{
+                                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
+                                      background: lv === 'critical' ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.6)',
+                                      borderRadius: '8px', padding: '8px 12px', cursor: 'pointer',
+                                      fontSize: '0.88rem', color: cfg.color
+                                    }}
+                                    onClick={() => navigate(`/device/${device.id}`)}
+                                  >
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, flex: 1 }}>
+                                      <strong style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{device.name}</strong>
+                                      <small style={{ opacity: 0.8 }}>{device.id} • {device.department}</small>
+                                    </div>
+                                    <div style={{ textAlign: 'right', flexShrink: 0, fontSize: '0.82rem' }}>
+                                      <div>{device.alertText}</div>
+                                      <div style={{ opacity: 0.7, fontSize: '0.78rem' }}>Hạn: {device.deadlineDate}</div>
+                                    </div>
+                                    {isAdmin && lv !== 'success' && (
+                                      <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        onClick={(e) => { e.stopPropagation(); handleDocStatusUpdate(device.id, device.urgentDocType); }}
+                                        disabled={updatingId === device.id}
+                                        style={{ flexShrink: 0, fontSize: '0.78rem' }}
+                                      >
+                                        {updatingId === device.id ? '...' : '✓ Đã gửi'}
+                                      </Button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()
+            }
+          </CardBody>
         </Card>
       </div>
     </div>

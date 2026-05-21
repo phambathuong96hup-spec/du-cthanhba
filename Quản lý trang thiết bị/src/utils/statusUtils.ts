@@ -1,7 +1,6 @@
 /**
  * Centralized status utilities for the Equipment Management app.
- * Consolidates repair and transfer status logic previously duplicated
- * across RepairRequest.tsx, AdminRepairs.tsx, and Transfers.tsx.
+ * Consolidates repair and transfer status logic and defines type-safe enums/constants.
  */
 
 import type { BadgeVariant } from '../components/ui';
@@ -10,14 +9,25 @@ import type { BadgeVariant } from '../components/ui';
 // Repair Status
 // ──────────────────────────────────────────────────
 
+export const REPAIR_STATUS = {
+  PENDING: 'Chờ duyệt',
+  APPROVED: 'Đã duyệt',
+  REJECTED: 'Từ chối',
+  CHECKING: 'Đang kiểm tra',
+  REPAIRING: 'Đang sửa chữa',
+  COMPLETED: 'Đã hoàn thành',
+} as const;
+
+export type RepairStatus = typeof REPAIR_STATUS[keyof typeof REPAIR_STATUS];
+
 /** Human-readable labels for repair statuses. */
 export const repairStatusText: Record<string, string> = {
-  'Chờ duyệt': 'Chờ duyệt',
-  'Đã duyệt': 'Đã duyệt',
-  'Từ chối': 'Từ chối',
-  'Đang kiểm tra': 'Đang kiểm tra',
-  'Đang sửa chữa': 'Đang sửa chữa',
-  'Đã hoàn thành': 'Đã hoàn thành',
+  [REPAIR_STATUS.PENDING]: 'Chờ duyệt',
+  [REPAIR_STATUS.APPROVED]: 'Đã duyệt',
+  [REPAIR_STATUS.REJECTED]: 'Từ chối',
+  [REPAIR_STATUS.CHECKING]: 'Đang kiểm tra',
+  [REPAIR_STATUS.REPAIRING]: 'Đang sửa chữa',
+  [REPAIR_STATUS.COMPLETED]: 'Đã hoàn thành',
 };
 
 /** Map a repair status string to a Badge variant for consistent color coding. */
@@ -50,18 +60,27 @@ export const isRepairDone = (status: string): boolean =>
 // Transfer Status
 // ──────────────────────────────────────────────────
 
+export const TRANSFER_STATUS = {
+  PENDING_RECEIVE: 'PENDING_RECEIVE',
+  COMPLETED: 'COMPLETED',
+  REJECTED: 'REJECTED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export type TransferStatus = typeof TRANSFER_STATUS[keyof typeof TRANSFER_STATUS];
+
 /** Human-readable labels for transfer statuses. */
 export const transferStatusText: Record<string, string> = {
-  PENDING_RECEIVE: 'Chờ khoa nhận',
-  COMPLETED: 'Đã nhận',
-  REJECTED: 'Từ chối',
-  CANCELLED: 'Đã hủy',
+  [TRANSFER_STATUS.PENDING_RECEIVE]: 'Chờ khoa nhận',
+  [TRANSFER_STATUS.COMPLETED]: 'Đã nhận',
+  [TRANSFER_STATUS.REJECTED]: 'Từ chối',
+  [TRANSFER_STATUS.CANCELLED]: 'Đã hủy',
 };
 
 /** Map a transfer status string to a Badge variant for consistent color coding. */
 export const getTransferStatusVariant = (status: string): BadgeVariant => {
-  if (status === 'COMPLETED') return 'success';
-  if (status === 'REJECTED' || status === 'CANCELLED') return 'danger';
-  if (status === 'PENDING_RECEIVE') return 'warning';
+  if (status === TRANSFER_STATUS.COMPLETED) return 'success';
+  if (status === TRANSFER_STATUS.REJECTED || status === TRANSFER_STATUS.CANCELLED) return 'danger';
+  if (status === TRANSFER_STATUS.PENDING_RECEIVE) return 'warning';
   return 'neutral';
 };
