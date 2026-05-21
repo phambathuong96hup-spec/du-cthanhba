@@ -68,13 +68,31 @@ const DeviceProfile: React.FC = () => {
 
   const generalInfoTab = (
     <div className="info-grid">
+      <div className="info-section-title">Thông tin cơ bản</div>
       <div className="info-item"><span className="info-label">Tên thiết bị</span><span className="info-value">{device?.name || '—'}</span></div>
+      <div className="info-item"><span className="info-label">Mã thiết bị</span><span className="info-value">{device?.id || '—'}</span></div>
+      <div className="info-item"><span className="info-label">Seri Máy</span><span className="info-value">{String(device?.['Seri Máy'] || '—')}</span></div>
+      <div className="info-item"><span className="info-label">Model</span><span className="info-value">{String(device?.['Model'] || '—')}</span></div>
+      <div className="info-item"><span className="info-label">Đơn vị tính</span><span className="info-value">{String(device?.['Đơn vị tính'] || '—')}</span></div>
+      <div className="info-item"><span className="info-label">Số lượng</span><span className="info-value">{String(device?.['Số lượng'] || '—')}</span></div>
+      <div className="info-item"><span className="info-label">Nhóm</span><span className="info-value">{String(device?.['Nhóm'] || '—')}</span></div>
+      <div className="info-item"><span className="info-label">Phân loại</span><span className="info-value">{String(device?.['Phân loại'] || '—')}</span></div>
+
+      <div className="info-section-title">Vị trí & Trạng thái</div>
       <div className="info-item"><span className="info-label">Khoa/Phòng sử dụng</span><span className="info-value">{device?.department || '—'}</span></div>
-      <div className="info-item"><span className="info-label">Số Serial / Mã TB</span><span className="info-value">{device?.id || '—'}</span></div>
-      <div className="info-item"><span className="info-label">Ngày cấp / Đăng kiểm</span><span className="info-value">{device?.dateAdded || '—'}</span></div>
+      <div className="info-item"><span className="info-label">Hiện trạng thực tế</span><span className="info-value">{String(device?.['Hiện trạng thực tế'] || '—')}</span></div>
+
+      <div className="info-section-title">Thông tin kỹ thuật</div>
+      <div className="info-item"><span className="info-label">Hãng sản xuất</span><span className="info-value">{String(device?.['Hãng SX'] || '—')}</span></div>
+      <div className="info-item"><span className="info-label">Nước sản xuất</span><span className="info-value">{String(device?.['Nước SX'] || '—')}</span></div>
       <div className="info-item"><span className="info-label">Năm sản xuất</span><span className="info-value">{String(device?.['Năm SX'] || '—')}</span></div>
-      <div className="info-item"><span className="info-label">Nhà cung cấp</span><span className="info-value">{String(device?.['Hãng sản xuất/ Xuất xứ'] || '—')}</span></div>
-      <div className="info-item"><span className="info-label">Nguồn vốn</span><span className="info-value">{String(device?.['Ghi chú'] || '—')}</span></div>
+      <div className="info-item"><span className="info-label">Năm sử dụng</span><span className="info-value">{String(device?.['Năm SD'] || '—')}</span></div>
+
+      <div className="info-section-title">Tài chính & Nguồn gốc</div>
+      <div className="info-item"><span className="info-label">Giá trị</span><span className="info-value">{String(device?.['Giá'] || '—')}</span></div>
+      <div className="info-item"><span className="info-label">Nguồn vốn</span><span className="info-value">{String(device?.['Nguồn'] || '—')}</span></div>
+      <div className="info-item"><span className="info-label">Công ty cung ứng</span><span className="info-value">{String(device?.['Công ty cung ứng'] || '—')}</span></div>
+      <div className="info-item"><span className="info-label">Ghi chú</span><span className="info-value">{String(device?.['Ghi chú'] || '—')}</span></div>
     </div>
   );
 
