@@ -4,7 +4,9 @@ import {
   CheckCircle, XCircle, Download, FileText, Loader2, RefreshCw, Wrench, Search, X
 } from 'lucide-react';
 import { Card, CardBody, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge, useToast, FileUploader, Modal } from '../components/ui';
-import { reportRepair, fetchDevices, fetchRepairs, approveRepair, type DeviceData, type RepairData } from '../services/api';
+import { reportRepair, approveRepair, type DeviceData, type RepairData } from '../services/api';
+import { useDevices } from '../hooks/useDevices';
+import { useRepairs } from '../hooks/useRepairs';
 import { useAuth } from '../authContext';
 import { exportCsv } from '../utils/exportCsv';
 import { Html5QrcodeScanner } from 'html5-qrcode';
@@ -26,7 +28,7 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
 
   // ===== Create form state =====
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [devices, setDevices] = useState<DeviceData[]>([]);
+  const { devices, isLoading: isDevicesLoading, refetch: refetchDevices } = useDevices();
   const [deviceId, setDeviceId] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'normal' | 'urgent'>('normal');
@@ -49,8 +51,10 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
   };
 
   // ===== Repairs data =====
-  const [repairs, setRepairs] = useState<RepairData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { repairs, isLoading: isRepairsLoading, refetch: refetchRepairs, mutate: mutateRepairs } = useRepairs();
+  const isLoading = isDevicesLoading || isRepairsLoading;
+  
+  const reversedRepairs = useMemo(() => [...repairs].reverse(), [repairs]);
 
   // ===== Auth =====
   const { name, email, department, isAdmin } = useAuth();
@@ -70,20 +74,19 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
 
   // ===== Load data =====
   const loadData = useCallback(async () => {
-    setIsLoading(true);
-    const [deviceData, repairData] = await Promise.all([fetchDevices(), fetchRepairs()]);
-    setDevices(deviceData);
-    setRepairs(repairData.reverse());
-    setIsLoading(false);
+    await Promise.all([refetchDevices(), refetchRepairs()]);
+  }, [refetchDevices, refetchRepairs]);
 
-    // Pre-fill device from sessionStorage if redirected from DeviceProfile
+  useEffect(() => {
     const prefilledId = sessionStorage.getItem('repairDeviceId');
     setDeviceId(current => {
-      if (prefilledId) return prefilledId;
-      return current || deviceData[0]?.id || '';
+      if (prefilledId) {
+        sessionStorage.removeItem('repairDeviceId');
+        return prefilledId;
+      }
+      return current || (devices.length > 0 ? devices[0].id : '');
     });
-    if (prefilledId) sessionStorage.removeItem('repairDeviceId');
-  }, []);
+  }, [devices]);
 
   useEffect(() => {
     loadData();
@@ -101,15 +104,15 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
 
   // ===== Pending repairs (chờ duyệt) =====
   const pendingRepairs = useMemo(() =>
-    repairs.filter(r => {
+    reversedRepairs.filter(r => {
       const s = r.status.toLowerCase();
       return s.includes('chờ') || s.includes('kiểm tra') || s.includes('sửa');
     }),
-    [repairs]
+    [reversedRepairs]
   );
 
   const filteredRepairs = useMemo(() => {
-    let list = activeTab === 'requests' ? pendingRepairs : repairs;
+    let list = activeTab === 'requests' ? pendingRepairs : reversedRepairs;
     
     // 1. Smart Search (multi-keyword, diacritics-insensitive matching ID, name, description, status)
     if (searchQuery.trim() !== '') {
@@ -131,7 +134,7 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
     }
     
     return list;
-  }, [activeTab, pendingRepairs, repairs, searchQuery, statusFilter, deptFilter, devices]);
+  }, [activeTab, pendingRepairs, reversedRepairs, searchQuery, statusFilter, deptFilter, devices]);
 
   const visibleRepairs = filteredRepairs;
 
@@ -308,10 +311,9 @@ const RepairRequest: React.FC<RepairRequestProps> = ({ defaultTab = 'requests' }
     if (!res.success) {
       toast.error('Lỗi khi cập nhật: ' + res.message);
     } else {
-      // Optimistic update after success
-      setRepairs(prev => prev.map(r =>
+      mutateRepairs(prev => (prev || []).map(r =>
         r.rowId === repair.rowId ? { ...r, status: newStatus } : r
-      ));
+      ), { revalidate: false });
       toast.success(`Đã cập nhật trạng thái "${repair.deviceId}" thành "${newStatus}"`);
     }
     await loadData();

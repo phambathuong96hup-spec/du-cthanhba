@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { fetchRepairs, approveRepair, type RepairData } from '../services/api';
+import React, { useState, useEffect, useMemo } from 'react';
+import { approveRepair, type RepairData } from '../services/api';
+import { useRepairs } from '../hooks/useRepairs';
 import { Card, CardHeader, CardBody, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge, useToast, ConfirmDialog } from '../components/ui';
 import { CheckCircle, Clock, Search, Wrench, Edit } from 'lucide-react';
 import { useAuth } from '../authContext';
@@ -9,23 +10,12 @@ import './AdminRepairs.css';
 const AdminRepairs: React.FC = () => {
   const { name } = useAuth();
   const toast = useToast();
-  const [repairs, setRepairs] = useState<RepairData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { repairs, isLoading, refetch, mutate } = useRepairs();
+  const reversedRepairs = useMemo(() => [...repairs].reverse(), [repairs]);
 
   // Confirm dialog state
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<{ rowId: string; deviceId: string; newStatus: string } | null>(null);
-  
-  const loadData = async () => {
-    setIsLoading(true);
-    const data = await fetchRepairs();
-    setRepairs(data.reverse());
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   const requestStatusChange = (rowId: string, deviceId: string, newStatus: string) => {
     if (!newStatus || newStatus === '') return;
@@ -39,10 +29,9 @@ const AdminRepairs: React.FC = () => {
     setConfirmOpen(false);
     setPendingAction(null);
 
-    // Optimistic update
-    setRepairs(prev => prev.map(r => 
+    mutate(prev => (prev || []).map(r => 
       r.rowId === rowId ? { ...r, status: newStatus } : r
-    ));
+    ), { revalidate: false });
 
     const res = await approveRepair({
       rowId,
@@ -53,7 +42,7 @@ const AdminRepairs: React.FC = () => {
 
     if (!res.success) {
       toast.error('Lỗi khi cập nhật: ' + res.message);
-      loadData();
+      refetch();
     } else {
       toast.success(`Đã cập nhật trạng thái "${deviceId}" thành "${newStatus}"`);
     }
@@ -91,7 +80,7 @@ const AdminRepairs: React.FC = () => {
               ) : repairs.length === 0 ? (
                 <TableRow><TableCell colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>Chưa có yêu cầu báo hỏng nào.</TableCell></TableRow>
               ) : (
-                repairs.map((rp, index) => {
+                reversedRepairs.map((rp, index) => {
                   const isCompleted = rp.status.toLowerCase().includes('hoàn thành');
                   return (
                     <TableRow key={index} className={isCompleted ? 'completed-row' : ''}>

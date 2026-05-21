@@ -3,7 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, AlertTriangle, RefreshCw, FileText, X, Save, Plus, Eye, Edit } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Card, CardBody, Button, Badge, type BadgeVariant, Tabs, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Modal, FileUploader } from '../components/ui';
-import { createTransfer, fetchDevices, fetchTransfers, fetchRepairs, addDocument, type DeviceData, type TransferData, type RepairData, type DeviceDocument } from '../services/api';
+import { createTransfer, addDocument, type DeviceData, type TransferData, type RepairData, type DeviceDocument } from '../services/api';
+import { useDevices } from '../hooks/useDevices';
+import { useTransfers } from '../hooks/useTransfers';
+import { useRepairs } from '../hooks/useRepairs';
 import { useAuth } from '../authContext';
 import './Devices.css';
 
@@ -11,11 +14,16 @@ const DeviceProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated, username, isAdmin } = useAuth();
-  const [device, setDevice] = useState<DeviceData | null>(null);
-  const [transfers, setTransfers] = useState<TransferData[]>([]);
-  const [repairs, setRepairs] = useState<RepairData[]>([]);
-  const [departments, setDepartments] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { devices, isLoading: isDevicesLoading, refetch: refetchDevices } = useDevices();
+  const { transfers: allTransfers, isLoading: isTransfersLoading, refetch: refetchTransfers } = useTransfers();
+  const { repairs: allRepairs, isLoading: isRepairsLoading } = useRepairs();
+
+  const isLoading = isDevicesLoading || isTransfersLoading || isRepairsLoading;
+  const decodedId = decodeURIComponent(id || '');
+  const device = devices.find(d => d.id === decodedId) || null;
+  const departments = Array.from(new Set(devices.map(d => d.department).filter(Boolean))).sort();
+  const transfers = allTransfers.filter(t => t.deviceId === decodedId).reverse();
+  const repairs = allRepairs.filter(r => r.deviceId === decodedId);
 
   // Modal điều chuyển khoa
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -41,20 +49,7 @@ const DeviceProfile: React.FC = () => {
   const [collaborator, setCollaborator] = useState('');
   const [deptManager, setDeptManager] = useState('');
 
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      const [data, transferData, repairData] = await Promise.all([fetchDevices(), fetchTransfers(), fetchRepairs()]);
-      const decodedId = decodeURIComponent(id || '');
-      const found = data.find(d => d.id === decodedId);
-      if (found) setDevice(found);
-      setDepartments(Array.from(new Set(data.map(d => d.department).filter(Boolean))).sort());
-      setTransfers(transferData.filter(t => t.deviceId === decodedId).reverse());
-      setRepairs(repairData.filter(r => r.deviceId === decodedId));
-      setIsLoading(false);
-    };
-    if (id) loadData();
-  }, [id]);
+
 
   const handleReportBroken = () => {
     // Lưu deviceId vào sessionStorage để báo hỏng trang tự điền sẵn
@@ -77,8 +72,7 @@ const DeviceProfile: React.FC = () => {
     });
     alert((res.success ? '✅ ' : '❌ ') + (res.message || 'Có lỗi xảy ra.'));
     if (res.success) {
-      const transferData = await fetchTransfers();
-      setTransfers(transferData.filter(t => t.deviceId === device.id).reverse());
+      await refetchTransfers();
       setShowTransferModal(false);
       setNewDept('');
       setTransferNote('');
@@ -289,9 +283,7 @@ const DeviceProfile: React.FC = () => {
 
       alert((res.success ? '✅ ' : '❌ ') + (res.message || 'Có lỗi xảy ra.'));
       if (res.success) {
-        const data = await fetchDevices();
-        const found = data.find(d => d.id === device.id);
-        if (found) setDevice(found);
+        await refetchDevices();
         setShowDocModal(false);
         setSelectedFile(null);
       }

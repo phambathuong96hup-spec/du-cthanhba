@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Download, Printer, Activity, CheckCircle, ShieldCheck } from 'lucide-react';
 import { Card, CardBody, Button, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Badge } from '../components/ui';
-import { fetchDevices, fetchRepairs, type DeviceData, type RepairData } from '../services/api';
+import { type DeviceData, type RepairData } from '../services/api';
+import { useDevices } from '../hooks/useDevices';
+import { useRepairs } from '../hooks/useRepairs';
 import { exportCsv, type CsvRow } from '../utils/exportCsv';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import './Reports.css';
 
 const Reports: React.FC = () => {
-  const [devices, setDevices] = useState<DeviceData[]>([]);
-  const [repairs, setRepairs] = useState<RepairData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { devices, isLoading: isDevicesLoading } = useDevices();
+  const { repairs, isLoading: isRepairsLoading } = useRepairs();
+  const isLoading = isDevicesLoading || isRepairsLoading;
   
   const [activeMainTab, setActiveMainTab] = useState<'thong-ke' | 'bao-cao'>('thong-ke');
   const [subTab, setSubTab] = useState<'sua-xong' | 'kiem-dinh'>('sua-xong');
@@ -19,17 +21,6 @@ const Reports: React.FC = () => {
     const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0];
   });
   const [toDate, setToDate] = useState(() => new Date().toISOString().split('T')[0]);
-
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      const [devData, repData] = await Promise.all([fetchDevices(), fetchRepairs()]);
-      setDevices(devData);
-      setRepairs(repData);
-      setIsLoading(false);
-    };
-    loadData();
-  }, []);
 
   const isDateInRange = (dateStr: string) => {
     if (!dateStr) return true;

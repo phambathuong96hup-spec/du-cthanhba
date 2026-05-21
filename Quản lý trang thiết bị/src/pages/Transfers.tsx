@@ -4,14 +4,14 @@ import { Card, CardBody, Button, Input, Table, TableHead, TableBody, TableRow, T
 import { matchSmartSearch } from '../utils/stringUtils';
 import {
   createTransfer,
-  fetchDevices,
-  fetchTransfers,
   receiveTransfer,
   rejectTransfer,
   cancelTransfer,
   type DeviceData,
   type TransferData,
 } from '../services/api';
+import { useDevices } from '../hooks/useDevices';
+import { useTransfers } from '../hooks/useTransfers';
 import { useAuth } from '../authContext';
 import { exportCsv } from '../utils/exportCsv';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -26,9 +26,11 @@ interface TransfersProps {
 }
 
 const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
-  const [devices, setDevices] = useState<DeviceData[]>([]);
-  const [transfers, setTransfers] = useState<TransferData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { devices, isLoading: isDevicesLoading, refetch: refetchDevices } = useDevices();
+  const { transfers, isLoading: isTransfersLoading, refetch: refetchTransfers } = useTransfers();
+  const isLoading = isDevicesLoading || isTransfersLoading;
+  
+  const reversedTransfers = useMemo(() => [...transfers].reverse(), [transfers]);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'create' | 'requests' | 'history'>(defaultTab);
   const [transferType, setTransferType] = useState<'Cho mượn' | 'Mượn' | 'Trả'>('Cho mượn');
@@ -73,17 +75,16 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
   const toast = useToast();
 
   const loadData = useCallback(async () => {
-    setIsLoading(true);
-    const [deviceData, transferData] = await Promise.all([fetchDevices(), fetchTransfers()]);
-    setDevices(deviceData);
-    setTransfers(transferData.reverse());
-    setIsLoading(false);
+    await Promise.all([refetchDevices(), refetchTransfers()]);
+  }, [refetchDevices, refetchTransfers]);
+
+  useEffect(() => {
     setDeviceId(current => {
-      if (current || deviceData.length === 0) return current;
-      const first = deviceData.find(d => isAdmin || d.department === userDepartment) || deviceData[0];
+      if (current || devices.length === 0) return current;
+      const first = devices.find(d => isAdmin || d.department === userDepartment) || devices[0];
       return first.id;
     });
-  }, [isAdmin, userDepartment]);
+  }, [devices, isAdmin, userDepartment]);
 
   useEffect(() => {
     loadData();
@@ -170,10 +171,10 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
   }, [stopScanner]);
   // ===== End QR Scanner =====
 
-  const pendingRequests = transfers.filter(t => t.status === 'PENDING_RECEIVE' && (isAdmin || t.toDepartment === userDepartment || t.requestedBy === username || t.fromDepartment === userDepartment));
+  const pendingRequests = reversedTransfers.filter(t => t.status === 'PENDING_RECEIVE' && (isAdmin || t.toDepartment === userDepartment || t.requestedBy === username || t.fromDepartment === userDepartment));
 
   const filteredTransfers = useMemo(() => {
-    let list = activeTab === 'requests' ? pendingRequests : transfers;
+    let list = activeTab === 'requests' ? pendingRequests : reversedTransfers;
     
     // 1. Smart Search (multi-keyword, diacritics-insensitive matching ID, name, note, status, requester)
     if (searchQuery.trim() !== '') {
@@ -202,7 +203,7 @@ const Transfers: React.FC<TransfersProps> = ({ defaultTab = 'requests' }) => {
     }
     
     return list;
-  }, [activeTab, pendingRequests, transfers, searchQuery, statusFilter, deptFilter, typeFilter]);
+  }, [activeTab, pendingRequests, reversedTransfers, searchQuery, statusFilter, deptFilter, typeFilter]);
 
   const visibleTransfers = filteredTransfers;
 

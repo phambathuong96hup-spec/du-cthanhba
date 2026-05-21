@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Download, Printer, Search, Eye, Edit2, Save, Loader2, CheckCircle, AlertTriangle, Monitor, X } from 'lucide-react';
 import { Card, Button, Input, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Modal, useToast } from '../components/ui';
-import { fetchDevices, addDevice, editDevice, type DeviceData } from '../services/api';
+import { addDevice, editDevice, type DeviceData } from '../services/api';
+import { useDevices } from '../hooks/useDevices';
 import { useAuth } from '../authContext';
 import { exportCsv } from '../utils/exportCsv';
 import { useNavigate } from 'react-router-dom';
@@ -31,8 +32,7 @@ const splitDeviceCodes = (value: unknown) => String(value || '')
   .filter(Boolean);
 
 const DeviceList: React.FC = () => {
-  const [devices, setDevices] = useState<DeviceData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { devices, isLoading, refetch } = useDevices();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
@@ -53,17 +53,6 @@ const DeviceList: React.FC = () => {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
   const toast = useToast();
-
-  const loadData = async () => {
-    setIsLoading(true);
-    const data = await fetchDevices();
-    setDevices(data);
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -182,7 +171,7 @@ const DeviceList: React.FC = () => {
     setIsSaving(false);
     if (res.success) {
       toast.success(res.message || 'Thành công!');
-      await loadData();
+      await refetch();
       setShowModal(false);
     } else {
       setSaveMsg('❌ ' + (res.message || 'Có lỗi xảy ra.'));

@@ -9,7 +9,9 @@ import {
 import { Pie, Bar } from 'react-chartjs-2';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardBody, Badge, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Button } from '../components/ui';
-import { fetchDevices, fetchRepairs, updateDocumentStatus, type DeviceData, type RepairData } from '../services/api';
+import { updateDocumentStatus, type DeviceData, type RepairData } from '../services/api';
+import { useDevices } from '../hooks/useDevices';
+import { useRepairs } from '../hooks/useRepairs';
 import { useAuth } from '../authContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -18,23 +20,12 @@ import './Dashboard.css';
 
 
 const Dashboard: React.FC = () => {
-  const [devices, setDevices] = useState<DeviceData[]>([]);
-  const [repairs, setRepairs] = useState<RepairData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { devices, isLoading: isLoadingDevices, mutate: mutateDevices } = useDevices();
+  const { repairs, isLoading: isLoadingRepairs } = useRepairs();
+  const isLoading = isLoadingDevices || isLoadingRepairs;
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
-
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      const [devData, repData] = await Promise.all([fetchDevices(), fetchRepairs()]);
-      setDevices(devData);
-      setRepairs(repData);
-      setIsLoading(false);
-    };
-    loadData();
-  }, []);
 
   const activeRepairs = repairs.filter(r => {
     const status = r.status.toLowerCase();
@@ -169,7 +160,7 @@ const Dashboard: React.FC = () => {
     setUpdatingId(serial);
     const res = await updateDocumentStatus(serial, 'Đã gửi', docType);
     if (res && res.success) {
-      setDevices(prev => prev.map(d => d.id === serial ? { ...d, 'Trạng thái Hồ sơ': 'Đã gửi' } : d));
+      mutateDevices(devices.map(d => d.id === serial ? { ...d, 'Trạng thái Hồ sơ': 'Đã gửi' } : d));
     } else {
       alert('Có lỗi xảy ra: ' + (res?.message || ''));
     }
