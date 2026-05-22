@@ -1384,8 +1384,8 @@ function checkComplianceDeadlines() {
   const deviceMap = {};
   devices.forEach(d => { deviceMap[String(d.id || '').trim()] = d; });
   
-  const alertGroups = {}; // key = deviceId, value = { device, alerts: [] }
-  
+  // 1. Thu thập tất cả các cảnh báo
+  const allAlerts = [];
   documents.forEach(doc => {
     const expDateStr = String(doc['Hạn đăng kiểm / Hạn hiệu lực'] || '').trim();
     if (!expDateStr || expDateStr === 'N/A') return;
@@ -1397,112 +1397,141 @@ function checkComplianceDeadlines() {
     const daysLeft = Math.ceil((expMs - todayMs) / (24 * 60 * 60 * 1000));
     const prepDays = parseInt(doc['Thời gian chuẩn bị hồ sơ (ngày)'] || '45', 10) || 45;
     
-    let alertLevel = null;
+    let alertType = '';
+    let alertLevel = '';
     let alertColor = '';
     let alertIcon = '';
+    let order = 0;
     
     if (daysLeft < 0) {
+      alertType = 'QUÁ HẠN ĐĂNG KIỂM';
       alertLevel = 'QUÁ HẠN (' + Math.abs(daysLeft) + ' ngày)';
       alertColor = '#b71c1c';
       alertIcon = '🚨';
-    } else if (daysLeft <= 1) {
-      alertLevel = 'KHẨN CẤP - Còn ' + daysLeft + ' ngày';
-      alertColor = '#d32f2f';
-      alertIcon = '🔴';
-    } else if (daysLeft <= 3) {
-      alertLevel = 'RẤT GẤP - Còn ' + daysLeft + ' ngày';
-      alertColor = '#e65100';
-      alertIcon = '🟠';
-    } else if (daysLeft <= 7) {
-      alertLevel = 'GẤP - Còn ' + daysLeft + ' ngày';
-      alertColor = '#ef6c00';
-      alertIcon = '🟡';
-    } else if (daysLeft <= 15) {
-      alertLevel = 'Cảnh báo - Còn ' + daysLeft + ' ngày';
-      alertColor = '#f9a825';
-      alertIcon = '⚠️';
+      order = 1;
     } else if (daysLeft <= 30) {
-      alertLevel = 'Nhắc nhở - Còn ' + daysLeft + ' ngày';
-      alertColor = '#1565c0';
-      alertIcon = '📋';
+      alertType = 'SẮP ĐẾN HẠN ĐĂNG KIỂM (≤ 30 ngày)';
+      if (daysLeft <= 1) { alertLevel = 'KHẨN CẤP - Còn ' + daysLeft + ' ngày'; alertColor = '#d32f2f'; alertIcon = '🔴'; }
+      else if (daysLeft <= 3) { alertLevel = 'RẤT GẤP - Còn ' + daysLeft + ' ngày'; alertColor = '#e65100'; alertIcon = '🟠'; }
+      else if (daysLeft <= 7) { alertLevel = 'GẤP - Còn ' + daysLeft + ' ngày'; alertColor = '#ef6c00'; alertIcon = '🟡'; }
+      else if (daysLeft <= 15) { alertLevel = 'Cảnh báo - Còn ' + daysLeft + ' ngày'; alertColor = '#f9a825'; alertIcon = '⚠️'; }
+      else { alertLevel = 'Nhắc nhở - Còn ' + daysLeft + ' ngày'; alertColor = '#1565c0'; alertIcon = '📋'; }
+      order = 2;
     } else if (daysLeft <= prepDays) {
-      alertLevel = 'Chuẩn bị hồ sơ - Còn ' + daysLeft + ' ngày (Hạn nộp trước ' + prepDays + ' ngày)';
+      alertType = 'CẦN CHUẨN BỊ HỒ SƠ';
+      alertLevel = 'Còn ' + daysLeft + ' ngày (Hạn nộp trước ' + prepDays + ' ngày)';
       alertColor = '#1565c0';
       alertIcon = '📝';
+      order = 3;
     } else {
       return; // Chưa đến hạn cảnh báo
     }
     
     const devId = String(doc.DeviceId || '').trim();
-    if (!alertGroups[devId]) {
-      alertGroups[devId] = { device: deviceMap[devId] || { id: devId }, alerts: [] };
-    }
-    alertGroups[devId].alerts.push({
+    const device = deviceMap[devId] || { id: devId };
+    
+    allAlerts.push({
+      device: device,
       doc: doc,
       daysLeft: daysLeft,
+      alertType: alertType,
       alertLevel: alertLevel,
       alertColor: alertColor,
-      alertIcon: alertIcon
+      alertIcon: alertIcon,
+      order: order
     });
   });
   
-  const groupKeys = Object.keys(alertGroups);
-  if (groupKeys.length === 0) {
+  if (allAlerts.length === 0) {
     console.log('checkComplianceDeadlines: Không có tài liệu nào sắp đến hạn.');
     return;
   }
   
-  groupKeys.forEach(devId => {
-    const group = alertGroups[devId];
-    const device = group.device;
-    const alerts = group.alerts;
-    
-    const recipients = getDeviceRecipients_(device);
-    if (recipients.length === 0) return;
-    
-    const tableRows = alerts.map(a => {
-      return '<tr>' +
-        '<td style="padding:8px;border:1px solid #ddd;">' + a.alertIcon + ' ' + (a.doc['Loại tài liệu'] || '') + '</td>' +
-        '<td style="padding:8px;border:1px solid #ddd;">' + (a.doc['Số văn bản / Số Đăng kiểm'] || '') + '</td>' +
-        '<td style="padding:8px;border:1px solid #ddd;">' + (a.doc['Hạn đăng kiểm / Hạn hiệu lực'] || '') + '</td>' +
-        '<td style="padding:8px;border:1px solid #ddd;font-weight:bold;color:' + a.alertColor + ';">' + a.alertLevel + '</td>' +
-        '<td style="padding:8px;border:1px solid #ddd;">' + (a.doc['Trạng thái Hồ sơ'] || 'Chưa gửi') + '</td>' +
-        '<td style="padding:8px;border:1px solid #ddd;">' + (a.doc['Người chịu trách nhiệm'] || '') + '</td>' +
-        '</tr>';
-    }).join('');
-    
-    const mostUrgent = alerts.reduce((min, a) => a.daysLeft < min.daysLeft ? a : min, alerts[0]);
-    
-    sendNotificationMail_({
-      recipients: recipients,
-      subject: '[QLTTB] ' + mostUrgent.alertIcon + ' Cảnh báo đăng kiểm: ' + (device['Tên Thiết bị'] || devId),
-      body: [
-        '<h3 style="color:' + mostUrgent.alertColor + ';">Cảnh báo Hạn Đăng kiểm / Kiểm định Thiết bị Y tế</h3>',
-        '<table style="border-collapse:collapse;width:100%;margin-bottom:16px;" border="1" cellpadding="8">',
-        '<tr><td style="background:#f5f5f5;width:180px;"><strong>Mã thiết bị</strong></td><td>' + devId + '</td></tr>',
-        '<tr><td style="background:#f5f5f5;"><strong>Tên thiết bị</strong></td><td>' + (device['Tên Thiết bị'] || '') + '</td></tr>',
-        '<tr><td style="background:#f5f5f5;"><strong>Model / Seri</strong></td><td>' + (device.Model || '') + ' / ' + (device['Seri Máy'] || '') + '</td></tr>',
-        '<tr><td style="background:#f5f5f5;"><strong>Nơi đặt</strong></td><td>' + (device['Nơi đặt thiết bị'] || '') + '</td></tr>',
-        '</table>',
-        '<h4>Chi tiết tài liệu cần xử lý:</h4>',
-        '<table style="border-collapse:collapse;width:100%;" border="1">',
-        '<thead><tr style="background:#1565c0;color:#fff;">',
-        '<th style="padding:8px;">Loại tài liệu</th>',
-        '<th style="padding:8px;">Số văn bản</th>',
-        '<th style="padding:8px;">Hạn hiệu lực</th>',
-        '<th style="padding:8px;">Trạng thái</th>',
-        '<th style="padding:8px;">Hồ sơ</th>',
-        '<th style="padding:8px;">Người chịu TN</th>',
-        '</tr></thead>',
-        '<tbody>',
-        tableRows,
-        '</tbody></table>',
-        '<p style="margin-top:16px;">Vui lòng đăng nhập hệ thống <strong>Quản lý Trang thiết bị Y tế</strong> để cập nhật hồ sơ và xử lý kịp thời.</p>'
-      ].join('')
+  // 2. Nhóm các cảnh báo theo Email người nhận
+  const recipientAlerts = {}; 
+  allAlerts.forEach(alert => {
+    const recipients = getDeviceRecipients_(alert.device);
+    recipients.forEach(email => {
+      if (!recipientAlerts[email]) recipientAlerts[email] = [];
+      // Tránh duplicate nếu một người nhận nhiều nguồn
+      if (!recipientAlerts[email].some(a => a.doc['Mã Tài liệu'] === alert.doc['Mã Tài liệu'])) {
+        recipientAlerts[email].push(alert);
+      }
     });
   });
   
-  console.log('checkComplianceDeadlines: Đã gửi cảnh báo cho ' + groupKeys.length + ' thiết bị.');
+  // 3. Gửi email tổng hợp cho từng người
+  const emailsSent = Object.keys(recipientAlerts);
+  emailsSent.forEach(email => {
+    let userAlerts = recipientAlerts[email];
+    
+    // Sắp xếp theo mức độ ưu tiên
+    userAlerts.sort((a, b) => {
+      if (a.order !== b.order) return a.order - b.order;
+      return a.daysLeft - b.daysLeft;
+    });
+    
+    // Nhóm theo loại cảnh báo để hiển thị
+    const grouped = {};
+    userAlerts.forEach(a => {
+      if (!grouped[a.alertType]) grouped[a.alertType] = [];
+      grouped[a.alertType].push(a);
+    });
+    
+    let emailBody = '<p>Xin chào,</p><p>Hệ thống Quản lý Trang thiết bị y tế gửi báo cáo định kỳ về các tài liệu Đăng kiểm/Kiểm định cần xử lý của bạn:</p>';
+    
+    const mostUrgentType = userAlerts[0].alertType;
+    const mostUrgentIcon = userAlerts[0].alertIcon;
+    const totalAlertsCount = userAlerts.length;
+    
+    Object.keys(grouped).forEach(type => {
+      const groupAlerts = grouped[type];
+      emailBody += `
+        <h3 style="color:${groupAlerts[0].alertColor}; border-bottom: 2px solid ${groupAlerts[0].alertColor}; padding-bottom: 4px; margin-top: 24px;">
+          ${groupAlerts[0].alertIcon} ${type} (${groupAlerts.length} mục)
+        </h3>
+        <table style="border-collapse:collapse;width:100%;font-size:13px;" border="1" cellpadding="6">
+          <thead style="background:#f5f5f5;">
+            <tr>
+              <th>Thiết bị</th>
+              <th>Nơi đặt</th>
+              <th>Loại tài liệu</th>
+              <th>Số văn bản</th>
+              <th>Hạn hiệu lực</th>
+              <th>Mức độ</th>
+              <th>Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+      groupAlerts.forEach(a => {
+        const deviceName = a.device['Tên Thiết bị'] || a.device.id || '';
+        const dept = a.device['Nơi đặt thiết bị'] || '';
+        emailBody += `
+          <tr>
+            <td><strong>${deviceName}</strong><br><span style="color:#666;font-size:11px;">Mã: ${a.device.id}</span></td>
+            <td>${dept}</td>
+            <td>${a.doc['Loại tài liệu'] || ''}</td>
+            <td>${a.doc['Số văn bản / Số Đăng kiểm'] || ''}</td>
+            <td>${a.doc['Hạn đăng kiểm / Hạn hiệu lực'] || ''}</td>
+            <td style="color:${a.alertColor}; font-weight:bold;">${a.alertLevel}</td>
+            <td>${a.doc['Trạng thái Hồ sơ'] || 'Chưa gửi'}</td>
+          </tr>
+        `;
+      });
+      emailBody += '</tbody></table>';
+    });
+    
+    emailBody += '<p style="margin-top:20px;">Vui lòng truy cập hệ thống <strong>Quản lý Trang thiết bị Y tế</strong> để cập nhật hồ sơ và xử lý kịp thời.</p>';
+    
+    sendNotificationMail_({
+      recipients: [email],
+      subject: `[QLTTB] ${mostUrgentIcon} Báo cáo Đăng kiểm: Có ${totalAlertsCount} mục cần lưu ý (Gồm: ${mostUrgentType})`,
+      body: emailBody
+    });
+  });
+  
+  console.log('checkComplianceDeadlines: Đã gửi báo cáo tổng hợp cho ' + emailsSent.length + ' người nhận.');
 }
 
 function createDailyTrigger() {
