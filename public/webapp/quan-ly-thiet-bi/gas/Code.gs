@@ -4,13 +4,21 @@ const SHEETS = {
   repairs: 'Repairs',
   transfers: 'Transfers',
   gsp: 'GSP',
-  legacy: 'Trang thiết bị 2026',
-  documents: 'Documents'
+  documents: 'Documents',
+  logs: 'ActivityLogs'
 };
+
+const LOG_HEADERS = [
+  'Thời gian',
+  'Hành động',
+  'Người thực hiện',
+  'ID Thiết bị',
+  'Tên Thiết bị',
+  'Chi tiết thay đổi'
+];
 
 const DEVICE_SPREADSHEET_ID = '1fwwIwXpCqhCZzaitYs2__hzfuTNW7mcGAvKl3y_hqZ0';
 const USERS_SPREADSHEET_ID = '10yRv_RD5ersJzD9xd-UDkZ8-hoiHxRBW6bz71qtMqoQ';
-const LEGACY_DEVICE_SHEET_GID = 281087352;
 const USERS_SHEET_GID = 1113591284;
 
 const DEVICE_HEADERS = [
@@ -103,7 +111,7 @@ function route_(action, payload) {
   let actor;
   switch (action) {
     case 'getDevices':
-      return getDevicesJoined_();
+      return getDevicesJoinedFiltered_(payload);
     case 'getDepartments':
       return getDepartments_();
     case 'login':
@@ -151,13 +159,13 @@ function route_(action, payload) {
       payload.approver = userDisplayName_(actor);
       return approveRepair_(payload);
     case 'updateDocStatus':
-      actor = requireAdmin_(payload);
-      if (!actor) return authError_('Chỉ Admin được cập nhật trạng thái hồ sơ.');
-      return updateDocStatus_(payload);
+      actor = requireAuthenticated_(payload);
+      if (!actor) return authError_();
+      return updateDocStatus_(payload, actor);
     case 'addDocument':
-      actor = requireAdmin_(payload);
-      if (!actor) return authError_('Chỉ Admin được thêm hoặc cập nhật tài liệu.');
-      return addDocument_(payload);
+      actor = requireAuthenticated_(payload);
+      if (!actor) return authError_();
+      return addDocument_(payload, actor);
     case 'createTransfer':
       actor = requireAuthenticated_(payload);
       if (!actor) return authError_();
@@ -188,10 +196,6 @@ function route_(action, payload) {
       if (!actor) return authError_();
       payload.recorder = userDisplayName_(actor);
       return addGSP_(payload);
-    case 'migrateLegacyDevices':
-      actor = requireAdmin_(payload);
-      if (!actor) return authError_('Chỉ Admin được chạy migrate dữ liệu.');
-      return migrateLegacyDevices_();
     case 'editUser':
       actor = requireAuthenticated_(payload);
       if (!actor) return authError_();
@@ -315,26 +319,25 @@ function setupSheets() {
   ensureSheet_(SHEETS.transfers, TRANSFER_HEADERS);
   ensureSheet_(SHEETS.gsp, GSP_HEADERS);
   ensureSheet_(SHEETS.documents, DOCUMENT_HEADERS);
+  ensureSheet_(SHEETS.logs, LOG_HEADERS);
 }
 
-function migrateLegacyDevices() {
-  return migrateLegacyDevices_();
-}
-
-function getDocType_(licenseNo, group, docIndex) {
-  const g = String(group || '').trim();
-  const match = g.match(/^(IV|III|II|I)\b/i) || g.match(/\b(IV|III|II|I)\b/i);
-  const roman = match ? match[1].toUpperCase() : '';
-
-  if (roman === 'I') {
-    if (docIndex === 0) return 'Giấy phép';
-    if (docIndex === 1) return 'Kiểm định';
-    if (docIndex === 2) return 'An toàn bức xạ';
+function logActivity_(action, targetId, targetName, details, actor) {
+  try {
+    const actorName = actor ? (userDisplayName_(actor) + ' (' + userUsername_(actor) + ')') : 'Hệ thống';
+    appendObject_(SHEETS.logs, {
+      'Thời gian': new Date(),
+      'Hành động': action,
+      'Người thực hiện': actorName,
+      'ID Thiết bị': targetId || '',
+      'Tên Thiết bị': targetName || '',
+      'Chi tiết thay đổi': details || ''
+    });
+  } catch (err) {
+    console.error('Lỗi khi ghi nhật ký hoạt động:', err);
   }
-  if (roman === 'II') return 'Kiểm định';
-  if (roman === 'III') return 'Bảo dưỡng';
-  return 'Khác';
 }
+
 
 function parseDate_(dateStr) {
   if (!dateStr) return new Date(NaN);
@@ -403,193 +406,51 @@ function getDevicesJoined_() {
   });
 }
 
-function migrateLegacyDevices_() {
-  const ss = deviceSpreadsheet_();
-  const legacySheet = sheetByGid_(ss, LEGACY_DEVICE_SHEET_GID) || ss.getSheetByName(SHEETS.legacy) || ss.getSheets()[0];
-  const values = legacySheet.getDataRange().getDisplayValues();
-  if (values.length < 5) return { success: false, message: 'Không tìm thấy dữ liệu Excel nguồn.' };
-
-  setupSheets();
-
-  const devicesSheet = ss.getSheetByName(SHEETS.devices);
-  const documentsSheet = ss.getSheetByName(SHEETS.documents);
+function getDevicesJoinedFiltered_(payload) {
+  const allDevices = getDevicesJoined_();
+  if (!payload) return allDevices;
   
-  if (devicesSheet.getLastRow() > 1) {
-    devicesSheet.getRange(2, 1, devicesSheet.getLastRow() - 1, devicesSheet.getLastColumn()).clearContent();
-  }
-  if (documentsSheet.getLastRow() > 1) {
-    documentsSheet.getRange(2, 1, documentsSheet.getLastRow() - 1, documentsSheet.getLastColumn()).clearContent();
-  }
-
-  let currentGroup = '';
-  const parsedDevices = [];
-  const parsedDocs = [];
+  const filterDept = payload.department ? normalize_(payload.department) : null;
+  const filterStatus = payload.status ? normalize_(payload.status) : null;
+  const urgentDays = payload.urgentExpiry ? parseInt(payload.urgentExpiry, 10) : null;
   
-  let currentDevice = null;
-  const statusCols = ["Mới chưa sử dụng", "Mới mang ra sử dụng", "Sửa chữa nhỏ", "Sửa chữa lớn", "Hỏng"];
-
-  for (let r = 2; r < values.length; r++) {
-    const row = values[r];
-    const sttVal = String(row[0] || '').trim();
-    const nameVal = String(row[1] || '').trim();
-
-    // Bỏ qua dòng tiêu đề bảng nếu bị lặp lại trong Sheet
-    if (sttVal.toUpperCase() === 'STT' || nameVal.toUpperCase() === 'TÊN MÁY' || nameVal.toUpperCase() === 'TÊN THIẾT BỊ') {
-      continue;
+  return allDevices.filter(device => {
+    // 1. Lọc theo khoa phòng
+    if (filterDept) {
+      const devDept = device['Nơi đặt thiết bị'] ? normalize_(device['Nơi đặt thiết bị']) : '';
+      if (devDept !== filterDept) return false;
     }
-
-    // Kiểm tra tiêu đề nhóm
-    if (sttVal && !/^\d+(\.\d+)?$/.test(sttVal)) {
-      currentGroup = sttVal;
-      currentDevice = null;
-      continue;
-    }
-    if (!sttVal && nameVal && /^(IV|III|II|I)[:.\s]/i.test(nameVal)) {
-      currentGroup = nameVal;
-      currentDevice = null;
-      continue;
-    }
-
-    // Hàng phụ thuộc (STT và Tên rỗng) chứa tài liệu đăng kiểm bổ sung
-    if (!sttVal && !nameVal) {
-      if (currentDevice) {
-        const licenseNo = String(row[8] || '').trim();
-        const doc = {
-          DeviceId: currentDevice.id,
-          deviceRef: currentDevice,
-          'Tên Thiết bị': currentDevice['Tên Thiết bị'],
-          'Loại tài liệu': getDocType_(licenseNo, currentGroup, currentDevice.documents.length),
-          'Số văn bản / Số Đăng kiểm': licenseNo,
-          'Ngày cấp / Ngày Đăng kiểm': String(row[9] || '').trim(),
-          'Hạn đăng kiểm / Hạn hiệu lực': String(row[10] || '').trim(),
-          'Thời gian chuẩn bị hồ sơ (ngày)': String(row[17] || '').trim(),
-          'Trạng thái Hồ sơ': 'Chưa gửi',
-          'Người chịu trách nhiệm': '',
-          'Phối hợp thực hiện': '',
-          'Giao quản lý tại khoa': '',
-          'Ngày tạo': new Date(),
-          'Ngày cập nhật': new Date()
-        };
-
-        // Điền chi tiết thiết bị nếu có ở hàng phụ này
-        const modelVal = String(row[4] || '').trim();
-        const seriVal = String(row[5] || '').trim();
-        const mfgVal = String(row[11] || '').trim();
-        const countryVal = String(row[12] || '').trim();
-        const yMfg = String(row[13] || '').trim();
-        const yUse = String(row[14] || '').trim();
-        const price = String(row[15] || '').trim();
-        const source = String(row[16] || '').trim();
-
-        if (modelVal) currentDevice.Model = modelVal;
-        if (seriVal) {
-          currentDevice['Seri Máy'] = seriVal;
-          currentDevice.id = seriVal;
-        }
-        if (mfgVal) currentDevice['Hãng SX'] = mfgVal;
-        if (countryVal) currentDevice['Nước SX'] = countryVal;
-        if (yMfg) currentDevice['Năm SX'] = yMfg;
-        if (yUse) currentDevice['Năm SD'] = yUse;
-        if (price) currentDevice['Giá'] = price;
-        if (source) currentDevice['Nguồn'] = source;
-
-        if (doc['Số văn bản / Số Đăng kiểm']) {
-          currentDevice.documents.push(doc);
-          parsedDocs.push(doc);
-        }
-      }
-      continue;
-    }
-
-    // Thiết bị mới
-    const id = 'TTB-2026-' + String(parsedDevices.length + 1).padStart(4, '0');
     
-    let classify = '';
-    for (let i = 0; i < statusCols.length; i++) {
-      if (String(row[19 + i] || '').trim()) {
-        classify = (i + 1) + ' - ' + statusCols[i];
-        break;
-      }
+    // 2. Lọc theo trạng thái hồ sơ tài liệu khẩn cấp
+    if (filterStatus) {
+      const devStatus = device['Trạng thái Hồ sơ'] ? normalize_(device['Trạng thái Hồ sơ']) : '';
+      if (devStatus !== filterStatus) return false;
     }
-
-    const isOxyGroup = currentGroup.toUpperCase().indexOf('BỒN OXY') >= 0 || currentGroup.toUpperCase().indexOf('OXY') >= 0;
-    const device = {
-      id: id,
-      'Tên Thiết bị': nameVal,
-      'Đơn vị tính': String(row[2] || '').trim(),
-      'Số lượng': String(row[3] || '').trim() || '1',
-      Model: String(row[4] || '').trim(),
-      'Seri Máy': String(row[5] || '').trim(),
-      'Nơi đặt thiết bị': isOxyGroup ? (String(row[11] || '').trim() || 'Nhà Oxy') : (String(row[6] || '').trim() || 'Chưa phân bổ'),
-      'Hiện trạng thực tế': String(row[7] || '').trim() || 'Đang sử dụng',
-      'Hãng SX': isOxyGroup ? '' : String(row[11] || '').trim(),
-      'Nước SX': isOxyGroup ? '' : String(row[12] || '').trim(),
-      'Năm SX': isOxyGroup ? '' : String(row[13] || '').trim(),
-      'Năm SD': isOxyGroup ? '' : String(row[14] || '').trim(),
-      'Giá': isOxyGroup ? '' : String(row[15] || '').trim(),
-      'Nguồn': isOxyGroup ? '' : String(row[16] || '').trim(),
-      'Phân loại': classify,
-      'Công ty cung ứng': String(row[24] || '').trim(),
-      'Nhóm': currentGroup,
-      'Ghi chú': String(row[25] || '').trim(),
-      'Ngày tạo': new Date(),
-      'Ngày cập nhật': new Date(),
-      documents: []
-    };
-
-    if (device['Seri Máy']) {
-      device.id = device['Seri Máy'];
+    
+    // 3. Lọc theo thời hạn hiệu lực sắp hết (urgentExpiry)
+    if (urgentDays !== null && !isNaN(urgentDays)) {
+      const expDateStr = device['Hạn đăng kiểm'];
+      if (!expDateStr || expDateStr === 'N/A') return false;
+      
+      const expDate = parseDate_(expDateStr);
+      if (isNaN(expDate.getTime())) return false;
+      
+      const now = new Date();
+      // Đưa về cùng mốc thời gian không giờ để tính ngày chính xác hơn
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const expDayOnly = new Date(expDate.getFullYear(), expDate.getMonth(), expDate.getDate());
+      
+      const diffTime = expDayOnly.getTime() - today.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+      
+      // diffDays <= urgentDays (bao gồm cả đã hết hạn, tức là diffDays < 0)
+      if (diffDays > urgentDays) return false;
     }
-
-    currentDevice = device;
-    parsedDevices.push(device);
-
-    // Lưu tài liệu đầu tiên nếu có ở hàng chính
-    const licenseNo = String(row[8] || '').trim();
-    if (licenseNo) {
-      const doc = {
-        DeviceId: currentDevice.id,
-        deviceRef: currentDevice,
-        'Tên Thiết bị': currentDevice['Tên Thiết bị'],
-        'Loại tài liệu': getDocType_(licenseNo, currentGroup, 0),
-        'Số văn bản / Số Đăng kiểm': licenseNo,
-        'Ngày cấp / Ngày Đăng kiểm': String(row[9] || '').trim(),
-        'Hạn đăng kiểm / Hạn hiệu lực': String(row[10] || '').trim(),
-        'Thời gian chuẩn bị hồ sơ (ngày)': String(row[17] || '').trim(),
-        'Trạng thái Hồ sơ': 'Chưa gửi',
-        'Người chịu trách nhiệm': '',
-        'Phối hợp thực hiện': '',
-        'Giao quản lý tại khoa': '',
-        'Ngày tạo': new Date(),
-        'Ngày cập nhật': new Date()
-      };
-      currentDevice.documents.push(doc);
-      parsedDocs.push(doc);
-    }
-  }
-
-  // Đồng bộ DeviceId cho toàn bộ tài liệu dựa trên ID cuối cùng của thiết bị cha
-  parsedDocs.forEach(doc => {
-    if (doc.deviceRef) {
-      doc.DeviceId = doc.deviceRef.id;
-      delete doc.deviceRef;
-    }
+    
+    return true;
   });
-
-  // Ghi thiết bị xuống Sheets
-  parsedDevices.forEach(dev => {
-    const devCopy = { ...dev };
-    delete devCopy.documents;
-    appendObject_(SHEETS.devices, devCopy);
-  });
-
-  // Ghi tài liệu xuống Sheets
-  parsedDocs.forEach(doc => {
-    appendObject_(SHEETS.documents, doc);
-  });
-
-  return { success: true, message: 'Đã import thành công ' + parsedDevices.length + ' thiết bị và ' + parsedDocs.length + ' tài liệu kiểm định.' };
 }
+
 
 function addDevice_(payload) {
   const id = payload.serial || nextDeviceId_();
@@ -648,6 +509,12 @@ function createTransfer_(payload) {
     }
   }
 
+  const imageUrl = uploadImageToDrive_(payload, 'AnhLuanChuyen');
+  let reqNote = payload.reason || payload.note || '';
+  if (imageUrl) {
+    reqNote += '\n[Ảnh minh chứng giao]: ' + imageUrl;
+  }
+
   const transferId = nextTransferId_();
   const now = new Date();
   appendObject_(SHEETS.transfers, {
@@ -662,7 +529,7 @@ function createTransfer_(payload) {
     RequestedBy: userUsername_(actor),
     RequestedByName: userDisplayName_(actor),
     RequestedByEmail: userEmail_(actor),
-    RequestedNote: payload.reason || payload.note || '',
+    RequestedNote: reqNote,
     RequestedAt: now,
     UpdatedAt: now
   });
@@ -695,6 +562,12 @@ function receiveTransfer_(payload) {
   const deviceRow = findDeviceRow_(transfer.DeviceId);
   if (deviceRow < 2) return { success: false, message: 'Không tìm thấy thiết bị cần luân chuyển.' };
   const now = new Date();
+  const imageUrl = uploadImageToDrive_(payload, 'AnhLuanChuyen');
+  let recNote = payload.note || '';
+  if (imageUrl) {
+    recNote += '\n[Ảnh minh chứng nhận]: ' + imageUrl;
+  }
+
   updateRowByObject_(SHEETS.devices, deviceRow, {
     'Nơi đặt thiết bị': transfer.ToDepartment,
     'Ngày cập nhật': now
@@ -704,7 +577,7 @@ function receiveTransfer_(payload) {
     ReceivedBy: userUsername_(actor),
     ReceivedByName: userDisplayName_(actor),
     ReceivedByEmail: userEmail_(actor),
-    ReceivedNote: payload.note || '',
+    ReceivedNote: recNote,
     ReceivedAt: now,
     UpdatedAt: now
   });
@@ -771,14 +644,54 @@ function cancelTransfer_(payload) {
   return { success: true, message: 'Đã hủy yêu cầu luân chuyển.' };
 }
 
+function uploadImageToDrive_(payload, folderName) {
+  if (!payload.imageContent || !payload.imageName) return '';
+  try {
+    let folder;
+    try {
+      const ss = SpreadsheetApp.openById(DEVICE_SPREADSHEET_ID);
+      const parentFolder = DriveApp.getFileById(ss.getId()).getParents().next();
+      const folders = parentFolder.getFoldersByName(folderName || 'HinhAnhMinhChung');
+      if (folders.hasNext()) {
+        folder = folders.next();
+      } else {
+        folder = parentFolder.createFolder(folderName || 'HinhAnhMinhChung');
+      }
+    } catch (e) {
+      folder = DriveApp.getRootFolder();
+    }
+    
+    let base64Data = payload.imageContent;
+    if (base64Data.indexOf('base64,') !== -1) {
+      base64Data = base64Data.split('base64,')[1];
+    }
+    
+    const decoded = Utilities.base64Decode(base64Data);
+    const blob = Utilities.newBlob(decoded, payload.imageMimeType || 'image/jpeg', payload.imageName);
+    const file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return file.getUrl();
+  } catch (err) {
+    console.error('Lỗi tải ảnh:', err);
+    return '';
+  }
+}
+
 function reportRepair_(payload) {
   const deviceId = payload.deviceId || payload.serial || '';
+  
+  const imageUrl = uploadImageToDrive_(payload, 'AnhSuaChua');
+  let description = payload.description || '';
+  if (imageUrl) {
+    description += '\n[Ảnh minh chứng]: ' + imageUrl;
+  }
+  
   appendObject_(SHEETS.repairs, {
     'Thời gian': new Date(),
     'Mã Máy/Thiết bị': deviceId,
     'Người báo lỗi': payload.userName || payload.name || '',
     'Email người báo': payload.userEmail || payload.email || '',
-    'Mô tả lỗi': payload.description || '',
+    'Mô tả lỗi': description,
     'Trạng Thái': 'Chờ duyệt'
   });
 
@@ -817,10 +730,17 @@ function approveRepair_(payload) {
   if (idx < 0) return { success: false, message: 'Không tìm thấy phiếu sửa chữa.' };
   
   const newStatus = payload.newStatus || payload.status || 'Đã duyệt';
+  
+  const imageUrl = uploadImageToDrive_(payload, 'AnhSuaChua');
+  let processNote = payload.note || '';
+  if (imageUrl) {
+    processNote += '\n[Ảnh hoàn thành/xử lý]: ' + imageUrl;
+  }
+  
   updateRowByObject_(SHEETS.repairs, idx + 2, {
     'Trạng Thái': newStatus,
     'Người duyệt': payload.approver || '',
-    'Ghi chú xử lý': payload.note || ''
+    'Ghi chú xử lý': processNote
   });
 
   // Đồng bộ hiện trạng thiết bị nếu trạng thái sửa chữa thay đổi
@@ -874,20 +794,65 @@ function approveRepair_(payload) {
   return { success: true, message: 'Đã cập nhật phiếu sửa chữa.' };
 }
 
-function updateDocStatus_(payload) {
+function hasDocumentAccess_(actor, device, doc) {
+  if (!actor) return false;
+  // 1. Admin có quyền tối cao
+  if (isAdmin_(actor)) return true;
+  
+  // 2. Kiểm tra trùng khoa phòng của thiết bị
+  const userDept = userDepartment_(actor);
+  const deviceDept = device ? (device['Nơi đặt thiết bị'] || device.department || '') : '';
+  if (userDept && deviceDept && normalize_(userDept) === normalize_(deviceDept)) {
+    return true;
+  }
+  
+  // 3. Kiểm tra người chịu trách nhiệm hoặc phối hợp hoặc giao quản lý trong doc
+  if (doc) {
+    const userFullName = userDisplayName_(actor);
+    const userEmail = userEmail_(actor);
+    const userUsername = userUsername_(actor);
+    
+    const responsible = String(doc['Người chịu trách nhiệm'] || doc.responsible || '');
+    const collaborator = String(doc['Phối hợp thực hiện'] || doc.collaborator || '');
+    const deptManager = String(doc['Giao quản lý tại khoa'] || doc.deptManager || '');
+    
+    const checkField = (fieldValue) => {
+      if (!fieldValue) return false;
+      const valNorm = normalize_(fieldValue);
+      return (
+        (userFullName && valNorm.indexOf(normalize_(userFullName)) !== -1) ||
+        (userEmail && valNorm.indexOf(normalize_(userEmail)) !== -1) ||
+        (userUsername && valNorm.indexOf(normalize_(userUsername)) !== -1)
+      );
+    };
+    
+    if (checkField(responsible) || checkField(collaborator) || checkField(deptManager)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+function updateDocStatus_(payload, actor) {
   const deviceId = String(payload.serial || '').trim();
   const docType = String(payload.docType || '').trim();
   const status = String(payload.status || '').trim();
   
   if (!deviceId) return { success: false, message: 'Thiếu DeviceId / Số Seri.' };
   
+  const devRows = getRows_(SHEETS.devices);
+  const device = devRows.find(d => String(d.id || d['Seri Máy'] || '').trim() === deviceId);
+  
   const rows = getRows_(SHEETS.documents);
   let foundIndex = -1;
+  let existingDoc = null;
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     if (String(row.DeviceId || '').trim() === deviceId) {
       if (!docType || String(row['Loại tài liệu'] || '').trim() === docType) {
         foundIndex = i + 2;
+        existingDoc = row;
         break;
       }
     }
@@ -897,20 +862,56 @@ function updateDocStatus_(payload) {
     return { success: false, message: 'Không tìm thấy tài liệu đăng kiểm phù hợp cho thiết bị ' + deviceId + ' (Loại: ' + (docType || 'Bất kỳ') + ').' };
   }
   
+  // Kiểm tra quyền truy cập tài liệu trước khi cập nhật trạng thái
+  if (!hasDocumentAccess_(actor, device, existingDoc)) {
+    return { success: false, message: 'Bạn không có quyền cập nhật tài liệu cho thiết bị này.' };
+  }
+  
+  const oldStatus = existingDoc['Trạng thái Hồ sơ'] || '';
   updateRowByObject_(SHEETS.documents, foundIndex, {
     'Trạng thái Hồ sơ': status,
     'Ngày cập nhật': new Date()
   });
   
+  // Ghi log hoạt động
+  logActivity_(
+    'Cập nhật trạng thái tài liệu',
+    deviceId,
+    device ? (device['Tên Thiết bị'] || '') : '',
+    'Cập nhật trạng thái tài liệu "' + docType + '" từ "' + oldStatus + '" thành "' + status + '".',
+    actor
+  );
+  
   return { success: true, message: 'Đã cập nhật trạng thái tài liệu ' + docType + ' của thiết bị ' + deviceId + ' thành "' + status + '".' };
 }
 
-function addDocument_(payload) {
+function addDocument_(payload, actor) {
   const deviceId = String(payload.serial || '').trim();
   const docType = String(payload.docType || '').trim();
   
   if (!deviceId || !docType) {
     return { success: false, message: 'Thiếu DeviceId hoặc Loại tài liệu.' };
+  }
+  
+  const devRows = getRows_(SHEETS.devices);
+  const device = devRows.find(d => String(d.id || d['Seri Máy'] || '').trim() === deviceId);
+  
+  // Kiểm tra xem đã tồn tại loại tài liệu này cho thiết bị chưa
+  const rows = getRows_(SHEETS.documents);
+  let foundIndex = -1;
+  let existingDoc = null;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (String(row.DeviceId || '').trim() === deviceId && String(row['Loại tài liệu'] || '').trim() === docType) {
+      foundIndex = i + 2;
+      existingDoc = row;
+      break;
+    }
+  }
+  
+  // Kiểm tra quyền truy cập tài liệu
+  if (!hasDocumentAccess_(actor, device, existingDoc || payload)) {
+    return { success: false, message: 'Bạn không có quyền thêm hoặc sửa đổi tài liệu cho thiết bị này.' };
   }
   
   let fileUrl = payload.fileUrl || '';
@@ -942,18 +943,7 @@ function addDocument_(payload) {
     }
   }
   
-  // Kiểm tra xem đã tồn tại loại tài liệu này cho thiết bị chưa
-  const rows = getRows_(SHEETS.documents);
-  let foundIndex = -1;
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    if (String(row.DeviceId || '').trim() === deviceId && String(row['Loại tài liệu'] || '').trim() === docType) {
-      foundIndex = i + 2;
-      break;
-    }
-  }
-  
-  const existingLink = foundIndex >= 2 ? rows[foundIndex - 2]['Link tài liệu'] || '' : '';
+  const existingLink = foundIndex >= 2 ? existingDoc['Link tài liệu'] || '' : '';
   const finalFileUrl = fileUrl || existingLink;
   
   const docData = {
@@ -971,24 +961,48 @@ function addDocument_(payload) {
     'Ngày cập nhật': new Date()
   };
   
+  let deviceName = device ? (device['Tên Thiết bị'] || device.name || '') : '';
+  docData['Tên Thiết bị'] = deviceName;
+  
   if (foundIndex >= 2) {
     // Cập nhật tài liệu cũ
+    const changes = [];
+    const oldDoc = existingDoc;
+    if (oldDoc['Số văn bản / Số Đăng kiểm'] !== docData['Số văn bản / Số Đăng kiểm']) {
+      changes.push('Số văn bản: "' + oldDoc['Số văn bản / Số Đăng kiểm'] + '" -> "' + docData['Số văn bản / Số Đăng kiểm'] + '"');
+    }
+    if (oldDoc['Hạn đăng kiểm / Hạn hiệu lực'] !== docData['Hạn đăng kiểm / Hạn hiệu lực']) {
+      changes.push('Hạn hiệu lực: "' + oldDoc['Hạn đăng kiểm / Hạn hiệu lực'] + '" -> "' + docData['Hạn đăng kiểm / Hạn hiệu lực'] + '"');
+    }
+    if (oldDoc['Link tài liệu'] !== docData['Link tài liệu']) {
+      changes.push('Tập tin đính kèm được cập nhật mới');
+    }
+    
     updateRowByObject_(SHEETS.documents, foundIndex, docData);
+    
+    logActivity_(
+      'Cập nhật tài liệu',
+      deviceId,
+      deviceName,
+      'Cập nhật tài liệu "' + docType + '". ' + (changes.length > 0 ? ('Chi tiết: ' + changes.join(', ')) : 'Không có thay đổi quan trọng.'),
+      actor
+    );
+    
     return { success: true, message: 'Đã cập nhật thông tin tài liệu và file.', fileUrl: finalFileUrl };
   } else {
     // Tạo mới tài liệu
     docData['Ngày tạo'] = new Date();
     
-    // Lấy tên thiết bị để ghi vào sheet documents cho dễ theo dõi
-    let deviceName = '';
-    const devRows = getRows_(SHEETS.devices);
-    const dev = devRows.find(d => String(d.id || '').trim() === deviceId);
-    if (dev) {
-      deviceName = dev['Tên Thiết bị'] || dev.name || '';
-    }
-    docData['Tên Thiết bị'] = deviceName;
-    
     appendObject_(SHEETS.documents, docData);
+    
+    logActivity_(
+      'Thêm mới tài liệu',
+      deviceId,
+      deviceName,
+      'Thêm mới tài liệu "' + docType + '" (Số văn bản: ' + (payload.licenseNo || 'N/A') + ').',
+      actor
+    );
+    
     return { success: true, message: 'Đã thêm mới tài liệu và file thành công.', fileUrl: finalFileUrl };
   }
 }
