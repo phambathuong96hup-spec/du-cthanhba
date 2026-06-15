@@ -322,6 +322,11 @@ function showTaskModal() {
     populateGroupSelect();
     populateAssigneeCheckboxes();
 
+    // Call toggleDeadline to sync UI state after reset
+    if (typeof toggleDeadline === 'function') {
+        toggleDeadline();
+    }
+
     new bootstrap.Modal(document.getElementById('taskModal')).show();
 }
 
@@ -461,6 +466,11 @@ function openEditTask(id) {
             });
         }
         updateAssigneeDisplay();
+    }
+
+    // Call toggleDeadline to sync UI state for edit mode
+    if (typeof toggleDeadline === 'function') {
+        toggleDeadline();
     }
 
     new bootstrap.Modal(document.getElementById('taskModal')).show();
