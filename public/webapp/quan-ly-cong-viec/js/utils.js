@@ -239,3 +239,35 @@ function toggleSidebarDesktop() {
         }
     }
 }
+
+/**
+ * Convert date value to YYYY-MM-DD for date inputs
+ */
+function toDateInputValue(value) {
+    if (!value) return '';
+    
+    // Check if value is in DD/MM/YYYY format
+    if (typeof value === 'string') {
+        const parts = value.trim().split('/');
+        if (parts.length === 3) {
+            const day = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            const year = parseInt(parts[2], 10);
+            const d = new Date(year, month, day);
+            if (!isNaN(d.getTime())) {
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
+            }
+        }
+    }
+    
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    
+    // Adjust for local timezone offset
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 10);
+}
+

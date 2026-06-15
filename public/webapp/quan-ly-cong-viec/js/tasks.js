@@ -443,7 +443,7 @@ function openEditTask(id) {
     const form = document.getElementById('taskForm');
     form.elements['editTaskId'].value = id;
     form.elements['taskName'].value = task[1] || '';
-    form.elements['deadline'].value = task[9] || task[4] || '';
+    form.elements['deadline'].value = toDateInputValue(task[9] || task[4] || '');
     form.elements['notes'].value = task[5] || '';
     if (form.elements['type']) form.elements['type'].value = task[10] || 'Thường quy';
     if (form.elements['difficulty']) form.elements['difficulty'].value = task[12] || '2';

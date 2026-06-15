@@ -20,13 +20,6 @@ function encodeComplianceId(id) {
     return encodeURIComponent(String(id || ''));
 }
 
-function toDateInputValue(value) {
-    if (!value) return new Date().toISOString().slice(0, 10);
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return new Date().toISOString().slice(0, 10);
-    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-    return local.toISOString().slice(0, 10);
-}
 
 async function loadCompliance(silent = false) {
     try {
