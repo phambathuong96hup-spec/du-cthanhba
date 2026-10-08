@@ -3,31 +3,51 @@
    ═══════════════════════════════════════════ */
 
 /**
- * Fetch wrapper with timeout + error handling
+ * Fetch wrapper with timeout + auto-retry + error handling.
+ *
+ * Tại sao timeout 45s?
+ *   Google Apps Script (GAS) chạy trên cold-start container: khi script chưa được
+ *   gọi trong ~5 phút, lần gọi tiếp theo GAS cần khởi động lại VM (~15-30 giây)
+ *   trước khi xử lý. Timeout cũ 20s bị abort ngay trong giai đoạn này.
+ *
+ * Tại sao retry 1 lần?
+ *   Cold-start chỉ xảy ra ở request đầu tiên. Nếu lần đầu timeout vì cold-start,
+ *   lần thứ hai GAS đã sẵn sàng và trả lời ngay.
  */
-async function apiFetch(action, data = null, timeout = 20000) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeout);
-    try {
-        const url = action ? `${SCRIPT_URL}?action=${action}` : SCRIPT_URL;
-        const opts = data
-            ? { method: 'POST', body: JSON.stringify(data), signal: controller.signal }
-            : { signal: controller.signal };
-        const res = await fetch(url, opts);
-        const text = await res.text();
+async function apiFetch(action, data = null, timeout = 45000) {
+    const MAX_RETRIES = 1; // Tự động thử lại 1 lần nếu timeout
+    let lastError;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeout);
         try {
-            return JSON.parse(text);
-        } catch {
-            throw new Error('Phản hồi không hợp lệ từ server');
+            const url = action ? `${SCRIPT_URL}?action=${action}` : SCRIPT_URL;
+            const opts = data
+                ? { method: 'POST', body: JSON.stringify(data), signal: controller.signal }
+                : { signal: controller.signal };
+            const res = await fetch(url, opts);
+            const text = await res.text();
+            try {
+                return JSON.parse(text);
+            } catch {
+                throw new Error('Phản hồi không hợp lệ từ server');
+            }
+        } catch (err) {
+            lastError = err;
+            if (err.name === 'AbortError' && attempt < MAX_RETRIES) {
+                // Cold-start timeout — thử lại lần 2 (không cần delay, GAS đã warm)
+                continue;
+            }
+            if (err.name === 'AbortError') {
+                throw new Error('Máy chủ phản hồi chậm. Vui lòng thử lại.');
+            }
+            throw err;
+        } finally {
+            clearTimeout(timer);
         }
-    } catch (err) {
-        if (err.name === 'AbortError') {
-            throw new Error('Hết thời gian kết nối. Vui lòng thử lại.');
-        }
-        throw err;
-    } finally {
-        clearTimeout(timer);
     }
+    throw lastError;
 }
 
 /**
@@ -88,6 +108,15 @@ function isAdminUser(user = currentUser) {
     return role === 'admin' || role.includes('admin');
 }
 
+function getAuthPayload() {
+    return {
+        username: currentUser?.username || '',
+        user_fullname: currentUser?.name || '',
+        role: currentUser?.role || '',
+        token: currentUser?.token || ''
+    };
+}
+
 /**
  * Escape HTML to prevent XSS
  */
@@ -98,6 +127,9 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+/**
+ * Escape text used inside HTML attributes.
+ */
 function escapeAttr(text) {
     return String(text ?? '')
         .replace(/&/g, '&amp;')
@@ -107,6 +139,9 @@ function escapeAttr(text) {
         .replace(/'/g, '&#39;');
 }
 
+/**
+ * Allow only external URLs that are safe to open from generated links.
+ */
 function safeExternalUrl(url) {
     try {
         const parsed = new URL(String(url || '').trim());
@@ -116,6 +151,9 @@ function safeExternalUrl(url) {
     }
 }
 
+/**
+ * Serialize a value for inline event handlers embedded in generated HTML.
+ */
 function jsArg(value) {
     return escapeAttr(JSON.stringify(String(value ?? '')));
 }
@@ -203,10 +241,53 @@ function getInitials(name) {
 function toggleSidebarDesktop() {
     const sidebar = document.getElementById('sidebar');
     const icon = document.getElementById('sidebarCollapseIcon');
+    const toggle = document.querySelector('.sidebar-collapse-btn');
     sidebar.classList.toggle('collapsed');
     if (sidebar.classList.contains('collapsed')) {
         icon.className = 'bi bi-chevron-bar-right';
+        if (toggle) {
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.setAttribute('aria-label', 'Mở rộng thanh điều hướng');
+            toggle.setAttribute('title', 'Mở rộng');
+        }
     } else {
         icon.className = 'bi bi-chevron-bar-left';
+        if (toggle) {
+            toggle.setAttribute('aria-expanded', 'true');
+            toggle.setAttribute('aria-label', 'Thu gọn thanh điều hướng');
+            toggle.setAttribute('title', 'Thu gọn');
+        }
     }
 }
+
+/**
+ * Convert date value to YYYY-MM-DD for date inputs
+ */
+function toDateInputValue(value) {
+    if (!value) return '';
+    
+    // Check if value is in DD/MM/YYYY format
+    if (typeof value === 'string') {
+        const parts = value.trim().split('/');
+        if (parts.length === 3) {
+            const day = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            const year = parseInt(parts[2], 10);
+            const d = new Date(year, month, day);
+            if (!isNaN(d.getTime())) {
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
+            }
+        }
+    }
+    
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    
+    // Adjust for local timezone offset
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 10);
+}
+

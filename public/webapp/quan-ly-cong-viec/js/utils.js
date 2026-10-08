@@ -3,31 +3,51 @@
    ═══════════════════════════════════════════ */
 
 /**
- * Fetch wrapper with timeout + error handling
+ * Fetch wrapper with timeout + auto-retry + error handling.
+ *
+ * Tại sao timeout 45s?
+ *   Google Apps Script (GAS) chạy trên cold-start container: khi script chưa được
+ *   gọi trong ~5 phút, lần gọi tiếp theo GAS cần khởi động lại VM (~15-30 giây)
+ *   trước khi xử lý. Timeout cũ 20s bị abort ngay trong giai đoạn này.
+ *
+ * Tại sao retry 1 lần?
+ *   Cold-start chỉ xảy ra ở request đầu tiên. Nếu lần đầu timeout vì cold-start,
+ *   lần thứ hai GAS đã sẵn sàng và trả lời ngay.
  */
-async function apiFetch(action, data = null, timeout = 20000) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeout);
-    try {
-        const url = action ? `${SCRIPT_URL}?action=${action}` : SCRIPT_URL;
-        const opts = data
-            ? { method: 'POST', body: JSON.stringify(data), signal: controller.signal }
-            : { signal: controller.signal };
-        const res = await fetch(url, opts);
-        const text = await res.text();
+async function apiFetch(action, data = null, timeout = 45000) {
+    const MAX_RETRIES = 1; // Tự động thử lại 1 lần nếu timeout
+    let lastError;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeout);
         try {
-            return JSON.parse(text);
-        } catch {
-            throw new Error('Phản hồi không hợp lệ từ server');
+            const url = action ? `${SCRIPT_URL}?action=${action}` : SCRIPT_URL;
+            const opts = data
+                ? { method: 'POST', body: JSON.stringify(data), signal: controller.signal }
+                : { signal: controller.signal };
+            const res = await fetch(url, opts);
+            const text = await res.text();
+            try {
+                return JSON.parse(text);
+            } catch {
+                throw new Error('Phản hồi không hợp lệ từ server');
+            }
+        } catch (err) {
+            lastError = err;
+            if (err.name === 'AbortError' && attempt < MAX_RETRIES) {
+                // Cold-start timeout — thử lại lần 2 (không cần delay, GAS đã warm)
+                continue;
+            }
+            if (err.name === 'AbortError') {
+                throw new Error('Máy chủ phản hồi chậm. Vui lòng thử lại.');
+            }
+            throw err;
+        } finally {
+            clearTimeout(timer);
         }
-    } catch (err) {
-        if (err.name === 'AbortError') {
-            throw new Error('Hết thời gian kết nối. Vui lòng thử lại.');
-        }
-        throw err;
-    } finally {
-        clearTimeout(timer);
     }
+    throw lastError;
 }
 
 /**

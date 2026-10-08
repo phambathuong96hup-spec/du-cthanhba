@@ -132,6 +132,15 @@ function onDragEnd(e) {
 async function updateTaskStatusFromKanban(id, newStatus) {
     if (!currentUser) return showToast("Vui lòng đăng nhập!", 'warning');
 
+    // ── Kiểm tra quyền: chỉ Admin hoặc người được giao việc mới được kéo ──
+    const task = globalData.find(r => r[0] == id);
+    if (task) {
+        const assignees = getTaskAssignees(task);
+        if (!isAdminUser(currentUser) && !assignees.includes(currentUser.name)) {
+            return showToast('⛔ Không phải việc của bạn!', 'warning');
+        }
+    }
+
     const progressMap = { 'Todo': 0, 'Doing': 10, 'Waiting': 100, 'Done': 100 };
     const newProgress = progressMap[newStatus] || 0;
 

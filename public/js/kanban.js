@@ -24,12 +24,10 @@ function switchView(view, btn) {
 
 function renderKanban() {
     const today = getToday();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
     const columns = { Todo: [], Doing: [], Waiting: [], Done: [] };
+    const sourceData = typeof getFilteredData === 'function' ? getFilteredData() : globalData;
 
-    globalData.forEach(r => {
+    sourceData.forEach(r => {
         const rawSt = String(r[2]).trim();
         const status = getEffectiveStatus(rawSt, r[6]);
         const dlRaw = r[9] || r[4];
@@ -39,7 +37,7 @@ function renderKanban() {
         if (status === 'Done') col = 'Done';
         else if (status === 'Waiting') col = 'Waiting';
         else if (status === 'Todo') col = 'Todo';
-        else if (isOverdue) col = 'Doing'; // overdue still in Doing
+        else if (isOverdue) col = 'Doing';
 
         if (columns[col]) columns[col].push(r);
     });
@@ -62,7 +60,9 @@ function renderKanban() {
             const id = r[0], name = r[1], assignee = r[7], prog = parseProgress(r[8]);
             const dlRaw = r[9] || r[4];
             const difficulty = r[12] || '2';
-            const assignees = String(assignee).split(',').map(s => s.trim()).filter(Boolean);
+            const assignees = typeof getTaskAssignees === 'function'
+                ? getTaskAssignees(r)
+                : String(assignee).split(',').map(s => s.trim()).filter(Boolean);
             const firstAssignee = assignees[0] || 'N/A';
             const color = getRandomColor(firstAssignee);
             const initials = getInitials(firstAssignee);
@@ -96,12 +96,13 @@ function renderKanban() {
         }).join('');
     });
 
-    // Setup drop zones
     setupDragDrop();
 }
 
 function setupDragDrop() {
     document.querySelectorAll('.kanban-col-body').forEach(zone => {
+        if (zone.dataset.dropBound === 'true') return;
+        zone.dataset.dropBound = 'true';
         zone.addEventListener('dragover', e => {
             e.preventDefault();
             zone.classList.add('drop-highlight');
@@ -131,22 +132,30 @@ function onDragEnd(e) {
 async function updateTaskStatusFromKanban(id, newStatus) {
     if (!currentUser) return showToast("Vui lòng đăng nhập!", 'warning');
 
-    // Map kanban column status to progress values
+    // ── Kiểm tra quyền: chỉ Admin hoặc người được giao việc mới được kéo ──
+    const task = globalData.find(r => r[0] == id);
+    if (task) {
+        const assignees = getTaskAssignees(task);
+        if (!isAdminUser(currentUser) && !assignees.includes(currentUser.name)) {
+            return showToast('⛔ Không phải việc của bạn!', 'warning');
+        }
+    }
+
     const progressMap = { 'Todo': 0, 'Doing': 10, 'Waiting': 100, 'Done': 100 };
     const newProgress = progressMap[newStatus] || 0;
 
     try {
         if (newStatus === 'Done' && isAdminUser(currentUser)) {
-            await apiFetch('approve_done', { id, role: currentUser.role });
+            const res = await apiFetch('approve_done', { ...getAuthPayload(), id });
+            if (res.status === 'error') throw new Error(res.message || 'Không thể duyệt công việc');
         } else if (newStatus === 'Waiting') {
-            // Submit for review
-            await apiFetch('update_progress', {
-                id, progress: 100, user_fullname: currentUser.name, role: currentUser.role
-            });
+            return showToast("Vui lòng dùng nút Báo cáo và tải minh chứng để gửi duyệt.", 'warning');
         } else {
-            await apiFetch('update_progress', {
-                id, progress: newProgress, user_fullname: currentUser.name, role: currentUser.role
+            const res = await apiFetch('update_progress', {
+                ...getAuthPayload(),
+                id, progress: newProgress
             });
+            if (res.status === 'error') throw new Error(res.message || 'Không thể cập nhật trạng thái');
         }
         showToast("Đã cập nhật trạng thái!", 'success');
         loadTaskList();
@@ -159,7 +168,6 @@ async function updateTaskStatusFromKanban(id, newStatus) {
    Task Detail Modal + Checklist
    ═══════════════════════════════════════════ */
 
-// Local checklist storage (per task)
 let taskChecklists = JSON.parse(localStorage.getItem('taskChecklists') || '{}');
 let currentDetailTaskId = null;
 
@@ -175,12 +183,10 @@ function openTaskDetail(id) {
     const today = getToday();
     const isOverdue = dlRaw && new Date(dlRaw) < today && status !== 'Done';
 
-    // Task ID display
     const idx = globalData.indexOf(task);
     document.getElementById('detailTaskId').innerText = `CV-${String(idx + 1).padStart(3, '0')}`;
     document.getElementById('detailTaskName').innerText = task[1];
 
-    // Status badge
     const statusMap = {
         'Done': '<span class="status-badge bg-done">Hoàn thành</span>',
         'Waiting': '<span class="status-badge bg-waiting">Chờ duyệt</span>',
@@ -189,7 +195,6 @@ function openTaskDetail(id) {
     };
     document.getElementById('detailStatus').innerHTML = statusMap[status] || statusMap['Todo'];
 
-    // Priority
     const priorityMap = {
         '1': '<span class="priority-badge priority-1">Thấp</span>',
         '2': '<span class="priority-badge priority-2">Trung bình</span>',
@@ -198,7 +203,6 @@ function openTaskDetail(id) {
     };
     document.getElementById('detailPriority').innerHTML = priorityMap[difficulty] || priorityMap['2'];
 
-    // Deadline
     if (dlRaw) {
         const dl = new Date(dlRaw);
         const dlStr = dl.toLocaleDateString('vi-VN');
@@ -210,18 +214,21 @@ function openTaskDetail(id) {
         document.getElementById('detailDeadline').innerHTML = '<span class="text-muted"><i class="bi bi-infinity"></i> Thường quy</span>';
     }
 
-    // Progress
+    const assignees = String(task[7]).split(',').map(s => s.trim()).filter(Boolean);
+
     const progColor = prog >= 100 ? '#10b981' : prog >= 50 ? '#f59e0b' : '#ef4444';
+    const canEdit = currentUser && (isAdminUser(currentUser) || assignees.includes(currentUser.name));
     document.getElementById('detailProgress').innerHTML = `
         <div class="d-flex align-items-center gap-2">
-            <div class="progress" style="height:6px;flex:1;border-radius:6px;background:var(--border-color)">
-                <div class="progress-bar" style="width:${prog}%;background:${progColor};border-radius:6px"></div>
-            </div>
-            <span class="fw-bold small" style="color:var(--text-main)">${prog}%</span>
+            <input type="range" min="0" max="100" value="${prog}" step="5"
+                id="progressSlider"
+                ${canEdit ? '' : 'disabled'}
+                style="flex:1;accent-color:${progColor};cursor:${canEdit ? 'pointer' : 'default'}"
+                oninput="document.getElementById('progressSliderVal').innerText=this.value+'%'"
+            >
+            <span class="fw-bold small" id="progressSliderVal" style="color:var(--text-main);min-width:36px">${prog}%</span>
+            ${canEdit ? `<button class="btn btn-sm btn-primary-custom btn-rounded px-2 py-0" onclick="saveProgressFromSlider(${jsArg(id)})"><i class="bi bi-check2"></i></button>` : ''}
         </div>`;
-
-    // Assignees
-    const assignees = String(task[7]).split(',').map(s => s.trim()).filter(Boolean);
     document.getElementById('detailAssignee').innerHTML = assignees.map(n => {
         const color = getRandomColor(n);
         return `<div class="d-flex align-items-center gap-2 px-2 py-1 rounded-pill" style="background:var(--bg-body)">
@@ -230,13 +237,9 @@ function openTaskDetail(id) {
         </div>`;
     }).join('');
 
-    // Notes
     document.getElementById('detailNotes').innerText = task[5] || 'Không có ghi chú';
-
-    // Checklist
     renderChecklist(id);
 
-    // Timeline
     const timeline = document.getElementById('detailTimeline');
     const created = task[6] ? new Date(task[6]).toLocaleDateString('vi-VN') : '?';
     let items = [`<div class="timeline-item"><div class="timeline-time">${escapeHtml(created)}</div>Công việc được tạo</div>`];
@@ -265,6 +268,21 @@ function renderChecklist(taskId) {
             <i class="bi bi-x delete-btn" onclick="deleteChecklistItem(${i})"></i>
         </div>
     `).join('');
+}
+
+async function saveProgressFromSlider(id) {
+    const slider = document.getElementById('progressSlider');
+    if (!slider) return;
+    const prog = parseInt(slider.value);
+    try {
+        const res = await apiFetch('update_progress', { ...getAuthPayload(), id, progress: prog });
+        if (res.status === 'error') throw new Error(res.message || 'Không thể lưu tiến độ');
+        showToast('Đã lưu tiến độ ' + prog + '%!', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('taskDetailModal'))?.hide();
+        loadTaskList();
+    } catch (err) {
+        showToast('Lỗi: ' + err.message, 'danger');
+    }
 }
 
 function addChecklistItem() {
