@@ -8,7 +8,7 @@ const PAGE_SIZE = 15;
 let currentStatusFilter = 'all';
 
 function getTaskAssignees(row) {
-    return String(row?.[7] || '').split(',').map(s => s.trim()).filter(Boolean);
+    return String(row?.[7] || '').split(',').map(s => normalizeStaffName(s)).filter(Boolean);
 }
 
 async function loadTaskList(silent = false) {
@@ -88,6 +88,21 @@ function getFilteredData() {
     });
 }
 
+/**
+ * Chuẩn hóa tên đọc từ sheet về tên chuẩn trong ALL_STAFF.
+ * Giải quyết trường hợp sheet ghi "Mạnh Toàn" nhưng config là "Kiều Mạnh Toàn".
+ */
+function normalizeStaffName(rawName) {
+    if (!rawName) return rawName;
+    const needle = rawName.trim().toLowerCase();
+    const staff = typeof ALL_STAFF !== 'undefined' ? ALL_STAFF : [];
+    const matched = staff.find(canonical => {
+        const c = canonical.trim().toLowerCase();
+        return c === needle || c.endsWith(' ' + needle);
+    });
+    return matched || rawName.trim();
+}
+
 function populateFilter() {
     const sGrp = document.getElementById('filterGroup');
     const sAsgn = document.getElementById('filterAssignee');
@@ -98,7 +113,7 @@ function populateFilter() {
     let g = [], a = [];
     globalData.forEach(r => {
         if (r[11]) g.push(String(r[11]).trim());
-        if (r[7]) a.push(...String(r[7]).split(',').map(v => v.trim()).filter(v => v));
+        if (r[7]) a.push(...String(r[7]).split(',').map(v => normalizeStaffName(v)).filter(v => v));
     });
     
     if (sGrp) [...new Set(g)].sort().forEach(n => {

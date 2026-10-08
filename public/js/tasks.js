@@ -1,262 +1,233 @@
 /* ═══════════════════════════════════════════
-   Tasks — CRUD, Render, Filter
+   Tasks — CRUD, Render, Filter, Pagination
    ═══════════════════════════════════════════ */
 
 let globalData = [];
+let currentPage = 1;
+const PAGE_SIZE = 15;
+let currentStatusFilter = 'all';
 
-async function loadTaskList(isPolling = false) {
-    if (!isPolling) {
-        const sk = `<tr><td colspan="7"><div class="d-flex flex-column gap-3 p-3">
-            <span class="skeleton" style="width:65%"></span>
-            <span class="skeleton" style="width:80%"></span>
-            <span class="skeleton" style="width:45%"></span>
-        </div></td></tr>`;
-        document.getElementById('taskTableBody').innerHTML = sk + sk + sk;
-    }
+function getTaskAssignees(row) {
+    return String(row?.[7] || '').split(',').map(s => normalizeStaffName(s)).filter(Boolean);
+}
 
+async function loadTaskList(silent = false) {
     try {
         const res = await apiFetch(null);
         globalData = res.data || [];
-        checkTaskNotifications(globalData);
+        if (!silent) checkTaskNotifications(globalData);
         populateFilter();
-        renderTable();
-    } catch (err) {
-        console.error("Load tasks failed:", err);
-        if (!isPolling) {
-            document.getElementById('taskTableBody').innerHTML =
-                `<tr><td colspan="7" class="text-center text-danger py-5">
-                    <i class="bi bi-wifi-off fs-3 d-block mb-2"></i>
-                    Lỗi tải dữ liệu. <a href="#" onclick="loadTaskList();return false;" class="text-primary fw-bold">Thử lại</a>
-                </td></tr>`;
+        renderTasks();
+        if (typeof currentView !== 'undefined' && currentView === 'kanban') {
+            if(typeof renderKanban === 'function') renderKanban();
         }
+    } catch (err) {
+        if (!silent) showToast("Lỗi tải công việc: " + err.message, 'danger');
     }
+}
+
+function getFilteredData() {
+    const today = getToday();
+    const searchVal = (document.getElementById('searchInput')?.value || '').toLowerCase();
+    const groupVal = document.getElementById('filterGroup')?.value || '';
+    const assigneeVal = document.getElementById('filterAssignee')?.value || '';
+    const statusVal = document.getElementById('filterStatus')?.value || '';
+    const diffVal = document.getElementById('filterDifficulty')?.value || '';
+    const monthVal = document.getElementById('filterMonth')?.value || '';
+    const quickFilterMode = document.getElementById('quickFilterMode')?.value || '';
+
+    return globalData.filter(r => {
+        const rawSt = String(r[2]).trim();
+        const status = getEffectiveStatus(rawSt, r[6]);
+        const dlRaw = r[9] || r[4];
+        const isOverdue = dlRaw && new Date(dlRaw) < today && status !== 'Done' && status !== 'Waiting';
+
+        if (quickFilterMode === '7days' || quickFilterMode === '30days') {
+            if (!dlRaw) return false;
+            const dl = new Date(dlRaw);
+            dl.setHours(0, 0, 0, 0);
+            const rangeEnd = new Date(today);
+            rangeEnd.setDate(rangeEnd.getDate() + (quickFilterMode === '7days' ? 7 : 30));
+            if (dl < today || dl > rangeEnd) return false;
+        }
+
+        // Month filter
+        if (monthVal && !dlRaw) return false;
+        if (monthVal && dlRaw) {
+            const dl = new Date(dlRaw);
+            const dlMonth = `${dl.getFullYear()}-${String(dl.getMonth() + 1).padStart(2, '0')}`;
+            if (dlMonth !== monthVal) return false;
+        }
+
+        // Status tab filter
+        if (currentStatusFilter === 'doing' && status !== 'Doing' && !isOverdue) return false;
+        if (currentStatusFilter === 'done' && status !== 'Done') return false;
+        if (currentStatusFilter === 'waiting' && status !== 'Waiting') return false;
+        if (currentStatusFilter === 'overdue' && !isOverdue) return false;
+        if (currentStatusFilter === 'todo' && status !== 'Todo') return false;
+
+        // Dropdown status filter
+        if (statusVal === 'Doing' && (status !== 'Doing' || isOverdue)) return false;
+        if (statusVal === 'Done' && status !== 'Done') return false;
+        if (statusVal === 'Waiting' && status !== 'Waiting') return false;
+        if (statusVal === 'Overdue' && !isOverdue) return false;
+        if (statusVal === 'NewTask' && status !== 'Todo') return false;
+
+        // Text search
+        if (searchVal) {
+            const text = [r[1], r[5], r[7], r[11]].join(' ').toLowerCase();
+            if (!text.includes(searchVal)) return false;
+        }
+
+        // Dropdown filters
+        if (groupVal && String(r[11]) !== groupVal) return false;
+        if (assigneeVal && !getTaskAssignees(r).includes(assigneeVal)) return false;
+        if (diffVal && String(r[12]) !== diffVal) return false;
+
+        return true;
+    });
+}
+
+/**
+ * Chuẩn hóa tên đọc từ sheet về tên chuẩn trong ALL_STAFF.
+ * Giải quyết trường hợp sheet ghi "Mạnh Toàn" nhưng config là "Kiều Mạnh Toàn".
+ */
+function normalizeStaffName(rawName) {
+    if (!rawName) return rawName;
+    const needle = rawName.trim().toLowerCase();
+    const staff = typeof ALL_STAFF !== 'undefined' ? ALL_STAFF : [];
+    const matched = staff.find(canonical => {
+        const c = canonical.trim().toLowerCase();
+        return c === needle || c.endsWith(' ' + needle);
+    });
+    return matched || rawName.trim();
 }
 
 function populateFilter() {
-    const s = document.getElementById('filterAssignee');
-    s.innerHTML = '<option value="">Tất cả</option>';
-    const names = new Set();
+    const sGrp = document.getElementById('filterGroup');
+    const sAsgn = document.getElementById('filterAssignee');
+    
+    if (sGrp) sGrp.innerHTML = '<option value="">Tất cả</option>';
+    if (sAsgn) sAsgn.innerHTML = '<option value="">Tất cả</option>';
+    
+    let g = [], a = [];
     globalData.forEach(r => {
-        String(r[7]).split(',').map(v => v.trim()).filter(Boolean).forEach(n => names.add(n));
+        if (r[11]) g.push(String(r[11]).trim());
+        if (r[7]) a.push(...String(r[7]).split(',').map(v => normalizeStaffName(v)).filter(v => v));
     });
-    [...names].sort().forEach(n => {
-        s.appendChild(new Option(n, n));
+    
+    if (sGrp) [...new Set(g)].sort().forEach(n => {
+        if (!n) return;
+        sGrp.appendChild(new Option(n, n));
+    });
+    if (sAsgn) [...new Set(a)].sort().forEach(n => {
+        if (!n) return;
+        sAsgn.appendChild(new Option(n, n));
     });
 }
 
-let currentPage = 1;
-const PAGE_SIZE = 15;
-let filteredData = [];
+function applyFilters() {
+    currentPage = 1;
+    renderTasks();
+    if (typeof currentView !== 'undefined' && currentView === 'kanban' && typeof renderKanban === 'function') {
+        renderKanban();
+    }
+}
 
-function renderTable() {
-    const tb = document.getElementById('taskTableBody');
-    const fMonth = document.getElementById('filterMonth').value;
-    const fG = document.getElementById('filterGroup').value.toLowerCase().trim();
-    const fN = document.getElementById('filterAssignee').value.toLowerCase().trim();
-    const fS = document.getElementById('filterStatus').value;
-    const fD = document.getElementById('filterDifficulty').value;
-    const fT = document.getElementById('filterText').value.toLowerCase().trim();
-    const quickMode = document.getElementById('quickFilterMode').value;
-    const statusTab = document.getElementById('statusTabFilter').value;
+function syncSearch(val) {
+    const searchInput = document.getElementById('searchInput');
+    if(searchInput) searchInput.value = val;
+    applyFilters();
+}
+
+function filterByStatus(status, btn) {
+    currentStatusFilter = status;
+    currentPage = 1;
+    document.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    renderTasks();
+}
+
+function renderTasks() {
     const today = getToday();
     const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-    const weekAhead = new Date(today); weekAhead.setDate(weekAhead.getDate() + 7);
+    const nextWeek = new Date(today); nextWeek.setDate(nextWeek.getDate() + 7);
 
-    let filterStart = null, filterEnd = null;
-    if (fMonth) {
-        const [y, m] = fMonth.split('-').map(Number);
-        filterStart = new Date(y, m - 1, 1);
-        filterEnd = new Date(y, m, 0, 23, 59, 59);
-    }
-
-    // Count all statuses for tabs (before filtering)
-    let countAll = 0, countDoing = 0, countWaiting = 0, countOverdue = 0, countDone = 0;
-    globalData.forEach(r => {
-        const st = getEffectiveStatus(String(r[2]).trim(), r[6]);
-        const dlRaw = r[9] || r[4];
-        const isOvd = dlRaw && new Date(dlRaw) < today && st !== 'Done' && st !== 'Waiting';
-        countAll++;
-        if (st === 'Done') countDone++;
-        else if (st === 'Waiting') countWaiting++;
-        else if (isOvd) countOverdue++;
-        else countDoing++;
-    });
-    const ce = id => document.getElementById(id);
-    if (ce('count-all')) ce('count-all').innerText = countAll;
-    if (ce('count-doing')) ce('count-doing').innerText = countDoing;
-    if (ce('count-waiting')) ce('count-waiting').innerText = countWaiting;
-    if (ce('count-overdue')) ce('count-overdue').innerText = countOverdue;
-    if (ce('count-done')) ce('count-done').innerText = countDone;
-
-    let flt = globalData.filter(r => {
-        const group = String(r[11] || "").toLowerCase();
-        const as = String(r[7]).toLowerCase();
-        const rawSt = String(r[2]).trim();
-        const nm = String(r[1]).toLowerCase();
-        const diff = String(r[12] || "");
-        const st = getEffectiveStatus(rawSt, r[6]);
-        const type = String(r[10] || "Thường quy");
-        const dlRaw = r[9] || r[4];
-        const isOverdue = dlRaw && new Date(dlRaw) < today && st !== 'Done' && st !== 'Waiting';
-
-        // Status tab filter
-        if (statusTab) {
-            if (statusTab === 'Doing' && (st === 'Done' || st === 'Waiting' || isOverdue)) return false;
-            if (statusTab === 'Waiting' && st !== 'Waiting') return false;
-            if (statusTab === 'Overdue' && !isOverdue) return false;
-            if (statusTab === 'Done' && st !== 'Done') return false;
-        }
-
-        // Quick time filter
-        if (quickMode === '7days') {
-            const dl = dlRaw ? new Date(dlRaw) : null;
-            if (!dl || dl > weekAhead || dl < today) return false;
-        } else if (quickMode === '30days') {
-            const thirtyDays = new Date(today); thirtyDays.setDate(thirtyDays.getDate() + 30);
-            const dl = dlRaw ? new Date(dlRaw) : null;
-            if (!dl || dl > thirtyDays || dl < today) return false;
-        } else if (quickMode === 'overdue') {
-            if (!isOverdue) return false;
-        }
-
-        // Status filter (dropdown)
-        let statusMatch = true;
-        if (fS === 'Pending') statusMatch = st !== 'Done' && st !== 'Waiting';
-        else if (fS === 'Done') statusMatch = st === 'Done';
-        else if (fS === 'Waiting') statusMatch = st === 'Waiting';
-        else if (fS === 'Overdue') statusMatch = isOverdue;
-        else if (fS === 'NoRoutine') statusMatch = type !== 'Thường quy';
-
-        // Month overlap
-        let monthMatch = true;
-        if (filterStart && filterEnd) {
-            let taskStart = new Date(r[6]);
-            let taskEnd = dlRaw ? new Date(dlRaw) : new Date();
-            if (!dlRaw && st !== 'Done') taskEnd = new Date(today.getFullYear() + 1, 0, 1);
-            taskStart.setHours(0, 0, 0, 0);
-            taskEnd.setHours(23, 59, 59, 999);
-            monthMatch = taskStart <= filterEnd && taskEnd >= filterStart;
-        }
-
-        return (fG === "" || group.includes(fG))
-            && (fN === "" || as.includes(fN))
-            && (fD === "" || diff === fD)
-            && statusMatch && monthMatch
-            && (fT === "" || nm.includes(fT));
-    });
-
-    // Sort
-    flt.sort((a, b) => {
-        const grpA = (a[11] || "").toLowerCase(), grpB = (b[11] || "").toLowerCase();
-        if (grpA < grpB) return -1; if (grpA > grpB) return 1;
-        const stA = getEffectiveStatus(String(a[2]).trim(), a[6]);
-        const stB = getEffectiveStatus(String(b[2]).trim(), b[6]);
-        if (stA === 'Waiting' && stB !== 'Waiting') return -1;
-        if (stA !== 'Waiting' && stB === 'Waiting') return 1;
-        if (stA === 'Done' && stB !== 'Done') return 1;
-        if (stA !== 'Done' && stB === 'Done') return -1;
-        const dA = new Date(a[9] || a[4] || '9999-12-31');
-        const dB = new Date(b[9] || b[4] || '9999-12-31');
-        return dA - dB;
-    });
-
-    filteredData = flt;
-
-    // Pagination
-    const totalPages = Math.max(1, Math.ceil(flt.length / PAGE_SIZE));
+    const filtered = getFilteredData();
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     if (currentPage > totalPages) currentPage = totalPages;
-    const startIdx = (currentPage - 1) * PAGE_SIZE;
-    const pageData = flt.slice(startIdx, startIdx + PAGE_SIZE);
+    if (currentPage < 1) currentPage = 1;
 
-    // Update pagination UI
-    document.getElementById('paginationInfo').innerText = `${flt.length} công việc`;
-    document.getElementById('paginationCurrent').innerText = `${currentPage}/${totalPages}`;
-    document.getElementById('btnPrevPage').disabled = currentPage <= 1;
-    document.getElementById('btnNextPage').disabled = currentPage >= totalPages;
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const pageData = filtered.slice(start, start + PAGE_SIZE);
 
-    if (flt.length === 0) {
-        tb.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-5">
-            <i class="bi bi-inbox fs-3 d-block mb-2 opacity-50"></i>
-            Không tìm thấy công việc nào.
-        </td></tr>`;
+    // Update status counts
+    updateStatusCounts();
+
+    const tbody = document.getElementById('taskBody');
+    if (!tbody) return;
+
+    if (pageData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-5">
+            <i class="bi bi-inbox fs-1 d-block mb-2 opacity-25"></i>Không có công việc nào</td></tr>`;
+        updatePagination(0, 0);
         return;
     }
 
-    const priorityLabels = { '1': 'Thấp', '2': 'TB', '3': 'Cao', '4': 'Khẩn cấp' };
-
-    const rows = [];
-    pageData.forEach((r, idx) => {
-        const id = r[0], name = r[1], rawStatus = String(r[2]).trim(), assignee = r[7];
-        const type = r[10] || "Thường quy", group = r[11] || "";
-        const difficulty = r[12] || "";
-        const status = getEffectiveStatus(rawStatus, r[6]);
+    tbody.innerHTML = pageData.map((r, i) => {
+        const id = r[0], name = r[1], rawSt = String(r[2]).trim();
+        const note = r[5], assignee = r[7], prog = parseProgress(r[8]);
         const dlRaw = r[9] || r[4];
-        const dlDisp = dlRaw ? new Date(dlRaw).toLocaleDateString('vi-VN') : '';
-        const fileUrl = r[13] || "";
-        const prog = parseProgress(r[8]);
-        const isOwner = currentUser && (isAdminUser(currentUser) || assignee.includes(currentUser.name));
-        const disableControl = isOwner ? "" : "pointer-events:none;opacity:0.5;";
+        const group = r[11] || '';
+        const difficulty = r[12] || '2';
+        const status = getEffectiveStatus(rawSt, r[6]);
+
         const isOverdue = dlRaw && new Date(dlRaw) < today && status !== 'Done' && status !== 'Waiting';
 
-        // Task ID
-        const globalIdx = globalData.indexOf(r);
-        const taskIdStr = `CV-${String(globalIdx + 1).padStart(3, '0')}`;
-
         // Status badge
-        let statusBadgeHtml = '';
-        if (status === 'Todo' && isOwner) {
-            statusBadgeHtml = `<span class="status-badge bg-todo cursor-pointer" onclick="event.stopPropagation();startTask(${jsArg(id)})" title="Bấm để bắt đầu"><i class="bi bi-play-circle-fill me-1"></i>Bắt đầu</span>`;
-        } else if (status === 'Done') {
-            statusBadgeHtml = '<span class="status-badge bg-done">Hoàn thành</span>';
-        } else if (status === 'Waiting') {
-            statusBadgeHtml = '<span class="status-badge bg-waiting">Chờ duyệt</span>';
-        } else if (isOverdue) {
-            statusBadgeHtml = '<span class="status-badge bg-overdue">Quá hạn</span>';
-        } else if (status === 'Doing') {
-            statusBadgeHtml = '<span class="status-badge bg-doing">Đang làm</span>';
-        } else {
-            statusBadgeHtml = '<span class="status-badge bg-todo">Mới tạo</span>';
+        let statusBadge = '';
+        if (status === 'Done') statusBadge = '<span class="status-badge bg-done">Hoàn thành</span>';
+        else if (status === 'Waiting') statusBadge = '<span class="status-badge bg-waiting">Chờ duyệt</span>';
+        else if (isOverdue) statusBadge = '<span class="status-badge bg-overdue">Quá hạn</span>';
+        else if (status === 'Todo') statusBadge = `<span class="status-badge bg-todo" style="cursor:pointer" title="Bấm để bắt đầu làm" onclick="event.stopPropagation();startTask(${jsArg(id)})">Mới tạo ▶</span>`;
+        else statusBadge = '<span class="status-badge bg-doing">Đang làm</span>';
+
+        // Deadline display
+        let dlDisplay = '<i class="bi bi-infinity text-muted"></i>';
+        if (dlRaw) {
+            const dl = new Date(dlRaw);
+            const dlStr = dl.toLocaleDateString('vi-VN');
+            let dlClass = '';
+            if (isOverdue) dlClass = 'date-overdue';
+            else if (dl.toDateString() === today.toDateString()) dlClass = 'date-today';
+            else if (dl <= tomorrow) dlClass = 'date-tomorrow';
+            else if (dl <= nextWeek) dlClass = 'date-week';
+            dlDisplay = `<span class="date-badge ${dlClass}">${escapeHtml(dlStr)}</span>`;
         }
 
-        // Priority badge (replaces stars)
-        let priorityHtml = '';
-        if (difficulty) {
-            const label = priorityLabels[difficulty] || 'TB';
-            priorityHtml = `<span class="priority-badge priority-${escapeAttr(difficulty)}">${escapeHtml(label)}</span>`;
-        }
+        // Progress bar
+        let progColor = '#10b981';
+        if (prog < 30) progColor = '#ef4444';
+        else if (prog < 70) progColor = '#f59e0b';
 
-        // Date badge with color coding
-        let dlHtml = '';
-        if (!dlRaw || type === 'Thường quy') {
-            dlHtml = '<span class="text-muted small"><i class="bi bi-infinity"></i> TQ</span>';
-        } else {
-            const dlDate = new Date(dlRaw);
-            let dateClass = '';
-            if (isOverdue) dateClass = 'date-overdue';
-            else if (dlDate.toDateString() === today.toDateString()) dateClass = 'date-today';
-            else if (dlDate.toDateString() === tomorrow.toDateString()) dateClass = 'date-tomorrow';
-            else if (dlDate <= weekAhead) dateClass = 'date-week';
+        // Assignee avatars
+        const assignees = getTaskAssignees(r);
+        const avatarHtml = assignees.slice(0, 3).map(n => {
+            const c = getRandomColor(n);
+            return `<div title="${escapeHtml(n)}" style="width:26px;height:26px;border-radius:8px;background:${c};color:white;display:inline-flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:700;margin-right:-6px;border:2px solid var(--surface)">${escapeHtml(getInitials(n))}</div>`;
+        }).join('');
 
-            if (dateClass) {
-                dlHtml = `<span class="date-badge ${dateClass}">${escapeHtml(dlDisp)}</span>`;
-            } else {
-                dlHtml = `<span class="fw-bold small" style="color:var(--text-main)">${escapeHtml(dlDisp)}</span>`;
-            }
-        }
+        // Priority
+        const priorityLabel = { '1': 'Thấp', '2': 'TB', '3': 'Cao', '4': 'Khẩn' }[difficulty] || 'TB';
 
-        // Progress slider
-        let slider = status === 'Done'
-            ? `<div class="progress" style="height:5px;width:90px;border-radius:10px;"><div class="progress-bar bg-success" style="width:100%"></div></div>`
-            : `<div class="d-flex align-items-center" style="${disableControl}">
-                <input type="range" class="form-range me-2" style="width:65px" min="0" max="100" step="10" value="${prog}" onclick="event.stopPropagation()" onchange="updateProgress(${jsArg(id)},this.value)">
-                <span class="badge bg-light text-dark border" id="val-${escapeAttr(id)}" style="width:38px;font-size:0.72rem">${prog}%</span>
-               </div>`;
+        // Action Buttons Logic
+        let isOwner = currentUser && (isAdminUser(currentUser) || assignees.includes(currentUser.name));
+        let disableControl = isOwner ? "" : "pointer-events: none; opacity: 0.6;";
+        let fileUrl = r[13] || "";
 
-        // Action buttons
         let actionBtns = '';
-        const safeId = escapeAttr(id);
-        const attachLink = (fileUrl && currentUser && isAdminUser(currentUser))
-            ? `<button onclick="event.stopPropagation();openReviewModal(${jsArg(id)})" class="btn btn-sm border text-primary" title="Xem báo cáo" style="border-radius:8px"><i class="bi bi-file-earmark-text-fill"></i></button> `
+        let attachLink = (fileUrl && currentUser && isAdminUser(currentUser)) 
+            ? `<button onclick="event.stopPropagation();openReviewModal(${jsArg(id)})" class="btn btn-sm btn-white border shadow-sm text-primary" title="Xem báo cáo"><i class="bi bi-file-earmark-text-fill"></i></button>` 
             : '';
 
         if (status === 'Done') {
@@ -264,362 +235,353 @@ function renderTable() {
         } else if (status === 'Waiting') {
             actionBtns = attachLink;
             if (currentUser && isAdminUser(currentUser)) {
-                actionBtns += `<button class="btn btn-sm btn-success ms-1" onclick="event.stopPropagation();approveTask(${jsArg(id)})" title="Duyệt" style="border-radius:8px"><i class="bi bi-check-lg"></i></button>
-                    <button class="btn btn-sm btn-danger ms-1" onclick="event.stopPropagation();rejectTask(${jsArg(id)})" title="Từ chối" style="border-radius:8px"><i class="bi bi-x-lg"></i></button>`;
+                actionBtns += `
+                <button class="btn btn-sm btn-success ms-1" onclick="event.stopPropagation();approveTask(${jsArg(id)})" title="Duyệt"><i class="bi bi-check-lg"></i></button>
+                <button class="btn btn-sm btn-danger ms-1" onclick="event.stopPropagation();rejectTask(${jsArg(id)})" title="Từ chối"><i class="bi bi-x-lg"></i></button>`;
             } else {
-                actionBtns += '<span class="text-muted small fst-italic">Đợi duyệt...</span>';
+                actionBtns += `<span class="text-muted small fst-italic">Đợi duyệt...</span>`;
             }
-        } else if (currentUser && isAdminUser(currentUser)) {
-            actionBtns = `<button class="btn btn-sm btn-outline-success rounded-pill px-3" onclick="event.stopPropagation();approveTask(${jsArg(id)})">Duyệt</button>`;
         } else {
-            actionBtns = `<div style="${disableControl}">
-                <button class="btn btn-sm btn-primary-custom py-1 px-2" style="font-size:0.78rem" onclick="event.stopPropagation();openReportModal(${jsArg(id)})" title="Báo cáo"><i class="bi bi-send-fill"></i></button>
-            </div>`;
+            if (currentUser && isAdminUser(currentUser)) {
+                actionBtns = `<button class="btn btn-sm btn-outline-success rounded-pill px-3" onclick="event.stopPropagation();approveTask(${jsArg(id)})">Duyệt ngay</button>`;
+            } else {
+                actionBtns = `<div style="${disableControl}">
+                    <button class="btn btn-sm btn-primary-custom py-1 px-2" style="font-size:0.8rem" onclick="event.stopPropagation();openReportModal(${jsArg(id)})" title="Báo cáo"><i class="bi bi-send-fill"></i></button>
+                </div>`;
+            }
         }
 
-        const editBtn = (currentUser && isAdminUser(currentUser))
-            ? `<button class="btn btn-sm text-muted p-0 ms-2" style="opacity:0.4" onclick="event.stopPropagation();openEditTask(${jsArg(id)})" title="Sửa"><i class="bi bi-pencil-square"></i></button>`
-            : '';
-
-        const assignees = assignee.split(',').map(s => s.trim()).filter(Boolean);
-        const firstAssignee = assignees[0] || '';
-        const assigneeHtml = firstAssignee
-            ? `<div class="d-flex align-items-center gap-2">
-                <div style="width:24px;height:24px;border-radius:7px;background:${getRandomColor(firstAssignee)};color:white;display:flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:700;flex-shrink:0">${escapeHtml(getInitials(firstAssignee))}</div>
-                <span class="fw-bold" style="font-size:0.8rem;color:var(--text-main)">${escapeHtml(firstAssignee)}${assignees.length > 1 ? ' <span class="text-muted">+' + (assignees.length - 1) + '</span>' : ''}</span>
-              </div>`
-            : '<span class="text-muted small">Chưa giao</span>';
-
-        rows.push(`<tr style="cursor:pointer" onclick="openTaskDetail(${jsArg(id)})">
-            <td><span class="text-muted" style="font-size:0.72rem;font-weight:600">${escapeHtml(taskIdStr)}</span></td>
-            <td>
-                <div class="d-flex align-items-center">
-                    <span class="fw-bold text-wrap" style="font-size:0.88rem;color:var(--text-main)">${escapeHtml(name)}</span>
-                    ${editBtn}
+        return `<tr class="fade-in cursor-pointer" style="animation-delay:${i * 25}ms" onclick="openTaskDetail(${jsArg(id)})">
+            <td class="fw-bold text-center" style="color:var(--text-light);font-size:0.75rem">${start + i + 1}</td>
+            <td><div class="fw-bold" style="font-size:0.85rem;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(name)}</div>
+                ${group ? `<span style="font-size:0.68rem;color:var(--text-light)">${escapeHtml(group)}</span>` : ''}</td>
+            <td><span class="priority-badge priority-${escapeAttr(difficulty)}">${escapeHtml(priorityLabel)}</span></td>
+            <td style="min-width:100px">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="progress" style="height:5px;flex:1;border-radius:4px;background:var(--border-color)">
+                        <div class="progress-bar" style="width:${prog}%;background:${progColor};border-radius:4px"></div>
+                    </div>
+                    <span style="font-size:0.72rem;font-weight:700;min-width:28px;text-align:right">${prog}%</span>
                 </div>
             </td>
-            <td class="text-center">${priorityHtml}</td>
-            <td>${slider}</td>
-            <td>${assigneeHtml}</td>
-            <td class="small">${dlHtml}</td>
-            <td>${statusBadgeHtml}</td>
-            <td class="text-center">${actionBtns}</td>
-        </tr>`);
+            <td><div class="d-flex align-items-center">${avatarHtml}</div></td>
+            <td>${dlDisplay}</td>
+            <td>${statusBadge}</td>
+            <td class="text-center">
+                <div class="d-flex justify-content-center align-items-center gap-1">
+                    ${actionBtns}
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+
+    updatePagination(filtered.length, totalPages);
+}
+
+function updateStatusCounts() {
+    const today = getToday();
+    let counts = { all: 0, doing: 0, done: 0, waiting: 0, overdue: 0, todo: 0 };
+
+    globalData.forEach(r => {
+        const rawSt = String(r[2]).trim();
+        const status = getEffectiveStatus(rawSt, r[6]);
+        const dlRaw = r[9] || r[4];
+        const isOverdue = dlRaw && new Date(dlRaw) < today && status !== 'Done' && status !== 'Waiting';
+
+        counts.all++;
+        if (status === 'Done') counts.done++;
+        else if (status === 'Waiting') counts.waiting++;
+        else if (isOverdue) counts.overdue++;
+        else if (status === 'Todo') counts.todo++;
+        else counts.doing++;
     });
 
-    tb.innerHTML = rows.join('');
-
-    // If kanban is active, also update it
-    if (currentView === 'kanban') renderKanban();
+    Object.keys(counts).forEach(k => {
+        const el = document.getElementById(`count-${k}`);
+        if (el) el.innerText = counts[k];
+    });
 }
 
-function changePage(delta) {
-    currentPage += delta;
-    renderTable();
+function updatePagination(total, totalPages) {
+    const info = document.getElementById('paginationInfo');
+    const current = document.getElementById('paginationCurrent');
+    const prevBtn = document.getElementById('btnPrevPage');
+    const nextBtn = document.getElementById('btnNextPage');
+
+    if (info) info.innerText = `${total} kết quả`;
+    if (current) current.innerText = `${currentPage} / ${totalPages}`;
+    if (prevBtn) prevBtn.disabled = currentPage <= 1;
+    if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
 }
 
-function filterByStatusTab(status, btn) {
-    document.querySelectorAll('.status-tab').forEach(b => b.classList.remove('active'));
-    if (btn) btn.classList.add('active');
-    document.getElementById('statusTabFilter').value = status;
-    currentPage = 1;
-    renderTable();
+function changePage(dir) {
+    const filtered = getFilteredData();
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    let newPage = currentPage + dir;
+    if (newPage < 1) newPage = 1;
+    if (newPage > totalPages) newPage = totalPages;
+    currentPage = newPage;
+    renderTasks();
 }
 
-function applyQuickFilter(mode, btn) {
-    const current = document.getElementById('quickFilterMode').value;
-    document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active'));
-
-    if (current === mode) {
-        document.getElementById('quickFilterMode').value = '';
-    } else {
-        document.getElementById('quickFilterMode').value = mode;
-        if (btn) btn.classList.add('active');
+/* ═══ Task CRUD ═══ */
+function showTaskModal() {
+    if (!currentUser || !isAdminUser(currentUser)) {
+        return showToast('⛔ Chỉ Admin mới có quyền tạo!', 'warning');
     }
-    currentPage = 1;
-    renderTable();
-}
+    document.getElementById('taskForm')?.reset();
+    document.getElementById('taskModalLabel').innerText = 'Tạo công việc mới';
+    document.getElementById('editTaskId').value = '';
 
-function startTask(id) {
-    if (!confirm("Bắt đầu thực hiện công việc này?")) return;
-    updateProgress(id, 5);
-}
+    // Populate group select & assignee checkboxes
+    populateGroupSelect();
+    populateAssigneeCheckboxes();
 
-async function updateProgress(id, v) {
-    if (!currentUser) return showToast("Vui lòng đăng nhập!", 'warning');
-
-    if (v == 100 && !isAdminUser(currentUser)) {
-        if (confirm("Bạn muốn báo cáo hoàn thành công việc này?")) {
-            openReportModal(id);
-            const el = document.getElementById(`val-${id}`);
-            if (el) el.innerText = '100%';
-            return;
-        } else {
-            v = 90;
-        }
+    // Call toggleDeadline to sync UI state after reset
+    if (typeof toggleDeadline === 'function') {
+        toggleDeadline();
     }
 
-    const el = document.getElementById(`val-${id}`);
-    if (el) el.innerText = v + '%';
+    new bootstrap.Modal(document.getElementById('taskModal')).show();
+}
 
-    try {
-        const res = await apiFetch('update_progress', {
-            id, progress: v, user_fullname: currentUser.name, role: currentUser.role
+function populateGroupSelect() {
+    const groupSelect = document.getElementById('groupSelect');
+    if (!groupSelect) return;
+    groupSelect.innerHTML = '<option value="">-- Chọn tổ --</option>';
+    GROUP_LIST.forEach(group => {
+        const opt = document.createElement('option');
+        opt.value = group;
+        opt.textContent = group;
+        groupSelect.appendChild(opt);
+    });
+}
+
+function populateAssigneeCheckboxes() {
+    const container = document.getElementById('checkboxContainer');
+    const hidden = document.getElementById('hiddenAssigneeSelect');
+    if (!container || !hidden) return;
+
+    container.innerHTML = '';
+    hidden.innerHTML = '';
+
+    const allStaff = ALL_STAFF || [];
+    allStaff.forEach((name, i) => {
+        hidden.add(new Option(name, name));
+
+        const div = document.createElement('div');
+        div.className = 'person-item';
+        div.style.cssText = 'padding:9px 12px;border-bottom:1px solid var(--border-color);cursor:pointer;transition:background 0.15s;';
+        div.onmouseover = function () { this.style.background = 'var(--bg-body)'; };
+        div.onmouseout = function () { this.style.background = 'transparent'; };
+        div.onclick = function (e) { e.stopPropagation(); };
+        div.innerHTML = `<div class="form-check">
+            <input class="form-check-input" type="checkbox" value="${escapeHtml(name)}" id="chkModal${i}">
+            <label class="form-check-label w-100 fw-medium" style="color:var(--text-main);cursor:pointer;font-size:0.88rem" for="chkModal${i}">${escapeHtml(name)}</label>
+        </div>`;
+
+        container.appendChild(div);
+        div.querySelector('input').addEventListener('change', (e) => {
+            hidden.options[i].selected = e.target.checked;
+            updateAssigneeDisplay();
         });
-        if (res.status === 'error') {
-            showToast(res.message, 'danger');
-            loadTaskList();
-        } else if (v == 100 && isAdminUser(currentUser)) {
-            loadTaskList();
-        }
-    } catch (err) {
-        showToast("Lỗi cập nhật: " + err.message, 'danger');
-    }
+    });
 }
 
-function openReportModal(id) {
-    if (!currentUser) return showToast("Vui lòng đăng nhập!", 'warning');
-    document.getElementById('reportTaskId').value = id;
-    document.getElementById('reportFile').value = '';
-    document.getElementById('fileListDisplay').innerHTML = '';
-    document.getElementById('fileError').style.display = 'none';
-    document.getElementById('compressStatus').innerText = '';
-    document.getElementById('uploadProgress').style.display = 'none';
-    new bootstrap.Modal(document.getElementById('reportModal')).show();
+function updateAssigneeDisplay() {
+    const s = document.getElementById('hiddenAssigneeSelect');
+    const t = document.getElementById('selectedText');
+    const c = document.getElementById('selectedCount');
+    if (!s || !t || !c) return;
+
+    let cnt = 0, names = [];
+    Array.from(s.options).forEach(o => {
+        if (o.selected) { cnt++; names.push(o.value); }
+    });
+    c.innerText = cnt;
+    t.innerText = cnt === 0 ? '-- Chọn nhân sự --' : (cnt <= 2 ? names.join(', ') : `Đã chọn ${cnt} người`);
 }
 
-function displaySelectedFiles() {
-    const input = document.getElementById('reportFile');
-    const display = document.getElementById('fileListDisplay');
-    if (input.files.length > 0) {
-        display.innerHTML = Array.from(input.files).map(f => `<div class="d-flex align-items-center gap-1 mb-1"><i class="bi bi-paperclip text-primary"></i> ${escapeHtml(f.name)} <small class="text-muted">(${(f.size / 1024).toFixed(0)}KB)</small></div>`).join('');
-    } else {
-        display.innerHTML = "";
-    }
-}
+async function submitTask(btn) {
+    const form = document.getElementById('taskForm');
+    const editId = form.elements['editTaskId']?.value || '';
+    const name = form.elements['taskName']?.value?.trim() || '';
+    const deadline = form.elements['deadline']?.value || '';
+    const note = form.elements['notes']?.value || '';
+    const group = form.elements['group']?.value || '';
+    const type = form.elements['type']?.value || 'Thường quy';
+    const difficulty = form.elements['difficulty']?.value || '2';
 
-function getMimeType(fileName) {
-    const ext = fileName.split('.').pop().toLowerCase();
-    const map = {
-        'pdf': 'application/pdf', 'doc': 'application/msword',
-        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'xls': 'application/vnd.ms-excel',
-        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'ppt': 'application/vnd.ms-powerpoint',
-        'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png'
-    };
-    return map[ext] || 'application/octet-stream';
-}
+    // Get selected assignees from hidden select
+    const hiddenSelect = document.getElementById('hiddenAssigneeSelect');
+    const assignees = hiddenSelect 
+        ? Array.from(hiddenSelect.selectedOptions).map(o => o.value).join(', ')
+        : '';
 
-async function submitReport() {
-    const id = document.getElementById('reportTaskId').value;
-    const fileInput = document.getElementById('reportFile');
-    const files = fileInput.files;
-    const btn = document.getElementById('btnSubmitReport');
-    const errDiv = document.getElementById('fileError');
-    const statusDiv = document.getElementById('compressStatus');
-    const progressDiv = document.getElementById('uploadProgress');
-
-    if (files.length === 0) {
-        errDiv.innerText = "Vui lòng chọn ít nhất 1 file!";
-        errDiv.style.display = 'block';
-        return;
-    }
-
-    let totalSize = 0;
-    for (let i = 0; i < files.length; i++) totalSize += files[i].size;
-    if (totalSize > 10 * 1024 * 1024) {
-        errDiv.innerText = "Tổng dung lượng > 10MB.";
-        errDiv.style.display = 'block';
-        return;
-    }
+    if (!name) return showToast("Vui lòng nhập tên công việc!", 'warning');
 
     setBtnLoading(btn, true);
-    errDiv.style.display = 'none';
-    progressDiv.style.display = 'block';
-    statusDiv.innerText = `Đang đọc ${files.length} file...`;
-
-    let filePayloads = [];
     try {
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            const base64 = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = e => resolve(e.target.result);
-                reader.onerror = e => reject(e);
-                reader.readAsDataURL(file);
-            });
-            filePayloads.push({
-                fileName: file.name,
-                mimeType: file.type || getMimeType(file.name),
-                fileData: base64
-            });
-        }
-    } catch (e) {
-        errDiv.innerText = "Lỗi đọc file.";
-        errDiv.style.display = 'block';
-        setBtnLoading(btn, false, 'Gửi báo cáo');
-        return;
-    }
-
-    statusDiv.innerText = "Đang gửi...";
-
-    try {
-        const res = await apiFetch('report_done', {
-            id, user_fullname: currentUser.name, files: filePayloads
-        }, 60000);
-
-        if (res.status === 'success') {
-            showToast("✅ " + res.message, 'success');
-            bootstrap.Modal.getInstance(document.getElementById('reportModal'))?.hide();
-            loadTaskList();
-        } else {
-            showToast("⚠️ " + res.message, 'danger');
-        }
+        const action = editId ? 'edit_task' : 'add';
+        const payload = {
+            ...getAuthPayload(),
+            id: editId || undefined,
+            taskName: name,
+            deadline, notes: note, assignee: assignees,
+            group, type, taskType: type, difficulty,
+        };
+        const res = await apiFetch(action, payload);
+        if (res.status === 'error') throw new Error(res.message || 'Lỗi không xác định từ server');
+        showToast(res.message || (editId ? 'Đã cập nhật!' : 'Đã tạo công việc!'), 'success');
+        bootstrap.Modal.getInstance(document.getElementById('taskModal'))?.hide();
+        // Reset form và assignee checkboxes
+        form.reset();
+        document.getElementById('editTaskId').value = '';
+        const container = document.getElementById('checkboxContainer');
+        if (container) container.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = false);
+        const hidden = document.getElementById('hiddenAssigneeSelect');
+        if (hidden) Array.from(hidden.options).forEach(o => o.selected = false);
+        updateAssigneeDisplay();
+        loadTaskList();
     } catch (err) {
         showToast("Lỗi: " + err.message, 'danger');
     } finally {
-        setBtnLoading(btn, false, 'Gửi báo cáo');
-        progressDiv.style.display = 'none';
-        statusDiv.innerText = "";
-        document.getElementById('fileListDisplay').innerHTML = "";
+        setBtnLoading(btn, false, editId ? 'Cập nhật' : '<i class="bi bi-plus-lg me-1"></i>Tạo công việc');
     }
-}
-
-async function approveTask(id) {
-    if (!currentUser || !isAdminUser(currentUser)) return showToast("⛔ Chỉ Admin!", 'warning');
-    if (!confirm('Duyệt hoàn thành công việc này?')) return;
-    try {
-        const res = await apiFetch('approve_done', { id, role: currentUser.role });
-        showToast(res.message, 'success');
-        loadTaskList();
-    } catch (err) { showToast("Lỗi: " + err.message, 'danger'); }
-}
-
-async function rejectTask(id) {
-    if (!currentUser || !isAdminUser(currentUser)) return showToast("⛔ Chỉ Admin!", 'warning');
-    if (!confirm('Từ chối báo cáo này?')) return;
-    try {
-        const res = await apiFetch('reject_done', { id, role: currentUser.role });
-        showToast(res.message, 'warning');
-        loadTaskList();
-    } catch (err) { showToast("Lỗi: " + err.message, 'danger'); }
 }
 
 function openEditTask(id) {
     const task = globalData.find(r => r[0] == id);
     if (!task) return;
-    document.getElementById('editTaskId').value = id;
-    document.getElementById('editTaskName').value = task[1];
-    
-    // Set up edit checkboxes
-    const assignees = task[7] ? String(task[7]).split(',').map(s => s.trim()) : [];
-    const hidden = document.getElementById('editHiddenAssigneeSelect');
-    Array.from(hidden.options).forEach((o, i) => {
-        const isSelected = assignees.includes(o.value);
-        o.selected = isSelected;
-        const chk = document.getElementById(`editChk${i}`);
-        if (chk) chk.checked = isSelected;
-    });
-    updateEditAssigneeDisplay();
 
-    document.getElementById('editTaskNotes').value = task[5] || '';
+    document.getElementById('taskModalLabel').innerText = 'Chỉnh sửa công việc';
+    const form = document.getElementById('taskForm');
+    form.elements['editTaskId'].value = id;
+    form.elements['taskName'].value = task[1] || '';
+    form.elements['deadline'].value = toDateInputValue(task[9] || task[4] || '');
+    form.elements['notes'].value = task[5] || '';
+    if (form.elements['type']) form.elements['type'].value = task[10] || 'Thường quy';
+    if (form.elements['difficulty']) form.elements['difficulty'].value = task[12] || '2';
 
-    const deadline = task[9] || task[4];
-    if (deadline) {
-        const d = new Date(deadline);
-        document.getElementById('editTaskDeadline').value = d.toISOString().split('T')[0];
-    } else {
-        document.getElementById('editTaskDeadline').value = '';
+    populateGroupSelect();
+    if (form.elements['group']) form.elements['group'].value = task[11] || '';
+
+    populateAssigneeCheckboxes();
+    const assigneeNames = String(task[7]).split(',').map(s => s.trim()).filter(Boolean);
+    const hiddenSelect = document.getElementById('hiddenAssigneeSelect');
+    if (hiddenSelect) {
+        Array.from(hiddenSelect.options).forEach(opt => {
+            opt.selected = assigneeNames.includes(opt.value);
+        });
+        // Check corresponding checkboxes
+        const container = document.getElementById('checkboxContainer');
+        if (container) {
+            container.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+                chk.checked = assigneeNames.includes(chk.value);
+            });
+        }
+        updateAssigneeDisplay();
     }
 
-    if (task[12]) document.getElementById('editTaskDifficulty').value = task[12];
-    new bootstrap.Modal(document.getElementById('editTaskModal')).show();
+    // Call toggleDeadline to sync UI state for edit mode
+    if (typeof toggleDeadline === 'function') {
+        toggleDeadline();
+    }
+
+    new bootstrap.Modal(document.getElementById('taskModal')).show();
 }
 
-async function submitEditTask() {
-    const assignee = Array.from(document.getElementById('editHiddenAssigneeSelect').selectedOptions).map(o => o.value).join(', ');
-
-    const payload = {
-        id: document.getElementById('editTaskId').value,
-        taskName: document.getElementById('editTaskName').value,
-        assignee: assignee,
-        deadline: document.getElementById('editTaskDeadline').value,
-        difficulty: document.getElementById('editTaskDifficulty').value,
-        notes: document.getElementById('editTaskNotes').value,
-        role: currentUser.role
-    };
-
-    try {
-        const res = await apiFetch('edit_task', payload);
-        showToast(res.message, 'success');
-        bootstrap.Modal.getInstance(document.getElementById('editTaskModal'))?.hide();
-        loadTaskList();
-    } catch (err) { showToast("Lỗi: " + err.message, 'danger'); }
-}
-
-function openReviewModal(id) {
+async function startTask(id) {
     const task = globalData.find(r => r[0] == id);
     if (!task) return;
-    document.getElementById('reviewTaskId').value = id;
-    document.getElementById('reviewTaskName').innerText = task[1];
-    document.getElementById('reviewAssignee').innerText = task[7];
-
-    const container = document.getElementById('reviewFileContainer');
-    if (task[13]) {
-        const fileUrls = String(task[13]).split('\n').map(safeExternalUrl).filter(Boolean);
-        container.innerHTML = fileUrls.map((url, i) =>
-            `<a href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary w-100 fw-bold" style="border-radius:10px"><i class="bi bi-cloud-arrow-down-fill"></i> Mở File ${i + 1}</a>`
-        ).join('');
-        if (fileUrls.length === 0) {
-            container.innerHTML = '<span class="text-muted fst-italic">Không có file hợp lệ.</span>';
-        }
-    } else {
-        container.innerHTML = '<span class="text-muted fst-italic">Không có file đính kèm.</span>';
+    const assignees = getTaskAssignees(task);
+    if (currentUser && !isAdminUser(currentUser) && !assignees.includes(currentUser.name)) {
+        return showToast('⛔ Không phải việc của bạn!', 'warning');
     }
-    new bootstrap.Modal(document.getElementById('reviewModal')).show();
+    try {
+        const res = await apiFetch('update_progress', { ...getAuthPayload(), id, progress: 1 });
+        if (res.status === 'error') throw new Error(res.message || 'Không thể cập nhật tiến độ');
+        showToast('Đã chuyển sang Đang làm!', 'success');
+        loadTaskList();
+    } catch (err) {
+        showToast('Lỗi: ' + err.message, 'danger');
+    }
 }
 
-function submitReviewDecision(type) {
-    const id = document.getElementById('reviewTaskId').value;
-    if (type === 'approve') approveTask(id); else rejectTask(id);
-    bootstrap.Modal.getInstance(document.getElementById('reviewModal'))?.hide();
-}
-
-async function sendEmailBackend(id) {
-    const task = globalData.find(r => r[0] == id);
-    if (!task) return showToast("Không tìm thấy!", 'danger');
-
-    const taskName = task[1], assignee = task[7];
-    const dlRaw = task[9] || task[4];
-    const dl = dlRaw ? new Date(dlRaw).toLocaleDateString('vi-VN') : 'Sớm nhất';
-
-    if (!confirm(`Gửi mail nhắc nhở cho ${assignee}?`)) return;
+async function updateProgress(id) {
+    const val = prompt("Nhập tiến độ mới (0-100):", "");
+    if (val === null) return;
+    const prog = parseInt(val);
+    if (isNaN(prog) || prog < 0 || prog > 100) return showToast("Giá trị không hợp lệ!", 'warning');
 
     try {
-        const res = await apiFetch('send_email_manual', { taskName, assignee, deadline: dl });
-        showToast(res.message, res.status === 'success' ? 'success' : 'danger');
-    } catch (err) { showToast("Lỗi: " + err.message, 'danger'); }
-}
-
-async function triggerBulkEmail(btn) {
-    if (!currentUser || !isAdminUser(currentUser)) return showToast("⛔ Chỉ Admin!", 'warning');
-
-    const pending = globalData.filter(r => {
-        const status = String(r[2]).trim();
-        return status !== 'Done' && status !== 'Waiting';
-    });
-
-    if (pending.length === 0) return showToast("Không có việc cần gửi!", 'primary');
-    if (!confirm(`Gửi mail nhắc cho ${pending.length} đầu việc chưa xong?`)) return;
-
-    setBtnLoading(btn, true);
-    try {
-        const res = await apiFetch('send_bulk_email', {
-            taskIds: pending.map(r => r[0]), sender: currentUser.name
+        const res = await apiFetch('update_progress', {
+            ...getAuthPayload(),
+            id, progress: prog
         });
-        showToast(res.message, 'success');
-    } catch (err) { showToast("Lỗi: " + err.message, 'danger'); }
-    finally { setBtnLoading(btn, false, '<i class="bi bi-envelope"></i>'); }
+        if (res.status === 'error') throw new Error(res.message || 'Không thể cập nhật tiến độ');
+        showToast("Đã cập nhật tiến độ!", 'success');
+        loadTaskList();
+    } catch (err) {
+        showToast("Lỗi: " + err.message, 'danger');
+    }
+}
+
+async function approveDone(id) {
+    if (!confirm("Duyệt hoàn thành công việc này?")) return;
+    try {
+        const res = await apiFetch('approve_done', { ...getAuthPayload(), id });
+        if (res.status === 'error') throw new Error(res.message || 'Không thể duyệt hoàn thành');
+        showToast("Đã duyệt hoàn thành!", 'success');
+        loadTaskList();
+    } catch (err) {
+        showToast("Lỗi: " + err.message, 'danger');
+    }
+}
+
+
+
+function resetFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('filterGroup').value = '';
+    document.getElementById('filterAssignee').value = '';
+    document.getElementById('filterStatus').value = '';
+    document.getElementById('filterDifficulty').value = '';
+    document.getElementById('filterMonth').value = '';
+    document.getElementById('quickFilterMode').value = '';
+    currentStatusFilter = 'all';
+    document.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('.status-tab[data-status="all"]')?.classList.add('active');
+    currentPage = 1;
+    renderTasks();
+}
+
+/**
+ * Quick Filter: 7 days / 30 days / overdue
+ */
+function applyQuickFilter(mode, btn) {
+    // Highlight active button
+    document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+
+    const monthInput = document.getElementById('filterMonth');
+    const quickFilterInput = document.getElementById('quickFilterMode');
+    if (monthInput) monthInput.value = '';
+    if (quickFilterInput) quickFilterInput.value = '';
+
+    // Clear other filters
+    document.getElementById('filterStatus').value = '';
+    currentStatusFilter = 'all';
+
+    if (mode === 'overdue') {
+        // Show overdue tasks only
+        document.getElementById('filterStatus').value = 'Overdue';
+    } else if (mode === '7days') {
+        if (quickFilterInput) quickFilterInput.value = '7days';
+    } else if (mode === '30days') {
+        if (quickFilterInput) quickFilterInput.value = '30days';
+    }
+
+    currentPage = 1;
+    renderTasks();
 }
