@@ -162,6 +162,32 @@ async function triggerBulkEmail(btn) {
 }
 
 /**
+ * Trigger normalize all assignee names on Google Sheet (Admin only)
+ */
+async function triggerNormalizeAssignees(btn) {
+    if (!currentUser || !isAdminUser(currentUser)) {
+        return showToast('⛔ Chỉ Admin mới có quyền chuẩn hóa!', 'warning');
+    }
+    if (!confirm("Chuẩn hóa toàn bộ tên nhân sự trong Google Sheet theo danh sách Users chính thức?")) return;
+
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang xử lý...';
+    btn.disabled = true;
+
+    try {
+        const res = await apiFetch('normalize_assignees', getAuthPayload());
+        if (res.status === 'error') throw new Error(res.message || 'Không thể chuẩn hóa dữ liệu');
+        showToast(res?.message || "Đã chuẩn hóa dữ liệu thành công!", 'success');
+        loadTaskList();
+    } catch (err) {
+        showToast("Lỗi: " + err.message, 'danger');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+/**
  * Report Modal Logic
  */
 function openReportModal(id) {

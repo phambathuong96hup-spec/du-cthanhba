@@ -431,6 +431,12 @@ function doPost(e) {
       return responseJSON({ status: 'success', message: 'Đã xóa ghi nhận!' });
     }
 
+    if (action == 'normalize_assignees') {
+      if (!isAdminRequest_(ss, postData)) return responseJSON({ status: 'error', message: 'Không có quyền!' });
+      var result = normalizeAllAssignees_(ss);
+      return responseJSON({ status: 'success', message: result });
+    }
+
     return responseJSON({ status: 'error', message: 'Action not found' });
 
   } catch (err) {
@@ -759,4 +765,68 @@ function xinQuyenDrive() {
 function kichHoatQuyenAI() {
   UrlFetchApp.fetch("https://www.google.com");
   console.log("Đã cấp quyền Internet thành công!");
+}
+
+// ==========================================
+// CHUAN HOA TEN NHAN VIEN (normalize_assignees)
+// Chay tu GAS Editor: chon ham chuanHoaTenNhanVien() -> Run
+// Hoac Admin trigger tu App (action=normalize_assignees)
+// ==========================================
+
+/**
+ * Ham noi bo: chuan hoa toan bo cot Assignee trong sheet Tasks.
+ * Ten chuan doc tu sheet Users (cot C = fullname).
+ * Logic: neu ten trong sheet la hau to cua ten chuan -> thay bang ten chuan.
+ * Vi du: "Manh Toan" -> "Kieu Manh Toan", "Tien" -> "Nguyen Duy Tien"
+ */
+function normalizeAllAssignees_(ss) {
+  var staffSheet = ss.getSheetByName(SHEET_STAFF);
+  var taskSheet  = ss.getSheetByName(SHEET_DATA);
+  if (!staffSheet || !taskSheet || taskSheet.getLastRow() <= 1) return 'Khong co du lieu.';
+
+  // Lay danh sach ten chuan tu Users (cot C, index 2)
+  var staffData = staffSheet.getDataRange().getValues();
+  var canonicalNames = [];
+  for (var i = 1; i < staffData.length; i++) {
+    var name = String(staffData[i][2] || '').trim();
+    if (name) canonicalNames.push(name);
+  }
+
+  // Normalize 1 ten: khop chinh xac hoac hau to -> tra ve ten chuan
+  function normalizeName(raw) {
+    var needle = raw.trim().toLowerCase();
+    if (!needle) return raw.trim();
+    for (var k = 0; k < canonicalNames.length; k++) {
+      var c = canonicalNames[k].toLowerCase();
+      if (c === needle || c.endsWith(' ' + needle)) return canonicalNames[k];
+    }
+    return raw.trim();
+  }
+
+  // Duyet toan bo Tasks, sua cot Assignee (cot H = index 7)
+  var taskData = taskSheet.getDataRange().getValues();
+  var changedRows = 0;
+
+  for (var row = 1; row < taskData.length; row++) {
+    var rawAssignee = String(taskData[row][7] || '');
+    var parts = rawAssignee.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    var normalized = parts.map(normalizeName);
+    var newVal = normalized.join(', ');
+
+    if (newVal !== rawAssignee.trim()) {
+      taskSheet.getRange(row + 1, 8).setValue(newVal);
+      changedRows++;
+      logSystem('NORMALIZE', 'Row ' + (row + 1) + ': "' + rawAssignee.trim() + '" -> "' + newVal + '"');
+    }
+  }
+
+  return 'Da chuan hoa ' + changedRows + ' dong / ' + (taskData.length - 1) + ' cong viec.';
+}
+
+/** Wrapper de Admin chay thu cong tu GAS Editor: chon ham nay -> Run */
+function chuanHoaTenNhanVien() {
+  var ss = getSS();
+  var result = normalizeAllAssignees_(ss);
+  Logger.log(result);
+  SpreadsheetApp.getUi().alert('Done: ' + result);
 }
